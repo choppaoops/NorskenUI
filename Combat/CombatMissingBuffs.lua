@@ -39,7 +39,6 @@ local C_Timer = C_Timer
 -- Constants
 local CHECK_THROTTLE = 0.25
 local MISSING_TEXT = "MISSING"
-local REAPPLY_TEXT = ""
 local GENERALBUFF_TEXT = ""
 
 -- Default icon for weapon enchants
@@ -215,65 +214,56 @@ local function IsValidTarget(unit)
     return true
 end
 
--- Check player buff status
+-- Check player buff status using direct spellID lookup (combat-safe)
 local function PlayerHasBuff(spellId, extraSpellIds)
     if not spellId then return false, nil end
 
-    local hasBuff = false
-    local expirationTime = nil
+    -- Direct spellID lookup - works for combat-safe spellIds even in tainted environments
+    local auraData = C_UnitAuras.GetPlayerAuraBySpellID(spellId)
+    if auraData then
+        return true, auraData.expirationTime
+    end
 
-    AuraUtil.ForEachAura("player", "HELPFUL", nil, function(auraInfo)
-        if issecretvalue(auraInfo.spellId) then return end
-        if not auraInfo or not auraInfo.spellId then return false end
-
-        if auraInfo.spellId == spellId then
-            hasBuff = true
-            expirationTime = auraInfo.expirationTime
-            return true
-        end
-
-        if extraSpellIds then
-            for _, extraId in ipairs(extraSpellIds) do
-                if auraInfo.spellId == extraId then
-                    hasBuff = true
-                    expirationTime = auraInfo.expirationTime
-                    return true
-                end
+    -- Check extra spell IDs if provided
+    if extraSpellIds then
+        for _, extraId in ipairs(extraSpellIds) do
+            auraData = C_UnitAuras.GetPlayerAuraBySpellID(extraId)
+            if auraData then
+                return true, auraData.expirationTime
             end
         end
-        return false
-    end, true)
+    end
 
-    return hasBuff, expirationTime
+    return false, nil
 end
 
--- Check unit buff status
+-- Check unit buff status using direct spell name lookup (combat-safe)
 local function UnitHasBuff(unit, spellId, extraSpellIds)
-    if issecretvalue(unit) or issecretvalue(spellId) or issecretvalue(extraSpellIds) then return end
     if not unit or not IsValidTarget(unit) then return true end
-    local hasBuff = false
 
-    AuraUtil.ForEachAura(unit, "HELPFUL", nil, function(auraInfo)
-        if issecretvalue(auraInfo) or issecretvalue(auraInfo.spellId) then return end -- Note, still need these checks since they can try to check any aura
-        if not auraInfo or not auraInfo.spellId then return false end
-
-        if auraInfo.spellId == spellId then
-            hasBuff = true
+    -- Direct lookup by spell name - works for combat-safe spellIds even in tainted environments
+    local spellName = spellId and C_Spell.GetSpellName(spellId)
+    if spellName then
+        local auraData = C_UnitAuras.GetAuraDataBySpellName(unit, spellName, "HELPFUL")
+        if auraData then
             return true
         end
+    end
 
-        if extraSpellIds then
-            for _, extraId in ipairs(extraSpellIds) do
-                if auraInfo.spellId == extraId then
-                    hasBuff = true
+    -- Check extra spell IDs
+    if extraSpellIds then
+        for _, extraId in ipairs(extraSpellIds) do
+            local extraName = C_Spell.GetSpellName(extraId)
+            if extraName then
+                local auraData = C_UnitAuras.GetAuraDataBySpellName(unit, extraName, "HELPFUL")
+                if auraData then
                     return true
                 end
             end
         end
-        return false
-    end, true)
+    end
 
-    return hasBuff
+    return false
 end
 
 -- Check if we should track the buff at all
@@ -589,20 +579,20 @@ end
 -- Check for food buff by name
 local function PlayerHasFoodBuff()
     local hasBuff = false
-    local foundSpellId = nil
 
     AuraUtil.ForEachAura("player", "HELPFUL", nil, function(auraInfo)
         if not auraInfo or not auraInfo.name then return false end
+        -- Skip secret values - cannot compare tainted strings
+        if issecretvalue(auraInfo.name) then return false end
 
         if auraInfo.name == WELL_FED_NAME or auraInfo.name == HEARTY_WELL_FED_NAME then
             hasBuff = true
-            foundSpellId = auraInfo.spellId
             return true
         end
         return false
     end, true)
 
-    return hasBuff, foundSpellId
+    return hasBuff
 end
 
 -- Check buffs that are still secret in combat/m+
@@ -996,7 +986,7 @@ local function CheckStances()
 
         -- When you enter voidform cd, standard tracking is overriden and we cant check this in combat
         -- This is fine since almost always, you would want to be in shadowform pre combat so we just return early here
-        if InCombatLockdown or C_ChallengeMode.IsChallengeModeActive() then
+        if InCombatLockdown() or C_ChallengeMode.IsChallengeModeActive() then
             return
         end
 
@@ -1177,43 +1167,29 @@ local function HideAllNotifications()
     end
 end
 
--- Check only weapon enchants (for combat-safe checking)
-local function CheckWeaponEnchants()
-    if not MBUFFS.db then return end
-    local raidDb = MBUFFS.db.RaidBuffDisplay or {}
-
-    for _, buff in ipairs(SAFE_BUFFS) do
-        if buff.buffType == "weaponEnchant" and ShouldTrackBuff(buff) then
-            local hasEnchant, icon, hasItem = HasWeaponEnchant(buff.slot)
-            if hasItem and not hasEnchant then
-                local iconFrame = AcquireIcon()
-                local displayIcon = icon or WEAPON_ENCHANT_ICON
-                local text = buff.text or GENERALBUFF_TEXT
-                local iconSize = raidDb.IconSize
-
-                iconFrame.icon:SetTexture(displayIcon)
-                iconFrame:SetSize(iconSize, iconSize)
-                iconFrame.icon:SetSize(iconSize, iconSize)
-                NRSKNUI:ApplyFontSettings(iconFrame, raidDb, nil)
-                iconFrame.text:SetText(text)
-                activeIcons[#activeIcons + 1] = iconFrame
-                currentMissingBuffs[#currentMissingBuffs + 1] = { buff = buff, text = text }
-            end
-        end
-    end
-end
-
--- Check combat-safe elements (weapon enchants and stances)
+-- Check combat-safe elements (all SAFE_BUFFS and stances)
 local function CheckCombatSafeElements()
     if isPreviewActive then return end
     if not MBUFFS.db or not MBUFFS.db.Enabled then return end
     if UnitIsDeadOrGhost("player") or C_PetBattles.IsInBattle() then return end
     ReleaseAllIcons()
     wipe(currentMissingBuffs)
-    -- Check weapon enchants and stances
-    CheckWeaponEnchants()
+
+    -- Check all SAFE_BUFFS (raid buffs, poisons, weapon enchants)
+    local safeMissing = CheckSafeBuffs()
+    for _, entry in ipairs(safeMissing) do
+        currentMissingBuffs[#currentMissingBuffs + 1] = entry
+    end
+
+    -- Check stances
     CheckStances()
-    ArrangeIcons()
+
+    -- Show results
+    if #currentMissingBuffs > 0 then
+        ShowMissingBuffs(currentMissingBuffs)
+    else
+        ArrangeIcons()
+    end
 end
 
 -- Check if tracking should be paused
@@ -1281,7 +1257,15 @@ local function OnAuraChange(unit, updateInfo)
     if not MBUFFS.db or not MBUFFS.db.Enabled then return end
     if IsTrackingPaused() then return end
     if unit ~= "player" and not (unit and (unit:find("party") or unit:find("raid"))) then return end
-    if InCombatLockdown() then return end
+
+    -- In combat: check combat-safe elements (SAFE_BUFFS + stances)
+    if InCombatLockdown() then
+        if unit == "player" then
+            CheckCombatSafeElements()
+        end
+        return
+    end
+
     if updateInfo and not updateInfo.isFullUpdate then
         local hasRelevant = false
         if updateInfo.addedAuras then
