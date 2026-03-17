@@ -185,7 +185,7 @@ function BB:CreateTrackerFrame(trackerIndex, config)
     -- Time text
     if config.ShowTimeText then
         frame.timeText = frame.bar:CreateFontString(nil, "OVERLAY")
-        frame.timeText:SetFont(STANDARD_TEXT_FONT, config.FontSize, "OUTLINE")
+        frame.timeText:SetFont(NRSKNUI.FONT, config.FontSize, "OUTLINE")
         frame.timeText:SetPoint("RIGHT", frame.bar, "RIGHT", -2, 0)
         frame.timeText:SetTextColor(1, 1, 1, 1)
         frame.timeText:SetShadowOffset(0, 0)
@@ -194,7 +194,7 @@ function BB:CreateTrackerFrame(trackerIndex, config)
     -- Spell text
     if config.ShowSpellText then
         frame.spellText = frame.bar:CreateFontString(nil, "OVERLAY")
-        frame.spellText:SetFont(STANDARD_TEXT_FONT, config.FontSize, "OUTLINE")
+        frame.spellText:SetFont(NRSKNUI.FONT, config.FontSize, "OUTLINE")
         local textOffset = config.ShowIcon and (iconSize + 4) or 2
         frame.spellText:SetPoint("LEFT", frame.bar, "LEFT", textOffset, 0)
         frame.spellText:SetTextColor(1, 1, 1, 1)

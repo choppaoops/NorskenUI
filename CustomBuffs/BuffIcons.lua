@@ -154,7 +154,7 @@ function BI:CreateTrackerFrame(trackerIndex, config)
         frame.cooldown:SetHideCountdownNumbers(false)
         local region = frame.cooldown:GetRegions()
         if region and region.SetFont then
-            region:SetFont(STANDARD_TEXT_FONT, config.CountdownSize, "OUTLINE")
+            region:SetFont(NRSKNUI.FONT, config.CountdownSize, "OUTLINE")
             region:SetShadowOffset(0, 0)
             region:SetShadowColor(0, 0, 0, 0)
         end
