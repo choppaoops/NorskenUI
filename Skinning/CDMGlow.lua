@@ -8,6 +8,11 @@ if not NorskenUI then
     return
 end
 
+-- Block if Ayije_CDM is loaded (incompatible)
+if C_AddOns.IsAddOnLoaded("Ayije_CDM") then
+    return
+end
+
 -- Create module
 ---@class CDMGlow: AceModule, AceEvent-3.0
 local CDMG = NorskenUI:NewModule("CDMGlow", "AceEvent-3.0")
