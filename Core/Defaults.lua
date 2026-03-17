@@ -365,6 +365,25 @@ local Defaults = {
                 },
             },
 
+            BloodlustTracker = {
+                Enabled = true,
+                Size = 40,
+                -- Font settings
+                FontFace = "Expressway",
+                FontSize = 18,
+                FontOutline = "SOFTOUTLINE",
+                -- Position settings
+                Strata = "HIGH",
+                anchorFrameType = "UIPARENT",
+                ParentFrame = "UIParent",
+                Position = {
+                    AnchorFrom = "CENTER",
+                    AnchorTo = "CENTER",
+                    XOffset = 0,
+                    YOffset = -200,
+                },
+            },
+
             MiscVars = {
                 Enabled = true,
 
@@ -1590,12 +1609,15 @@ local Defaults = {
                     BalanceEnabled = true,
                     Balance = "24858", -- Moonkin Form
                     BalanceReverseIcon = false,
+                    BalanceCombatOnly = false,
                     FeralEnabled = true,
                     Feral = "768", -- Cat Form
                     FeralReverseIcon = false,
+                    FeralCombatOnly = false,
                     GuardianEnabled = true,
                     Guardian = "5487", -- Bear Form
                     GuardianReverseIcon = false,
+                    GuardianCombatOnly = false,
                 },
 
                 -- Priest Shadowform

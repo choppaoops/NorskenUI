@@ -185,6 +185,7 @@ local PREVIEW_MODULES = {
     "MissingBuffs", "CombatCross", "CombatMessage", "CombatRes",
     "CombatTimer", "PetTexts", "XPBar", "Durability", "DragonRiding", "RaidAlerts",
     "FocusCastbar", "Gateway", "HuntersMark", "BlizzardRM", "RangeChecker", "TimeSpiral", "Recuperate",
+    "BloodlustTracker"
 }
 
 -- State tracking

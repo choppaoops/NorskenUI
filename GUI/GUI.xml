@@ -52,6 +52,7 @@
     <Script file="GUITabs\GUI-QoL\GUI-HuntersMark.lua" />
     <Script file="GUITabs\GUI-QoL\GUI-AuctionHouseFilter.lua" />
     <Script file="GUITabs\GUI-QoL\GUI-Recuperate.lua" />
+    <Script file="GUITabs\GUI-QoL\GUI-BloodlustTracker.lua" />
 
     <!-- GUI Skinning Tabs -->
     <Script file="GUITabs\GUISkinning\GUI-TooltipsTab.lua" />
