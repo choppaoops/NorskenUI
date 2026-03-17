@@ -14,6 +14,7 @@ local REC = NorskenUI:NewModule("Recuperate", "AceEvent-3.0")
 
 -- Localization
 local UnitHealthPercent = UnitHealthPercent
+local UnitIsDeadOrGhost = UnitIsDeadOrGhost
 local CreateFrame = CreateFrame
 local RegisterStateDriver = RegisterStateDriver
 local UnregisterStateDriver = UnregisterStateDriver
@@ -48,6 +49,11 @@ end
 function REC:UpdateAlpha()
     if self.isPreview then return end
     if not self.button then return end
+
+    if UnitIsDeadOrGhost("player") then
+        self.button:SetAlpha(0)
+        return
+    end
 
     -- UnitHealthPercent with curve handles secret values
     -- Returns 1 when missing health, 0 when full
@@ -149,6 +155,8 @@ function REC:OnEnable()
     self:RegisterEvent("PLAYER_REGEN_ENABLED", "UpdateAlpha")
     self:RegisterEvent("GROUP_ROSTER_UPDATE", "UpdateAlpha")
     self:RegisterEvent("UNIT_HEALTH", "OnHealthChange")
+    self:RegisterEvent("PLAYER_DEAD", "UpdateAlpha")
+    self:RegisterEvent("PLAYER_UNGHOST", "UpdateAlpha")
     self:UpdateAlpha()
 
     NRSKNUI.EditMode:RegisterElement({
