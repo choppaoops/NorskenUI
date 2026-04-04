@@ -32,6 +32,7 @@ local GetShapeshiftForm, GetShapeshiftFormInfo = GetShapeshiftForm, GetShapeshif
 local tostring, tonumber = tostring, tonumber
 local C_Spell, C_SpellBook = C_Spell, C_SpellBook
 local C_PetBattles, C_ChallengeMode = C_PetBattles, C_ChallengeMode
+local isEncounterInProgress = false
 local AuraUtil = AuraUtil
 local UIParent = UIParent
 local C_Timer = C_Timer
@@ -595,11 +596,12 @@ local function PlayerHasFoodBuff()
     return hasBuff
 end
 
--- Check buffs that are still secret in combat/m+
+-- Check buffs that are still secret in combat/m+/encounters
 local function CheckRestrictedBuffs()
     local missing = {}
     if not MBUFFS.db then return missing end
-    if InCombatLockdown() or C_ChallengeMode.IsChallengeModeActive() then return missing end -- Skip in combat or M+
+    -- Skip in combat, M+, or active encounter (encounter triggers secret env before combat)
+    if InCombatLockdown() or C_ChallengeMode.IsChallengeModeActive() or isEncounterInProgress then return missing end
     local consumablesDb = MBUFFS.db.Consumables or {}
     local categorySatisfied = {}
 
@@ -1223,8 +1225,9 @@ local function CheckForMissingBuffs()
         HideAllNotifications()
         return
     end
-    -- In combat: only check combat-safe elements
-    if InCombatLockdown() then
+    -- In combat or encounter: only check combat-safe elements
+    -- (encounter triggers secret env before combat lockdown)
+    if InCombatLockdown() or isEncounterInProgress then
         CheckCombatSafeElements()
         return
     end
@@ -1263,8 +1266,8 @@ local function OnAuraChange(unit, updateInfo)
     if IsTrackingPaused() then return end
     if unit ~= "player" and not (unit and (unit:find("party") or unit:find("raid"))) then return end
 
-    -- In combat: check combat-safe elements (SAFE_BUFFS + stances)
-    if InCombatLockdown() then
+    -- In combat or encounter: check combat-safe elements (SAFE_BUFFS + stances)
+    if InCombatLockdown() or isEncounterInProgress then
         if unit == "player" then
             CheckCombatSafeElements()
         end
@@ -1399,6 +1402,17 @@ function MBUFFS:OnEnable()
 
     -- M+ events
     self:RegisterEvent("CHALLENGE_MODE_START", function() C_Timer.After(1, CheckForMissingBuffs) end)
+
+    -- Encounter events (secret env triggers before combat lockdown)
+    self:RegisterEvent("ENCOUNTER_START", function()
+        isEncounterInProgress = true
+        HideMissingBuffIcons()
+        CheckCombatSafeElements()
+    end)
+    self:RegisterEvent("ENCOUNTER_END", function()
+        isEncounterInProgress = false
+        C_Timer.After(0.5, CheckForMissingBuffs)
+    end)
 
     C_Timer.After(2, CheckForMissingBuffs)
 
