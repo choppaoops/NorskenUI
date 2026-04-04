@@ -20,7 +20,7 @@ local pcall = pcall
 local CinematicFrame_CancelCinematic = CinematicFrame_CancelCinematic
 local RepairAllItems = RepairAllItems
 local hooksecurefunc = hooksecurefunc
-local select = select
+local IsShiftKeyDown = IsShiftKeyDown
 local CanMerchantRepair = CanMerchantRepair
 local GetRepairAllCost = GetRepairAllCost
 local CanGuildBankRepair = CanGuildBankRepair
@@ -28,9 +28,7 @@ local GetMoney = GetMoney
 local GetGuildBankWithdrawMoney = GetGuildBankWithdrawMoney
 local CreateFrame = CreateFrame
 local GameMovieFinished = GameMovieFinished
-local C_Container = C_Container
 local LFGListApplicationDialog = LFGListApplicationDialog
-local C_Item = C_Item
 local LFDRoleCheckPopup = LFDRoleCheckPopup
 local LFDRoleCheckPopupAcceptButton = LFDRoleCheckPopupAcceptButton
 local StaticPopupDialogs = StaticPopupDialogs
@@ -46,6 +44,15 @@ end
 function AUTO:OnInitialize()
     self:UpdateDB()
     self:SetEnabledState(false)
+end
+
+-- hide repetitive help tips
+C_CVar.RegisterCVar('hideHelptips', 1)
+for index = 1, NUM_LE_FRAME_TUTORIALS do
+	C_CVar.SetCVarBitfield('closedInfoFrames', index, true)
+end
+for index = 1, #Enum.FrameTutorialAccount do
+	C_CVar.SetCVarBitfield('closedInfoFramesAccountWide', index, true)
 end
 
 -- Setup cinematic skip
@@ -94,29 +101,8 @@ function AUTO:SetupTalkingHeadHider()
     self._talkingHeadHooked = true
 end
 
--- Sell all grey items in bags
-local merchantFrame = nil
-local function SellJunkItems()
-    if not AUTO.db.AutoSellJunk then return end
-    for bagID = 0, 4 do
-        for slot = 1, C_Container.GetContainerNumSlots(bagID) do
-            local itemLink = C_Container.GetContainerItemLink(bagID, slot)
-
-            -- Check if item is grey quality
-            if itemLink then
-                local itemQuality = select(3, C_Item.GetItemInfo(itemLink))
-                local itemSellPrice = select(11, C_Item.GetItemInfo(itemLink))
-
-                -- Quality 0 = Poor (grey items)
-                if itemQuality == 0 and itemSellPrice and itemSellPrice > 0 then
-                    C_Container.UseContainerItem(bagID, slot)
-                end
-            end
-        end
-    end
-end
-
 -- Setup auto sell grey items and auto repair
+local merchantFrame = nil
 local function SetupAutoSellRepair()
     if merchantFrame then return end
 
@@ -128,7 +114,9 @@ local function SetupAutoSellRepair()
 
         -- Auto sell grey items
         if AUTO.db.AutoSellJunk then
-            SellJunkItems()
+            if not IsShiftKeyDown() and C_MerchantFrame.GetNumJunkItems() > 0 then
+                C_MerchantFrame.SellAllJunkItems()
+            end
         end
 
         -- Auto repair
@@ -162,7 +150,7 @@ local function SetupAutoRoleCheck()
     if LFGListApplicationDialog and not AUTO._lfgHooked then
         AUTO._lfgHooked = true
         LFGListApplicationDialog:HookScript("OnShow", function()
-            if LFGListApplicationDialog.SignUpButton then
+            if not IsShiftKeyDown() and LFGListApplicationDialog.SignUpButton then
                 LFGListApplicationDialog.SignUpButton:Click()
             end
         end)
@@ -172,7 +160,7 @@ local function SetupAutoRoleCheck()
     if LFDRoleCheckPopup and not AUTO._lfdHooked then
         AUTO._lfdHooked = true
         LFDRoleCheckPopup:HookScript("OnShow", function()
-            if LFDRoleCheckPopupAcceptButton then
+            if not IsShiftKeyDown() and LFDRoleCheckPopupAcceptButton then
                 LFDRoleCheckPopupAcceptButton:Click()
             end
         end)
