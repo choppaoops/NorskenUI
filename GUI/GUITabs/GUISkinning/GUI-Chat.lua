@@ -105,35 +105,6 @@ GUIFrame:RegisterContent("Chat", function(scrollChild, yOffset)
     row1:AddWidget(enableCheck, 1)
     card1:AddRow(row1, 36)
 
-    -- Separator
-    local row1sep = GUIFrame:CreateRow(card1.content, 8)
-    local seprow5Card = GUIFrame:CreateSeparator(row1sep)
-    row1sep:AddWidget(seprow5Card, 1)
-    table_insert(allWidgets, seprow5Card)
-    card1:AddRow(row1sep, 8)
-
-    -- Chat Width
-    local row1b = GUIFrame:CreateRow(card1.content, 36)
-    local chatWidth = GUIFrame:CreateSlider(row1b, "Chat Width", 50, 1000, 1,
-        db.Width, nil,
-        function(val)
-            db.Width = val
-            ApplySettings()
-        end)
-    row1b:AddWidget(chatWidth, 0.5)
-    table_insert(allWidgets, chatWidth)
-
-    -- Chat Height
-    local chatHeight = GUIFrame:CreateSlider(row1b, "Chat Height", 50, 1000, 1,
-        db.Height, nil,
-        function(val)
-            db.Height = val
-            ApplySettings()
-        end)
-    row1b:AddWidget(chatHeight, 0.5)
-    table_insert(allWidgets, chatHeight)
-    card1:AddRow(row1b, 36)
-
     yOffset = yOffset + card1:GetContentHeight() + Theme.paddingSmall
 
     ----------------------------------------------------------------
@@ -208,55 +179,10 @@ GUIFrame:RegisterContent("Chat", function(scrollChild, yOffset)
     table_insert(allWidgets, chatSizeSlider)
     card2:AddRow(row3b, 40)
 
-    -- Separator
-    local row4sep = GUIFrame:CreateRow(card2.content, 8)
-    local seprow4Card = GUIFrame:CreateSeparator(row4sep)
-    row4sep:AddWidget(seprow4Card, 1)
-    table_insert(allWidgets, seprow4Card)
-    card2:AddRow(row4sep, 8)
-
-    local row3c = GUIFrame:CreateRow(card2.content, 40)
-    local tabSizeSlider = GUIFrame:CreateSlider(row3c, "Tab Font Size", 8, 24, 1,
-        db.TabFontSize or 12, nil,
-        function(val)
-            db.TabFontSize = val
-            ApplySettings()
-        end)
-    row3c:AddWidget(tabSizeSlider, 1)
-    table_insert(allWidgets, tabSizeSlider)
-    card2:AddRow(row3c, 40)
-
     yOffset = yOffset + card2:GetContentHeight() + Theme.paddingSmall
 
     ----------------------------------------------------------------
-    -- Card 2: Position Settings (using reusable position card)
-    ----------------------------------------------------------------
-    local card3, newOffset = GUIFrame:CreatePositionCard(scrollChild, yOffset, {
-        db = db,
-        dbKeys = {
-            anchorFrameType = "anchorFrameType",
-            anchorFrameFrame = "ParentFrame",
-            selfPoint = "AnchorFrom",
-            anchorPoint = "AnchorTo",
-            xOffset = "XOffset",
-            yOffset = "YOffset",
-            strata = "Strata",
-        },
-        showAnchorFrameType = false,
-        showStrata = false,
-        onChangeCallback = ApplySettings,
-    })
-    -- Add position card widgets to allWidgets for enable/disable
-    if card3.positionWidgets then
-        for _, widget in ipairs(card3.positionWidgets) do
-            table_insert(allWidgets, widget)
-        end
-    end
-    table_insert(allWidgets, card3)
-    yOffset = newOffset
-
-    ----------------------------------------------------------------
-    -- Card 4: Backdrop Settings
+    -- Card 3: Backdrop Settings
     ----------------------------------------------------------------
     local card4 = GUIFrame:CreateCard(scrollChild, "Backdrop Settings", yOffset)
     table_insert(allWidgets, card4)
