@@ -123,6 +123,41 @@ function SoftOutline:SetFont(fontPath, fontSize, flags)
     return success
 end
 
+-- Sync width constraint to shadows
+-- Only called from SetWidth hook or explicit SyncWidth() call
+-- NEVER call this at creation - GetWidth() returns rendered width, not explicit constraint
+function SoftOutline:_SyncWidth()
+    if not self.shadows or not self.main then return end
+
+    local width = self.main:GetWidth()
+    for _, shadow in ipairs(self.shadows) do
+        shadow:SetWidth(width)
+    end
+    self.hasExplicitWidth = true
+end
+
+-- Public method to force width sync (use when width was set before outline creation)
+function SoftOutline:SyncWidth()
+    self:_SyncWidth()
+end
+
+-- Sync wrap settings - safe to call at creation since these come from explicit calls
+function SoftOutline:_SyncWrapSettings()
+    if not self.shadows or not self.main then return end
+
+    local wordWrap = self.main:CanWordWrap()
+    local nonSpaceWrap = self.main:CanNonSpaceWrap()
+
+    for _, shadow in ipairs(self.shadows) do
+        if wordWrap ~= nil then
+            shadow:SetWordWrap(wordWrap)
+        end
+        if nonSpaceWrap ~= nil then
+            shadow:SetNonSpaceWrap(nonSpaceWrap)
+        end
+    end
+end
+
 function SoftOutline:SetShadowColor(r, g, b, a)
     self.color = { r, g, b }
     if a then
@@ -145,21 +180,49 @@ function SoftOutline:SetShown(shown)
     if not self.shadows then return end
     self.isShown = shown
 
-    -- If showing, check if text is actually visible
-    if shown and self.main then
+    if not shown then
+        for _, shadow in ipairs(self.shadows) do
+            shadow:SetShown(false)
+        end
+        return
+    end
+
+    -- Showing - first check if text is actually visible
+    if self.main then
         local _, _, _, textAlpha = self.main:GetTextColor()
         local frameAlpha = self.main:GetAlpha()
         if textAlpha == 0 or frameAlpha == 0 then
-            -- Don't show shadows if text is invisible
             for _, shadow in ipairs(self.shadows) do
                 shadow:SetShown(false)
             end
             return
         end
+
+        -- Re-sync all properties when becoming visible
+        -- This handles cases where properties changed while hidden
+        local font, size, flags = self.main:GetFont()
+        if font and font ~= "" and size and size > 0 then
+            self:SetFont(font, size, "")
+        end
+        self:SetText(self.main:GetText() or "")
+
+        -- Sync justification
+        local justifyH = self.main:GetJustifyH()
+        local justifyV = self.main:GetJustifyV()
+        for _, shadow in ipairs(self.shadows) do
+            shadow:SetJustifyH(justifyH)
+            shadow:SetJustifyV(justifyV)
+        end
+
+        self:_SyncWrapSettings()
+        -- Only sync width if it was explicitly set before
+        if self.hasExplicitWidth then
+            self:_SyncWidth()
+        end
     end
 
     for _, shadow in ipairs(self.shadows) do
-        shadow:SetShown(shown)
+        shadow:SetShown(true)
     end
 end
 
@@ -327,6 +390,35 @@ function SoftOutline:_HookMain()
         end
     end)
 
+    -- Hook SetWidth to sync shadow width constraints
+    -- This is the ONLY place width should be synced - indicates explicit width was set
+    hooksecurefunc(main, "SetWidth", function()
+        local outline = main._nrsknSoftOutline
+        if outline and outline.shadows then
+            outline:_SyncWidth()
+        end
+    end)
+
+    -- Hook SetWordWrap
+    hooksecurefunc(main, "SetWordWrap", function(_, wrap)
+        local outline = main._nrsknSoftOutline
+        if outline and outline.shadows then
+            for _, shadow in ipairs(outline.shadows) do
+                shadow:SetWordWrap(wrap)
+            end
+        end
+    end)
+
+    -- Hook SetNonSpaceWrap
+    hooksecurefunc(main, "SetNonSpaceWrap", function(_, wrap)
+        local outline = main._nrsknSoftOutline
+        if outline and outline.shadows then
+            for _, shadow in ipairs(outline.shadows) do
+                shadow:SetNonSpaceWrap(wrap)
+            end
+        end
+    end)
+
     -- Hook SetAlpha to handle fade effects
     -- When main text alpha is 0, hide shadows to prevent ghost outline
     hooksecurefunc(main, "SetAlpha", function(_, a)
@@ -420,6 +512,9 @@ function NRSKNUI:CreateSoftOutline(mainText, options)
         existingOutline:SetText(mainText:GetText() or "")
         existingOutline:_ApplyOffsets()
         existingOutline:_ApplyColor()
+        existingOutline:_SyncWrapSettings()
+        -- DON'T sync width here - only sync when SetWidth hook fires
+        -- If width was previously synced, hasExplicitWidth will be true and hook will handle it
         existingOutline:SetShown(true)
 
         return existingOutline
@@ -461,6 +556,9 @@ function NRSKNUI:CreateSoftOutline(mainText, options)
 
     outline:_ApplyOffsets()
     outline:_ApplyColor()
+    outline:_SyncWrapSettings()
+    -- DON'T sync width at creation - shadows auto-size to content
+    -- Width only syncs when SetWidth is explicitly called on main text (via hook)
     outline:_HookMain()
 
     -- Store reference on main text
