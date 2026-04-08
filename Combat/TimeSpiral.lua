@@ -35,25 +35,26 @@ local TIME_SPIRAL_DURATION = 10.5
 
 -- Table that holds movement spells that can proc from Time Spiral
 local MOVEMENT_SPELLS = {
-    [48265]  = "DEATHKNIGHT", -- Death's Advance
-    [195072] = "DEMONHUNTER", -- Fel Rush
-    [189110] = "DEMONHUNTER", -- Infernal Strike
-    [1850]   = "DRUID",       -- Dash
-    [252216] = "DRUID",       -- Tiger Dash
-    [358267] = "EVOKER",      -- Hover
-    [186257] = "HUNTER",      -- Aspect of the Cheetah
-    [1953]   = "MAGE",        -- Blink
-    [212653] = "MAGE",        -- Shimmer
-    [109132] = "MONK",        -- Roll
-    [119085] = "MONK",        -- Chi Torpedo
-    [190784] = "PALADIN",     -- Divine Steed
-    [73325]  = "PRIEST",      -- Leap of Faith
-    [2983]   = "ROGUE",       -- Sprint
-    [192063] = "SHAMAN",      -- Gust of Wind
-    [58875]  = "SHAMAN",      -- Spirit Walk
-    [79206]  = "SHAMAN",      -- Spiritwalker's Grace
-    [48020]  = "WARLOCK",     -- Demonic Circle: Teleport
-    [6544]   = "WARRIOR",     -- Heroic Leap
+    [48265]   = "DEATHKNIGHT", -- Death's Advance
+    [195072]  = "DEMONHUNTER", -- Fel Rush
+    [1234796] = "DEMONHUNTER", -- Infernal Strike
+    [189110]  = "DEMONHUNTER", -- Shift
+    [1850]    = "DRUID",       -- Dash
+    [252216]  = "DRUID",       -- Tiger Dash
+    [358267]  = "EVOKER",      -- Hover
+    [186257]  = "HUNTER",      -- Aspect of the Cheetah
+    [1953]    = "MAGE",        -- Blink
+    [212653]  = "MAGE",        -- Shimmer
+    [109132]  = "MONK",        -- Roll
+    [119085]  = "MONK",        -- Chi Torpedo
+    [190784]  = "PALADIN",     -- Divine Steed
+    [73325]   = "PRIEST",      -- Leap of Faith
+    [2983]    = "ROGUE",       -- Sprint
+    [192063]  = "SHAMAN",      -- Gust of Wind
+    [58875]   = "SHAMAN",      -- Spirit Walk
+    [79206]   = "SHAMAN",      -- Spiritwalker's Grace
+    [48020]   = "WARLOCK",     -- Demonic Circle: Teleport
+    [6544]    = "WARRIOR",     -- Heroic Leap
 }
 
 -- Filter some spells that can cause false procs
@@ -226,7 +227,8 @@ function TSP:ApplySettings()
 
     -- Update timer text settings
     if self.timerText then
-        NRSKNUI:ApplyFontToText(self.timerText, self.db.TimerFontFace, self.db.TimerFontSize, self.db.TimerFontOutline, {})
+        NRSKNUI:ApplyFontToText(self.timerText, self.db.TimerFontFace, self.db.TimerFontSize, self.db.TimerFontOutline,
+        {})
 
         local timerColor = self.db.TimerTextColor or { 1, 1, 1, 1 }
         self.timerText:SetTextColor(timerColor[1], timerColor[2], timerColor[3], timerColor[4] or 1)
