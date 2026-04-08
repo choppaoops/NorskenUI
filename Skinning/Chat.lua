@@ -76,6 +76,9 @@ local chatTabAlerts = {}
 local chatTabIndices = NRSKNUI:T()
 local updateTabColor
 
+-- Debounce tracking for DeferredReskin
+local deferredReskinPending = false
+
 -- Update db, used for profile changes
 function CHAT:UpdateDB()
     self.db = NRSKNUI.db.profile.Skinning.Chat
@@ -284,6 +287,7 @@ updateTabColor = function(tabIndex)
     local tab = _G['ChatFrame' .. tabIndex .. 'Tab']
     local chatFrame = _G['ChatFrame' .. tabIndex]
     if not tab or not tab.Text then return end
+
     local isSelected = tabIndex == SELECTED_CHAT_FRAME:GetID()
 
     -- Check if this is a whisper tab
@@ -295,6 +299,7 @@ updateTabColor = function(tabIndex)
         end
     end
 
+    -- Set tab alpha
     tab:SetAlpha(isSelected and TAB_ACTIVE_ALPHA or TAB_INACTIVE_ALPHA)
 
     if chatTabAlerts[tabIndex] then
@@ -450,7 +455,6 @@ local function SetupAndSkinChat()
             btn:Hide()
             btn:SetAlpha(0)
             btn:EnableMouse(false)
-            btn:SetScript("OnShow", function(self) self:Hide() end)
             btn._nrsknHidden = true
         end
 
@@ -459,21 +463,16 @@ local function SetupAndSkinChat()
             if chatFrame.buttonFrame then
                 chatFrame.buttonFrame:Hide()
                 chatFrame.buttonFrame:SetAlpha(0)
-                chatFrame.buttonFrame:SetScript("OnShow", function(self) self:Hide() end)
+                chatFrame.buttonFrame:EnableMouse(false)
             end
 
-            if chatFrame.ScrollBar then
-                chatFrame.ScrollBar:Hide()
-                chatFrame.ScrollBar:SetAlpha(0)
-                chatFrame.ScrollBar:SetScript("OnShow", function(self) self:Hide() end)
-                for _, region in next, { chatFrame.ScrollBar:GetRegions() } do
-                    region:Hide()
-                    region:SetAlpha(0)
-                end
-                for _, child in next, { chatFrame.ScrollBar:GetChildren() } do
-                    child:Hide()
-                    child:SetAlpha(0)
-                end
+            if chatFrame.ScrollBar and not chatFrame.ScrollBar._nrsknDisabled then
+                -- Hide scrollbar completely
+                local scrollBar = chatFrame.ScrollBar
+                scrollBar:Hide()
+                scrollBar:SetAlpha(0)
+                scrollBar:EnableMouse(false)
+                scrollBar._nrsknDisabled = true
             end
 
             HideEditBoxTextures(editBox)
@@ -540,7 +539,7 @@ local function SetupAndSkinChat()
         SkinChatTab(chatTab, chatIndex, isSpecialTab)
     end
 
-    -- Also apply tab fonts to any temporary tabs (whispers etc.)
+    -- Also apply tab fonts to any temporary tabs
     ApplyAllTabFonts()
 end
 
@@ -556,10 +555,11 @@ local function SetupChatLinks()
     end)
 end
 
--- Deferred handler for all chat frame hooks
--- outside Blizzard's secure execution path to avoid taint
 local function DeferredReskin()
-    C_Timer.After(0.05, function()
+    if deferredReskinPending then return end
+    deferredReskinPending = true
+    C_Timer.After(0.1, function()
+        deferredReskinPending = false
         SetupAndSkinChat()
         ApplyAllTabFonts()
         CHAT:UpdateTabColors()
@@ -571,6 +571,26 @@ function CHAT:OnEnable()
     if NRSKNUI:ShouldNotLoadModule() then return end
     if not self.db.Enabled then return end
 
+    FCF_FadeInChatFrame = function(chatFrame)
+        if chatFrame then
+            chatFrame:SetAlpha(1)
+            chatFrame.oldAlpha = nil
+        end
+    end
+    FCF_FadeOutChatFrame = function(chatFrame)
+        if chatFrame then
+            chatFrame:SetAlpha(1)
+            chatFrame.oldAlpha = nil
+        end
+    end
+    FCF_FadeInScrollbar = function() end
+    FCF_FadeOutScrollbar = function() end
+
+    -- Also disable the OnUpdate fade handler
+    if FCF_OnUpdate then
+        FCF_OnUpdate = function() end
+    end
+
     self:CreateChatBackDrop()
 
     -- Initial setup with delay
@@ -578,12 +598,10 @@ function CHAT:OnEnable()
         SetupAndSkinChat()
         SetupChatLinks()
         SetupChatButtons()
-        -- Reapply after Blizzard's layout settles
         C_Timer.After(0.2, function()
             SetupAndSkinChat()
             ApplyAllTabFonts()
         end)
-        -- One more pass in case of late layout
         C_Timer.After(0.5, ApplyAllTabFonts)
     end)
 
