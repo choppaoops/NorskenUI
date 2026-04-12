@@ -108,17 +108,16 @@ function GUIFrame:CreateSlider(parent, labelText, min, max, step, value, labelWi
     thumb:SetColorTexture(0, 0, 0, 0) -- Fully transparent
     slider:SetThumbTexture(thumb)
 
-    -- Hook thumb position to move our custom frames
-    slider:HookScript("OnUpdate", function(self)
-        local thumbX = self:GetThumbTexture():GetPoint()
-        if thumbX then
-            -- Position both frames at thumb location
-            thumbFrameBG:ClearAllPoints()
-            thumbFrameBG:SetPoint("CENTER", thumb, "CENTER", 0, 0)
-            thumbFrame:ClearAllPoints()
-            thumbFrame:SetPoint("CENTER", thumb, "CENTER", 0, 0)
-        end
-    end)
+    -- Function to update thumb frame positions (called only when needed)
+    local function UpdateThumbPosition()
+        thumbFrameBG:ClearAllPoints()
+        thumbFrameBG:SetPoint("CENTER", thumb, "CENTER", 0, 0)
+        thumbFrame:ClearAllPoints()
+        thumbFrame:SetPoint("CENTER", thumb, "CENTER", 0, 0)
+    end
+
+    -- Initial thumb position
+    C_Timer.After(0, UpdateThumbPosition)
 
     -- Hover fade animation for thumb color
     local hoverAnimGroup = slider:CreateAnimationGroup()
@@ -425,6 +424,7 @@ function GUIFrame:CreateSlider(parent, labelText, min, max, step, value, labelWi
     local lastUpdate = 0
     slider:SetScript("OnValueChanged", function(self, val)
         UpdateFill()
+        UpdateThumbPosition()
         local currentTime = GetTime()
         if currentTime - lastUpdate < throttleDelay then
             return
@@ -433,7 +433,10 @@ function GUIFrame:CreateSlider(parent, labelText, min, max, step, value, labelWi
         if callback then callback(val) end
     end)
 
-    slider:SetScript("OnSizeChanged", UpdateFill)
+    slider:SetScript("OnSizeChanged", function()
+        UpdateFill()
+        UpdateThumbPosition()
+    end)
 
     valueEdit:SetScript("OnEscapePressed", function(self)
         self:ClearFocus()

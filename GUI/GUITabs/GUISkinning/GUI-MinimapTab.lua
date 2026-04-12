@@ -108,7 +108,7 @@ GUIFrame:RegisterContent("Minimap", function(scrollChild, yOffset)
     local MinimapSize = GUIFrame:CreateSlider(row2, "Minimap Size", 50, 500, 1, db.Size, _,
         function(val)
             db.Size = val
-            ApplySettings()
+            if MAP then MAP:UpdateSize() end
         end)
     row2:AddWidget(MinimapSize, 1)
     table_insert(allWidgets, MinimapSize)
@@ -166,7 +166,7 @@ GUIFrame:RegisterContent("Minimap", function(scrollChild, yOffset)
     local BugSackEnbl = GUIFrame:CreateCheckbox(row4, "Toggle BugSack Frame", db.BugSack.Enabled ~= false,
         function(checked)
             db.BugSack.Enabled = checked
-            ApplySettings()
+            if MAP then MAP:CreateBugSackButton() end
             UpdateAllWidgetStates()
         end)
     row4:AddWidget(BugSackEnbl, 0.5)
@@ -176,7 +176,7 @@ GUIFrame:RegisterContent("Minimap", function(scrollChild, yOffset)
     local BugSackSize = GUIFrame:CreateSlider(row4, "BugSack Size", 5, 50, 1, db.BugSack.Size, _,
         function(val)
             db.BugSack.Size = val
-            ApplySettings()
+            if MAP then MAP:UpdateBugSackButton() end
         end)
     row4:AddWidget(BugSackSize, 0.5)
     table_insert(allWidgets, BugSackSize)

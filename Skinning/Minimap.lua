@@ -34,6 +34,12 @@ local hooked = {
     bugSackButton = nil,
 }
 
+-- Debounce flags for updates
+local pendingSettingsUpdate = false
+local pendingApplySettings = false
+local lastAppliedSize = nil
+local pendingSizeRefresh = false
+
 -- Update db, used for profile changes
 function MAP:UpdateDB()
     self.db = NRSKNUI.db.profile.Skinning.Minimap
@@ -68,10 +74,9 @@ function MAP:OnEnable()
     MAP:UpdateSettings()
     MAP:CreateBugSackButton()
 
-    -- One-time hooks for refresh triggers
-    Minimap:HookScript("OnShow", function() C_Timer.After(1, function() MAP:ApplySettings() end) end)
-    MinimapCluster:HookScript("OnShow", function() C_Timer.After(1, function() MAP:ApplySettings() end) end)
-    MinimapCluster:HookScript("OnEvent", function() C_Timer.After(1, function() MAP:ApplySettings() end) end)
+    -- One-time hooks for refresh triggers (OnShow only, not OnEvent which fires constantly)
+    Minimap:HookScript("OnShow", function() C_Timer.After(0.5, function() MAP:ApplySettings() end) end)
+    MinimapCluster:HookScript("OnShow", function() C_Timer.After(0.5, function() MAP:ApplySettings() end) end)
     if not hooked.queuePosition then
         hooksecurefunc(QueueStatusButton, "UpdatePosition", function()
             local queueBtnDB = self.db.QueueStatus
@@ -266,17 +271,49 @@ function MAP:UpdateQueueBtn()
 end
 
 -- Apply/Update position and size settings
-function MAP:ApplyPosSize()
+-- skipZoom: set to true during live slider dragging to prevent mouse capture loss
+function MAP:ApplyPosSize(skipZoom)
     Minimap:ClearAllPoints()
     Minimap:SetPoint(
         self.db.Position.AnchorFrom, UIParent, self.db.Position.AnchorTo,
         self.db.Position.X, self.db.Position.Y
     )
-    Minimap:SetSize(self.db.Size, self.db.Size)
 
-    -- Force minimap redraw
-    Minimap:SetZoom(1)
-    Minimap:SetZoom(0)
+    local newSize = self.db.Size
+    Minimap:SetSize(newSize, newSize)
+
+    -- Only force minimap redraw when size changed and not during live updates
+    if not skipZoom and lastAppliedSize ~= newSize then
+        lastAppliedSize = newSize
+        Minimap:SetZoom(1)
+        Minimap:SetZoom(0)
+    end
+end
+
+-- Live size update for slider dragging (debounced SetZoom to prevent mouse capture loss)
+function MAP:UpdateSize()
+    local newSize = self.db.Size
+    Minimap:SetSize(newSize, newSize)
+
+    -- Schedule refresh check (will keep rescheduling until mouse is released)
+    if not pendingSizeRefresh then
+        pendingSizeRefresh = true
+        local function CheckAndRefresh()
+            if IsMouseButtonDown("LeftButton") then
+                -- Still dragging, check again shortly
+                C_Timer.After(0.1, CheckAndRefresh)
+                return
+            end
+            pendingSizeRefresh = false
+            -- Refresh minimap texture if size changed
+            if lastAppliedSize ~= self.db.Size then
+                lastAppliedSize = self.db.Size
+                Minimap:SetZoom(1)
+                Minimap:SetZoom(0)
+            end
+        end
+        C_Timer.After(0.1, CheckAndRefresh)
+    end
 end
 
 -- Create or update BugSack button on Minimap
@@ -352,9 +389,14 @@ function MAP:CreateBugSackButton()
     end
 
     -- Apply position and size
+    MAP:UpdateBugSackButton()
+end
+
+-- Update BugSack button position/size (can be called directly)
+function MAP:UpdateBugSackButton()
     local btn = hooked.bugSackButton
     local db = self.db.BugSack
-    if btn then
+    if btn and db then
         btn:SetSize(db.Size, db.Size)
         btn:ClearAllPoints()
         btn:SetPoint(db.Anchor, Minimap, db.Anchor, db.X, db.Y)
@@ -362,9 +404,12 @@ function MAP:CreateBugSackButton()
     end
 end
 
--- Apply/Update all dynamic settings
+-- Apply/Update all dynamic settings (debounced to prevent timer stacking)
 function MAP:UpdateSettings()
-    C_Timer.After(0.25, function()
+    if pendingSettingsUpdate then return end
+    pendingSettingsUpdate = true
+    C_Timer.After(0.15, function()
+        pendingSettingsUpdate = false
         if not self.db.Enabled then return end
         MAP:UpdateMailBtn()
         MAP:UpdateInstanceBtn()
