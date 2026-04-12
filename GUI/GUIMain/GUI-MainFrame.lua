@@ -37,7 +37,7 @@ GUIFrame.SidebarConfig = {
             id = "profiles_section",
             type = "header",
             text = "• Profiles",
-            defaultExpanded = true,
+            defaultExpanded = false,
             items = {
                 { id = "ProfileManager", text = "Profile Manager" },
             }
@@ -46,7 +46,7 @@ GUIFrame.SidebarConfig = {
             id = "combat_section",
             type = "header",
             text = "• Combat",
-            defaultExpanded = true,
+            defaultExpanded = false,
             items = {
                 { id = "combatTimer",   text = "Combat Timer" },
                 { id = "combatCross",   text = "Combat Cross" },
@@ -64,7 +64,7 @@ GUIFrame.SidebarConfig = {
             id = "qol_section",
             type = "header",
             text = "• Quality of Life",
-            defaultExpanded = true,
+            defaultExpanded = false,
             items = {
                 { id = "MiscVars",        text = "CVars" },
                 { id = "Automation",      text = "Automation" },
@@ -85,7 +85,7 @@ GUIFrame.SidebarConfig = {
             id = "skinning_section",
             type = "header",
             text = "• Skinning",
-            defaultExpanded = true,
+            defaultExpanded = false,
             elvUIDisabled = true,
             items = {
                 { id = "UICleanup",         text = "General UI Cleanup" },
@@ -102,23 +102,21 @@ GUIFrame.SidebarConfig = {
             }
         },
         {
-            id = "cdm_section",
+            id = "dungeons_section",
             type = "header",
-            text = "• CDM Enhancements",
-            defaultExpanded = true,
+            text = "• Dungeons",
+            defaultExpanded = false,
             items = {
-                { id = "CDM",     text = "Aura Overlay & Fonts" },
-                { id = "CDMGlow", text = "Hide Proc Animation" },
-            }
-        },
-        {
-            id = "custom_section",
-            type = "header",
-            text = "• Custom Buffs",
-            defaultExpanded = true,
-            items = {
-                { id = "BuffIcons", text = "Buff Icons" },
-                { id = "BuffBars",  text = "Buff Bars" },
+                { id = "DungeonCasts",                text = "Dungeon Casts" },
+                { id = "Dungeon_Settings",            text = "Timers Settings" },
+                { id = "Dungeon_MagistersTerrace",    text = "Magisters' Terrace" },
+                { id = "Dungeon_MaisaraCaverns",      text = "Maisara Caverns" },
+                { id = "Dungeon_NexusPointXenas",     text = "Nexus-Point Xenas" },
+                { id = "Dungeon_WindrunnerSpire",     text = "Windrunner Spire" },
+                { id = "Dungeon_AlgetharAcademy",     text = "Algeth'ar Academy" },
+                { id = "Dungeon_PitOfSaron",          text = "Pit of Saron" },
+                { id = "Dungeon_SeatOfTriumvirate",   text = "Seat of the Triumvirate" },
+                { id = "Dungeon_Skyreach",            text = "Skyreach" },
             }
         },
     },
@@ -155,14 +153,14 @@ function GUIFrame:CreateMainFrame()
 
     -- Main window frame
     local frame = CreateFrame("Frame", "NorskenAurasGUIFrame", UIParent, "BackdropTemplate")
-    frame:SetSize(810, 900)
+    frame:SetSize(900, 650)
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, 50)
     frame:SetFrameStrata("DIALOG")
     frame:SetToplevel(true)
     frame:SetClampedToScreen(true)
     frame:SetMovable(true)
     frame:SetResizable(true)
-    frame:SetResizeBounds(810, 550)
+    frame:SetResizeBounds(900, 650)
     frame:EnableMouse(true)
 
     -- Main frame backdrop
@@ -1550,10 +1548,15 @@ end
 
 -- Show GUI Frame
 function GUIFrame:Show()
+    -- Prevent recursion
+    if self._isShowing then return end
+    self._isShowing = true
+
     -- Check combat lockdown
     if InCombatLockdown() then
         NRSKNUI:Print("Options will open after combat ends.")
         self.reopenAfterCombat = true
+        self._isShowing = false
         return
     end
 
@@ -1581,6 +1584,9 @@ function GUIFrame:Show()
     if self.shortcutFrame then
         self.shortcutFrame:Show()
     end
+
+    -- Clear recursion guard
+    self._isShowing = false
 
     -- Defer a refresh after frame layout completes to ensure correct widths
     C_Timer.After(0, function()

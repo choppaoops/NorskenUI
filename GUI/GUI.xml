@@ -70,6 +70,7 @@
 
     <!-- GUI Dungeons Tabs -->
     <Script file="GUITabs\GUI-Dungeons\GUI-DungeonTimers.lua" />
+    <Script file="GUITabs\GUI-Dungeons\GUI-DungeonCasts.lua" />
 
     <Script file="GUIMain\GUI-MainFrame.lua" />
 </Ui>
