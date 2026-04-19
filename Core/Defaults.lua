@@ -72,7 +72,7 @@ local Defaults = {
             Position = {
                 AnchorFrom = "CENTER",
                 AnchorTo = "CENTER",
-                XOffset = -100,
+                XOffset = 100,
                 YOffset = 0,
             },
         },
@@ -296,38 +296,38 @@ local Defaults = {
 
         -- Incarnation Stack Tracker
         IncarnStacks = {
-            Enabled = true,
+            Enabled = false,
             IconSize = 40,
 
             -- Stack Text (shows stack count)
             ShowStacks = true,
             StackTextColor = { 1, 1, 1, 1 },
             StackFontFace = "Expressway",
-            StackFontSize = 18,
+            StackFontSize = 16,
             StackFontOutline = "OUTLINE",
 
             -- Timer Text (on icon)
             ShowTimer = true,
             TimerTextColor = { 1, 1, 1, 1 },
             TimerFontFace = "Expressway",
-            TimerFontSize = 16,
+            TimerFontSize = 15,
             TimerFontOutline = "SOFTOUTLINE",
 
             -- Glow
             GlowEnabled = true,
-            GlowType = "proc",
-            GlowColor = { 0, 1, 0, 1 },
+            GlowType = "pixel",
+            GlowColor = { 1, 0.678, 0, 1 },
 
             -- Glow Shared Settings
             GlowXOffset = 0,
             GlowYOffset = 0,
 
             -- Pixel Glow Specific
-            GlowLines = 8,
+            GlowLines = 7,
             GlowFrequency = 0.25,
-            GlowLength = 10,
+            GlowLength = 8,
             GlowThickness = 1,
-            GlowBorder = false,
+            GlowBorder = true,
 
             -- AutoCast Specific
             GlowScale = 1,
@@ -457,7 +457,7 @@ local Defaults = {
                     AnchorFrom = "CENTER",    -- Anchor point from
                     AnchorTo = "CENTER",      -- Anchor point to
                     XOffset = 0,              -- X offset
-                    YOffset = 75,             -- Y offset
+                    YOffset = 320,            -- Y offset
                 },
             },
 
@@ -718,63 +718,8 @@ local Defaults = {
                 TargetNames = {
                     Anchor = "RIGHT",
                     XOffset = 0,
-                    YOffset = 14,
-                    FontSize = 12,
-                },
-            },
-
-            RaidAlerts = {
-                Enabled = true,
-
-                IconSize = 20,
-
-                FontSize = 20,
-                FontFace = "Expressway", -- Module font face
-                FontOutline = "OUTLINE",
-
-                Strata = "HIGH",
-                Position = {
-                    AnchorFrom = "CENTER",
-                    AnchorTo = "CENTER",
-                    XOffset = 0,
-                    YOffset = 150,
-                },
-                Alerts = {
-                    Feast = {
-                        Enabled = true,
-                        DisplayText = "Feast",
-                        Color = { 0.96, 0.76, 0.26, 1 },
-                    },
-                    HeartyFeast = {
-                        Enabled = true,
-                        DisplayText = "Hearty Feast",
-                        Color = { 1, 0.5, 0, 1 },
-                    },
-                    PotCauldron = {
-                        Enabled = true,
-                        DisplayText = "Pot Cauldron",
-                        Color = { 0.627, 1, 0.854, 1 },
-                    },
-                    FlaskCauldron = {
-                        Enabled = true,
-                        DisplayText = "Flask Cauldron",
-                        Color = { 1, 0.760, 0.525, 1 },
-                    },
-                    RepairBot = {
-                        Enabled = true,
-                        DisplayText = "Auto-Hammer",
-                        Color = { 1, 0.6, 0.227, 1 },
-                    },
-                    Soulwell = {
-                        Enabled = true,
-                        DisplayText = "Grab Healthstones",
-                        Color = { 0.741, 1, 0, 1 },
-                    },
-                    SummonStone = {
-                        Enabled = true,
-                        DisplayText = "Help Summon",
-                        Color = { 0.780, 0, 1, 1 },
-                    },
+                    YOffset = -24,
+                    FontSize = 14,
                 },
             },
         },
@@ -848,27 +793,6 @@ local Defaults = {
                     XOffset = 1,               -- X offset
                     YOffset = 1,               -- Y offset
                 },
-            },
-
-            -- Smoll CDM skin on aura overlay
-            CDM = {
-                Enabled = true,
-                FontFace = "Expressway",
-                FontOutline = "OUTLINE",
-                AlphaoutMountPet = true,
-                AlphaMountPet = 0.5,
-                Charges = {
-                    Size = 18,
-                    FontColor = { 1, 1, 1, 1 },
-                },
-                Cooldown = {
-                    SizeEssentials = 18,
-                    SizeUtil = 14,
-                    FontColor = { 1, 1, 1, 1 },
-                },
-            },
-            CDMGlow = {
-                Enabled = true,
             },
 
             -- Actionbars
@@ -1488,21 +1412,21 @@ local Defaults = {
                 -- Status bar widgets (M+ timer, power bars)
                 StatusBar = {
                     Enabled = true,
-                    Width = 0,               -- Custom width (0 = use default)
-                    StyleLabel = true,       -- Style the label above bars
-                    StyleBarText = true,     -- Style text on the bar
-                    LabelSize = 14,          -- Font size for labels
-                    BarTextSize = 12,        -- Font size for bar text
-                    StripTextures = true,    -- Remove Blizzard textures and add backdrop
+                    Width = 0,            -- Custom width (0 = use default)
+                    StyleLabel = true,    -- Style the label above bars
+                    StyleBarText = true,  -- Style text on the bar
+                    LabelSize = 14,       -- Font size for labels
+                    BarTextSize = 12,     -- Font size for bar text
+                    StripTextures = true, -- Remove Blizzard textures and add backdrop
                     BackdropColor = { 0, 0, 0, 0.8 },
                     BorderColor = { 0, 0, 0, 1 },
                 },
                 -- Text widgets
                 TextWidget = {
                     Enabled = true,
-                    Width = 0,               -- Custom width (0 = use default)
+                    Width = 400, -- Custom width (0 = use default)
                     StyleText = true,
-                    Size = 14,
+                    Size = 17,
                 },
             },
 
@@ -1535,7 +1459,54 @@ local Defaults = {
 
                 -- Font settings
                 FontFace = "Expressway",
-                FontSize = 12,
+                FontSize = 13,
+                FontOutline = "OUTLINE",
+                TimerFontSize = 13,
+
+                -- Timer text position (relative to icon)
+                TimerPosition = {
+                    AnchorFrom = "CENTER",
+                    AnchorTo = "CENTER",
+                    XOffset = 0,
+                    YOffset = 1,
+                },
+
+                -- Position
+                Strata = "MEDIUM",
+                anchorFrameType = "SELECTFRAME",
+                ParentFrame = "Minimap",
+                Position = {
+                    AnchorFrom = "TOPRIGHT",
+                    AnchorTo = "TOPLEFT",
+                    XOffset = -1,
+                    YOffset = 0,
+                },
+
+                -- Filtering
+                Filter = "HELPFUL",
+                IncludeWeaponEnchants = true,
+                SortMethod = "TIME",
+                SortDirection = "-",
+            },
+
+            -- DebuffTracking (SecureAuraHeader based debuff display)
+            DebuffTracking = {
+                Enabled = true,
+
+                -- Icon settings
+                IconSize = 41,
+                IconSpacing = 1,
+                IconsPerRow = 12,
+                MaxRows = 1,
+                IconZoom = 0.32,
+
+                -- Visual settings
+                BorderColor = { 0.8, 0, 0, 1 },
+                BackgroundColor = { 0, 0, 0, 0.3 },
+
+                -- Font settings
+                FontFace = "Expressway",
+                FontSize = 14,
                 FontOutline = "OUTLINE",
                 TimerFontSize = 14,
 
@@ -1553,73 +1524,14 @@ local Defaults = {
                 ParentFrame = "Minimap",
                 Position = {
                     AnchorFrom = "TOPRIGHT",
-                    AnchorTo = "TOPLEFT",
-                    XOffset = -2,
-                    YOffset = 0,
-                },
-
-                -- Filtering
-                Filter = "HELPFUL",
-                IncludeWeaponEnchants = true,
-                SortMethod = "TIME",
-                SortDirection = "-",
-            },
-
-            -- DebuffTracking (SecureAuraHeader based debuff display)
-            DebuffTracking = {
-                Enabled = true,
-
-                -- Icon settings
-                IconSize = 60,
-                IconSpacing = 1,
-                IconsPerRow = 12,
-                MaxRows = 2,
-                IconZoom = 0.32,
-
-                -- Visual settings
-                BorderColor = { 0.8, 0, 0, 1 },
-                BackgroundColor = { 0, 0, 0, 0.3 },
-
-                -- Font settings
-                FontFace = "Expressway",
-                FontSize = 16,
-                FontOutline = "OUTLINE",
-                TimerFontSize = 20,
-
-                -- Timer text position (relative to icon)
-                TimerPosition = {
-                    AnchorFrom = "CENTER",
-                    AnchorTo = "CENTER",
-                    XOffset = 0,
-                    YOffset = 0,
-                },
-
-                -- Position
-                Strata = "MEDIUM",
-                anchorFrameType = "SELECTFRAME",
-                ParentFrame = "Minimap",
-                Position = {
-                    AnchorFrom = "TOPRIGHT",
                     AnchorTo = "BOTTOMLEFT",
-                    XOffset = -2,
-                    YOffset = -2,
+                    XOffset = -1,
+                    YOffset = 9,
                 },
 
                 -- Filtering
                 SortMethod = "TIME",
                 SortDirection = "-",
-
-                -- Blacklist (spellId = true to hide)
-                -- Uses proper secret value checking before comparing
-                Blacklist = {
-                    [57723] = true,  -- Exhaustion (Bloodlust)
-                    [57724] = true,  -- Sated (Heroism)
-                    [80354] = true,  -- Temporal Displacement (Time Warp)
-                    [264689] = true, -- Fatigued (Primal Rage - Hunter pet)
-                    [390435] = true, -- Exhaustion (Fury of the Aspects
-                    [95809] = true,  -- Insanity
-                    [160455] = true, -- Fatigued
-                },
             },
 
             -- ExternalBuffTracking (External defensive buffs like Pain Suppression, Ironbark, etc.)
@@ -1627,9 +1539,9 @@ local Defaults = {
                 Enabled = false,
 
                 -- Icon settings
-                IconSize = 50,
-                IconSpacing = 2,
-                IconsPerRow = 6,
+                IconSize = 52,
+                IconSpacing = 1,
+                IconsPerRow = 4,
                 MaxRows = 1,
                 IconZoom = 0.32,
 
@@ -1641,7 +1553,7 @@ local Defaults = {
                 FontFace = "Expressway",
                 FontSize = 14,
                 FontOutline = "OUTLINE",
-                TimerFontSize = 16,
+                TimerFontSize = 18,
 
                 -- Timer text position (relative to icon)
                 TimerPosition = {
@@ -1721,15 +1633,15 @@ local Defaults = {
 
         -- Dungeon Timers (BigWigs Integration)
         DungeonTimers = {
-            Enabled = false,
+            Enabled = true,
 
             -- Global display settings for Bars
             BarDisplay = {
-                barWidth = 200,
-                barHeight = 20,
+                barWidth = 220,
+                barHeight = 24,
                 barTexture = "NorskenUI", -- LSM statusbar texture key
                 fontFace = "Expressway",
-                fontSize = 12,
+                fontSize = 14,
                 fontOutline = "OUTLINE", -- NONE, OUTLINE, THICKOUTLINE, SOFTOUTLINE
                 iconEnabled = true,
             },
@@ -1737,9 +1649,9 @@ local Defaults = {
             -- Global display settings for Texts
             TextDisplay = {
                 fontFace = "Expressway",
-                fontSize = 14,
+                fontSize = 24,
                 fontOutline = "SOFTOUTLINE", -- NONE, OUTLINE, THICKOUTLINE, SOFTOUTLINE
-                textAlign = "LEFT",          -- LEFT, CENTER, RIGHT
+                textAlign = "CENTER",        -- LEFT, CENTER, RIGHT
             },
 
             -- Global group settings (applies to all dungeons)
@@ -1748,20 +1660,20 @@ local Defaults = {
                     AnchorFrom = "CENTER",
                     AnchorTo = "CENTER",
                     XOffset = 0,
-                    YOffset = 100,
+                    YOffset = -128.1,
                 },
-                GrowthDirection = "DOWN",
-                Spacing = 2,
+                GrowthDirection = "UP",
+                Spacing = 1,
             },
             TextGroup = {
                 Position = {
                     AnchorFrom = "CENTER",
                     AnchorTo = "CENTER",
-                    XOffset = 0,
-                    YOffset = -100,
+                    XOffset = 0.1,
+                    YOffset = 75.1,
                 },
                 GrowthDirection = "DOWN",
-                Spacing = 2,
+                Spacing = 0,
             },
 
             -- Per-dungeon triggers (instanceId maps to BigWigs/LittleWigs boss modules)
@@ -1827,23 +1739,23 @@ local Defaults = {
 
         -- Dungeon Casts (Enemy Nameplate Casting Monitor)
         DungeonCasts = {
-            Enabled = false,
+            Enabled = true,
 
             -- Frame settings
             Frame = {
                 MaxBars = 5,
-                Width = 220,
-                Height = 24,
-                Spacing = 2,
-                GrowthDirection = "DOWN", -- UP or DOWN
+                Width = 265,
+                Height = 28,
+                Spacing = 1,
+                GrowthDirection = "UP", -- UP or DOWN
                 Strata = "HIGH",
                 anchorFrameType = "UIPARENT",
                 ParentFrame = "UIParent",
                 Position = {
                     AnchorFrom = "CENTER",
                     AnchorTo = "CENTER",
-                    XOffset = 0,
-                    YOffset = 200,
+                    XOffset = -360.1,
+                    YOffset = 90.1,
                 },
             },
 
@@ -1851,29 +1763,29 @@ local Defaults = {
             BarDisplay = {
                 StatusBarTexture = "NorskenUI",
                 FontFace = "Expressway",
-                FontSize = 12,
+                FontSize = 13,
                 FontOutline = "OUTLINE",
-                SparkEnabled = true,
+                SparkEnabled = false,
             },
 
             -- Icon settings
             Icon = {
                 Enabled = true,
-                Size = 24,
-                Zoom = 0.1,
+                Size = 28,
+                Zoom = 0.3,
             },
 
             -- Colors
-            CastingColor = { 0.8, 0.6, 0.0, 1 },
-            ChannelingColor = { 0.0, 0.7, 1.0, 1 },
-            NotInterruptibleColor = { 0.6, 0.6, 0.6, 1 },
+            CastingColor = { 0.623, 0.749, 1.0, 1 },
+            ChannelingColor = { 0.8, 0.4, 1.0, 1 },
+            NotInterruptibleColor = { 0.780, 0.250, 0.250, 1 },
             BackgroundColor = { 0, 0, 0, 0.8 },
             BorderColor = { 0, 0, 0, 1 },
 
             -- Raid target icon
             RaidIcon = {
                 Enabled = true,
-                Size = 20,
+                Size = 21,
             },
 
             -- Text settings
@@ -1888,8 +1800,8 @@ local Defaults = {
             Target = {
                 Enabled = true,
                 ShowClassColor = true,
-                Position = "RIGHT", -- LEFT or RIGHT
-                Separator = "»",    -- Separator between spell name and target
+                Position = "LEFT", -- LEFT or RIGHT
+                Separator = "»",   -- Separator between spell name and target
             },
         },
 

@@ -1989,3 +1989,668 @@ function DT:ClearSpellCache(dungeonKey)
         wipe(self.spellCache)
     end
 end
+
+-- Export/Import Functions
+
+-- Libraries for serialization
+local AceSerializer = LibStub("AceSerializer-3.0")
+local LibDeflate = LibStub("LibDeflate")
+
+-- Export prefixes
+local EXPORT_PREFIX_SINGLE = "!NRSKNUITIMERS1!"
+local EXPORT_PREFIX_ALL = "!NRSKNUITIMERSALL1!"
+
+-- Dungeon info for export metadata
+local DUNGEON_EXPORT_INFO = {
+    MagistersTerrace  = { instanceId = 2811, name = "Magisters' Terrace" },
+    MaisaraCaverns    = { instanceId = 2874, name = "Maisara Caverns" },
+    NexusPointXenas   = { instanceId = 2915, name = "Nexus-Point Xenas" },
+    WindrunnerSpire   = { instanceId = 2805, name = "Windrunner Spire" },
+    AlgetharAcademy   = { instanceId = 2526, name = "Algeth'ar Academy" },
+    PitOfSaron        = { instanceId = 658, name = "Pit of Saron" },
+    SeatOfTriumvirate = { instanceId = 1753, name = "Seat of the Triumvirate" },
+    Skyreach          = { instanceId = 1209, name = "Skyreach" },
+}
+
+-- Get next available trigger ID for a dungeon
+local function GetNextTriggerId(triggers)
+    local maxId = 0
+    for id in pairs(triggers) do
+        local numId = tonumber(id)
+        if numId and numId > maxId then
+            maxId = numId
+        end
+    end
+    return maxId + 1
+end
+
+-- Validate a single trigger structure
+local function ValidateTrigger(trigger)
+    if type(trigger) ~= "table" then return false end
+    -- Must have basic fields
+    if trigger.name == nil then return false end
+    if trigger.triggerType == nil then return false end
+    return true
+end
+
+-- Check if a trigger already exists
+local function TriggerExists(existingTriggers, newTrigger)
+    if not existingTriggers or not newTrigger then return false end
+    local newSpellId = tostring(newTrigger.spellId or "")
+    local newName = newTrigger.name or ""
+
+    for _, existing in pairs(existingTriggers) do
+        local existingSpellId = tostring(existing.spellId or "")
+        local existingName = existing.name or ""
+
+        -- Match on spellId + name combo
+        if existingSpellId == newSpellId and existingName == newName then
+            return true
+        end
+    end
+    return false
+end
+
+-- Merge imported trigger with defaults to ensure all fields exist
+local function MergeWithDefaults(trigger, defaults)
+    if not defaults then return trigger end
+    local merged = CopyTable(defaults)
+    for k, v in pairs(trigger) do
+        if type(v) == "table" and type(merged[k]) == "table" then
+            for k2, v2 in pairs(v) do
+                merged[k][k2] = v2
+            end
+        else
+            merged[k] = v
+        end
+    end
+    return merged
+end
+
+-- Export triggers for a single dungeon
+---@param dungeonKey string The dungeon key (e.g., "MagistersTerrace")
+---@return string|nil exportString, string|nil error
+function DT:ExportDungeonTimers(dungeonKey)
+    self:UpdateDB()
+    if not self.db or not self.db.Dungeons then
+        return nil, "Database not initialized"
+    end
+
+    local dungeonData = self.db.Dungeons[dungeonKey]
+    if not dungeonData then
+        return nil, "Dungeon '" .. dungeonKey .. "' not found"
+    end
+
+    local dungeonInfo = DUNGEON_EXPORT_INFO[dungeonKey]
+    if not dungeonInfo then
+        return nil, "Unknown dungeon key: " .. dungeonKey
+    end
+
+    -- Create export package
+    local exportData = {
+        _v = 1,
+        _t = time(),
+        _d = dungeonKey,
+        _n = dungeonInfo.name,
+        _i = dungeonInfo.instanceId,
+        triggers = dungeonData.Triggers or {},
+    }
+
+    -- Serialize
+    local serialized = AceSerializer:Serialize(exportData)
+    if not serialized then return nil, "Serialization failed" end
+
+    -- Compress
+    local compressed = LibDeflate:CompressDeflate(serialized, { level = 9 })
+    if not compressed then return nil, "Compression failed" end
+
+    -- Encode for copy
+    local encoded = LibDeflate:EncodeForPrint(compressed)
+    if not encoded then return nil, "Encoding failed" end
+
+    return EXPORT_PREFIX_SINGLE .. encoded
+end
+
+-- Import triggers for a single dungeon (merge mode)
+---@param importString string The export string
+---@param targetDungeonKey string|nil Override target dungeon (uses embedded key if nil)
+---@return boolean success, string|nil countOrError
+function DT:ImportDungeonTimers(importString, targetDungeonKey)
+    if not importString or importString == "" then
+        return false, "Import string is empty"
+    end
+
+    -- Validate prefix
+    if importString:sub(1, #EXPORT_PREFIX_SINGLE) ~= EXPORT_PREFIX_SINGLE then
+        return false, "Invalid format (wrong prefix)"
+    end
+
+    self:UpdateDB()
+    if not self.db or not self.db.Dungeons then
+        return false, "Database not initialized"
+    end
+
+    -- Remove prefix
+    local encoded = importString:sub(#EXPORT_PREFIX_SINGLE + 1)
+
+    -- Decode
+    local compressed = LibDeflate:DecodeForPrint(encoded)
+    if not compressed then return false, "Decoding failed" end
+
+    -- Decompress
+    local serialized = LibDeflate:DecompressDeflate(compressed)
+    if not serialized then return false, "Decompression failed" end
+
+    -- Deserialize
+    local success, exportData = AceSerializer:Deserialize(serialized)
+    if not success then return false, "Deserialization failed: " .. tostring(exportData) end
+
+    -- Validate structure
+    if type(exportData) ~= "table" then return false, "Invalid data structure" end
+    if not exportData.triggers then return false, "No triggers in import data" end
+
+    -- Determine target dungeon
+    local dungeonKey = targetDungeonKey or exportData._d
+    if not dungeonKey then return false, "No dungeon key in import data" end
+
+    -- Ensure dungeon exists in db
+    if not self.db.Dungeons[dungeonKey] then
+        local info = DUNGEON_EXPORT_INFO[dungeonKey]
+        if info then
+            self.db.Dungeons[dungeonKey] = { Enabled = true, instanceId = info.instanceId, Triggers = {} }
+        else
+            return false, "Unknown dungeon key: " .. dungeonKey
+        end
+    end
+
+    local dungeonDb = self.db.Dungeons[dungeonKey]
+    if not dungeonDb.Triggers then
+        dungeonDb.Triggers = {}
+    end
+
+    -- Import triggers
+    local importCount = 0
+    local skipCount = 0
+    local defaults = self.db and self.db.TriggerDefaults
+    for _, trigger in pairs(exportData.triggers) do
+        if ValidateTrigger(trigger) then
+            if TriggerExists(dungeonDb.Triggers, trigger) then
+                skipCount = skipCount + 1
+            else
+                local newId = GetNextTriggerId(dungeonDb.Triggers)
+                local newTrigger = MergeWithDefaults(trigger, defaults)
+                newTrigger.id = newId
+                dungeonDb.Triggers[newId] = newTrigger
+                importCount = importCount + 1
+            end
+        end
+    end
+
+    local result = tostring(importCount) .. " timer(s) imported"
+    if skipCount > 0 then
+        result = result .. ", " .. tostring(skipCount) .. " duplicate(s) skipped"
+    end
+    return true, result
+end
+
+-- Export all dungeons at once
+---@return string|nil exportString, string|nil error
+function DT:ExportAllDungeonTimers()
+    self:UpdateDB()
+    if not self.db or not self.db.Dungeons then
+        return nil, "Database not initialized"
+    end
+
+    -- Build export data with all dungeons
+    local dungeons = {}
+    for dungeonKey, info in pairs(DUNGEON_EXPORT_INFO) do
+        local dungeonData = self.db.Dungeons[dungeonKey]
+        if dungeonData and dungeonData.Triggers then
+            dungeons[dungeonKey] = {
+                instanceId = info.instanceId,
+                triggers = dungeonData.Triggers,
+            }
+        end
+    end
+
+    local exportData = {
+        _v = 1,
+        _t = time(),
+        dungeons = dungeons,
+    }
+
+    -- Serialize
+    local serialized = AceSerializer:Serialize(exportData)
+    if not serialized then return nil, "Serialization failed" end
+
+    -- Compress
+    local compressed = LibDeflate:CompressDeflate(serialized, { level = 9 })
+    if not compressed then return nil, "Compression failed" end
+
+    -- Encode for copy
+    local encoded = LibDeflate:EncodeForPrint(compressed)
+    if not encoded then return nil, "Encoding failed" end
+
+    return EXPORT_PREFIX_ALL .. encoded
+end
+
+-- Import all dungeons at once
+---@param importString string The export string
+---@return boolean success, string|nil countOrError
+function DT:ImportAllDungeonTimers(importString)
+    if not importString or importString == "" then
+        return false, "Import string is empty"
+    end
+
+    -- Validate prefix
+    if importString:sub(1, #EXPORT_PREFIX_ALL) ~= EXPORT_PREFIX_ALL then
+        return false, "Invalid format (wrong prefix)"
+    end
+
+    self:UpdateDB()
+    if not self.db or not self.db.Dungeons then
+        return false, "Database not initialized"
+    end
+
+    -- Remove prefix
+    local encoded = importString:sub(#EXPORT_PREFIX_ALL + 1)
+
+    -- Decode
+    local compressed = LibDeflate:DecodeForPrint(encoded)
+    if not compressed then return false, "Decoding failed" end
+
+    -- Decompress
+    local serialized = LibDeflate:DecompressDeflate(compressed)
+    if not serialized then return false, "Decompression failed" end
+
+    -- Deserialize
+    local success, exportData = AceSerializer:Deserialize(serialized)
+    if not success then return false, "Deserialization failed: " .. tostring(exportData) end
+
+    -- Validate structure
+    if type(exportData) ~= "table" then return false, "Invalid data structure" end
+    if not exportData.dungeons then return false, "No dungeons in import data" end
+
+    -- Import all dungeons
+    local totalImportCount = 0
+    local totalSkipCount = 0
+    local dungeonCount = 0
+
+    for dungeonKey, dungeonData in pairs(exportData.dungeons) do
+        if type(dungeonData) == "table" and dungeonData.triggers then
+            -- Ensure dungeon exists
+            if not self.db.Dungeons[dungeonKey] then
+                local info = DUNGEON_EXPORT_INFO[dungeonKey]
+                if info then
+                    self.db.Dungeons[dungeonKey] = { Enabled = true, instanceId = info.instanceId, Triggers = {} }
+                end
+            end
+
+            local dungeonDb = self.db.Dungeons[dungeonKey]
+            if dungeonDb then
+                if not dungeonDb.Triggers then
+                    dungeonDb.Triggers = {}
+                end
+
+                -- Import triggers
+                local hadImports = false
+                local defaults = self.db and self.db.TriggerDefaults
+                for _, trigger in pairs(dungeonData.triggers) do
+                    if ValidateTrigger(trigger) then
+                        if TriggerExists(dungeonDb.Triggers, trigger) then
+                            totalSkipCount = totalSkipCount + 1
+                        else
+                            local newId = GetNextTriggerId(dungeonDb.Triggers)
+                            local newTrigger = MergeWithDefaults(trigger, defaults)
+                            newTrigger.id = newId
+                            dungeonDb.Triggers[newId] = newTrigger
+                            totalImportCount = totalImportCount + 1
+                            hadImports = true
+                        end
+                    end
+                end
+                if hadImports then
+                    dungeonCount = dungeonCount + 1
+                end
+            end
+        end
+    end
+
+    local result = tostring(totalImportCount) .. " timer(s) imported from " .. tostring(dungeonCount) .. " dungeon(s)"
+    if totalSkipCount > 0 then
+        result = result .. ", " .. tostring(totalSkipCount) .. " duplicate(s) skipped"
+    end
+    return true, result
+end
+
+-- Import NUI presets for a single dungeon
+---@param dungeonKey string The dungeon key
+---@return boolean success, string|nil countOrError
+function DT:ImportNUIPreset(dungeonKey)
+    if not NRSKNUI.DungeonTimerPresets then
+        return false, "Presets not loaded"
+    end
+
+    local presets = NRSKNUI.DungeonTimerPresets[dungeonKey]
+    if not presets or not presets.Triggers or not next(presets.Triggers) then
+        return false, "No presets available for this dungeon"
+    end
+
+    self:UpdateDB()
+    if not self.db or not self.db.Dungeons then
+        return false, "Database not initialized"
+    end
+
+    -- Ensure dungeon exists
+    if not self.db.Dungeons[dungeonKey] then
+        local info = DUNGEON_EXPORT_INFO[dungeonKey]
+        if info then
+            self.db.Dungeons[dungeonKey] = { Enabled = true, instanceId = info.instanceId, Triggers = {} }
+        else
+            return false, "Unknown dungeon key: " .. dungeonKey
+        end
+    end
+
+    local dungeonDb = self.db.Dungeons[dungeonKey]
+    if not dungeonDb.Triggers then
+        dungeonDb.Triggers = {}
+    end
+
+    -- Import preset triggers
+    local importCount = 0
+    local skipCount = 0
+    local defaults = self.db and self.db.TriggerDefaults
+    for _, trigger in pairs(presets.Triggers) do
+        if ValidateTrigger(trigger) then
+            if TriggerExists(dungeonDb.Triggers, trigger) then
+                skipCount = skipCount + 1
+            else
+                local newId = GetNextTriggerId(dungeonDb.Triggers)
+                local newTrigger = MergeWithDefaults(trigger, defaults)
+                newTrigger.id = newId
+                dungeonDb.Triggers[newId] = newTrigger
+                importCount = importCount + 1
+            end
+        end
+    end
+
+    local result = tostring(importCount) .. " timer(s) imported"
+    if skipCount > 0 then
+        result = result .. ", " .. tostring(skipCount) .. " duplicate(s) skipped"
+    end
+    return true, result
+end
+
+-- Import all NUI presets
+---@return boolean success, string|nil countOrError
+function DT:ImportAllNUIPresets()
+    if not NRSKNUI.DungeonTimerPresets then
+        return false, "Presets not loaded"
+    end
+
+    self:UpdateDB()
+    if not self.db or not self.db.Dungeons then
+        return false, "Database not initialized"
+    end
+
+    local totalImportCount = 0
+    local totalSkipCount = 0
+    local dungeonCount = 0
+
+    for dungeonKey, presets in pairs(NRSKNUI.DungeonTimerPresets) do
+        -- Skip version field
+        if dungeonKey ~= "_version" and type(presets) == "table" and presets.Triggers then
+            -- Ensure dungeon exists
+            if not self.db.Dungeons[dungeonKey] then
+                local info = DUNGEON_EXPORT_INFO[dungeonKey]
+                if info then
+                    self.db.Dungeons[dungeonKey] = { Enabled = true, instanceId = info.instanceId, Triggers = {} }
+                end
+            end
+
+            local dungeonDb = self.db.Dungeons[dungeonKey]
+            if dungeonDb then
+                if not dungeonDb.Triggers then
+                    dungeonDb.Triggers = {}
+                end
+
+                local hadImports = false
+                local defaults = self.db and self.db.TriggerDefaults
+                for _, trigger in pairs(presets.Triggers) do
+                    if ValidateTrigger(trigger) then
+                        if TriggerExists(dungeonDb.Triggers, trigger) then
+                            totalSkipCount = totalSkipCount + 1
+                        else
+                            local newId = GetNextTriggerId(dungeonDb.Triggers)
+                            local newTrigger = MergeWithDefaults(trigger, defaults)
+                            newTrigger.id = newId
+                            dungeonDb.Triggers[newId] = newTrigger
+                            totalImportCount = totalImportCount + 1
+                            hadImports = true
+                        end
+                    end
+                end
+                if hadImports then
+                    dungeonCount = dungeonCount + 1
+                end
+            end
+        end
+    end
+
+    if totalImportCount == 0 and totalSkipCount == 0 then
+        return false, "No presets available"
+    end
+
+    local result = tostring(totalImportCount) .. " timer(s) imported from " .. tostring(dungeonCount) .. " dungeon(s)"
+    if totalSkipCount > 0 then
+        result = result .. ", " .. tostring(totalSkipCount) .. " duplicate(s) skipped"
+    end
+    return true, result
+end
+
+-- Reset all triggers for a single dungeon
+---@param dungeonKey string The dungeon key
+---@return boolean success, string|nil countOrError
+function DT:ResetDungeonTimers(dungeonKey)
+    self:UpdateDB()
+    if not self.db or not self.db.Dungeons then
+        return false, "Database not initialized"
+    end
+
+    local dungeonDb = self.db.Dungeons[dungeonKey]
+    if not dungeonDb then
+        return false, "Dungeon not found"
+    end
+
+    -- Count existing triggers
+    local count = 0
+    if dungeonDb.Triggers then
+        for _ in pairs(dungeonDb.Triggers) do
+            count = count + 1
+        end
+    end
+
+    -- Clear all triggers
+    dungeonDb.Triggers = {}
+
+    -- Hide any active frames for this dungeon
+    for frameKey, frame in pairs(self.triggerFrames) do
+        if frame.dungeonKey == dungeonKey then
+            frame:Hide()
+            self.triggerFrames[frameKey] = nil
+            self.triggerBars[frameKey] = nil
+        end
+    end
+
+    return true, tostring(count) .. " timer(s) cleared"
+end
+
+-- Reset all triggers for all dungeons
+---@return boolean success, string|nil countOrError
+function DT:ResetAllDungeonTimers()
+    self:UpdateDB()
+    if not self.db or not self.db.Dungeons then
+        return false, "Database not initialized"
+    end
+
+    local totalCount = 0
+    local dungeonCount = 0
+
+    for dungeonKey, dungeonDb in pairs(self.db.Dungeons) do
+        if dungeonDb.Triggers then
+            local count = 0
+            for _ in pairs(dungeonDb.Triggers) do
+                count = count + 1
+            end
+            if count > 0 then
+                totalCount = totalCount + count
+                dungeonCount = dungeonCount + 1
+                dungeonDb.Triggers = {}
+            end
+        end
+    end
+
+    -- Hide all active frames
+    for frameKey, frame in pairs(self.triggerFrames) do
+        frame:Hide()
+    end
+    wipe(self.triggerFrames)
+    wipe(self.triggerBars)
+
+    return true, tostring(totalCount) .. " timer(s) cleared from " .. tostring(dungeonCount) .. " dungeon(s)"
+end
+
+-- Helper to serialize a value to Lua string
+local function SerializeValue(val, indent)
+    indent = indent or ""
+    local nextIndent = indent .. "    "
+    local valType = type(val)
+    if valType == "string" then
+        local escaped = val:gsub("\\", "\\\\"):gsub("\"", "\\\""):gsub("\n", "\\n"):gsub("|", "\\124")
+        return "\"" .. escaped .. "\""
+    elseif valType == "number" then
+        return tostring(val)
+    elseif valType == "boolean" then
+        return val and "true" or "false"
+    elseif valType == "table" then
+        local parts = {}
+        local isArray = true
+        local maxIndex = 0
+
+        -- Check if it's an array
+        for k, _ in pairs(val) do
+            if type(k) ~= "number" or k < 1 or math.floor(k) ~= k then
+                isArray = false
+                break
+            end
+            if k > maxIndex then maxIndex = k end
+        end
+
+        if isArray and maxIndex > 0 then
+            -- Array format
+            for i = 1, maxIndex do
+                local v = val[i]
+                if v ~= nil then
+                    table_insert(parts, nextIndent .. SerializeValue(v, nextIndent))
+                end
+            end
+        else
+            -- Dictionary format
+            local keys = {}
+            for k in pairs(val) do
+                table_insert(keys, k)
+            end
+            table.sort(keys, function(a, b)
+                if type(a) == type(b) then
+                    return tostring(a) < tostring(b)
+                end
+                return type(a) < type(b)
+            end)
+
+            for _, k in ipairs(keys) do
+                local v = val[k]
+                local keyStr
+                if type(k) == "number" then
+                    keyStr = "[" .. k .. "]"
+                elseif type(k) == "string" and k:match("^[%a_][%w_]*$") then
+                    keyStr = k
+                else
+                    keyStr = "[" .. SerializeValue(k, nextIndent) .. "]"
+                end
+                table_insert(parts, nextIndent .. keyStr .. " = " .. SerializeValue(v, nextIndent))
+            end
+        end
+
+        if #parts == 0 then
+            return "{}"
+        end
+        return "{\n" .. table.concat(parts, ",\n") .. ",\n" .. indent .. "}"
+    else
+        return "nil"
+    end
+end
+
+-- Generate Lua code for all current timers, for pasting into DungeonTimerPresets.lua, this way i can create and style timers ingame and export
+-- Usage: /run NorskenUI:GetModule("DungeonTimers"):GeneratePresetsCode()
+function DT:GeneratePresetsCode()
+    self:UpdateDB()
+    if not self.db or not self.db.Dungeons then
+        print("NorskenUI: Database not initialized")
+        return
+    end
+
+    local output = {}
+    table_insert(output, "-- Generated Dungeon Timer Presets")
+    table_insert(output, "-- Paste this into DungeonTimerPresets.lua")
+    table_insert(output, "")
+    table_insert(output, "NRSKNUI.DungeonTimerPresets = {")
+    table_insert(output, "    _version = 1,")
+    table_insert(output, "")
+
+    for dungeonKey, info in pairs(DUNGEON_EXPORT_INFO) do
+        local dungeonData = self.db.Dungeons[dungeonKey]
+        local triggers = dungeonData and dungeonData.Triggers
+
+        table_insert(output, "    -- " .. info.name .. " (instanceId " .. info.instanceId .. ")")
+
+        if triggers and next(triggers) then
+            table_insert(output, "    " .. dungeonKey .. " = {")
+            table_insert(output, "        Triggers = {")
+
+            -- Sort trigger IDs
+            local sortedIds = {}
+            for id in pairs(triggers) do
+                table_insert(sortedIds, id)
+            end
+            table.sort(sortedIds, function(a, b) return tonumber(a) < tonumber(b) end)
+
+            for _, triggerId in ipairs(sortedIds) do
+                local trigger = triggers[triggerId]
+                local triggerCode = SerializeValue(trigger, "            ")
+                table_insert(output, "            [" .. triggerId .. "] = " .. triggerCode .. ",")
+            end
+
+            table_insert(output, "        },")
+            table_insert(output, "    },")
+        else
+            table_insert(output, "    " .. dungeonKey .. " = {},")
+        end
+        table_insert(output, "")
+    end
+
+    table_insert(output, "}")
+    local fullCode = table.concat(output, "\n")
+
+    -- Show in a copyable dialog
+    NRSKNUI:CreatePrompt(
+        "Generated Presets Code",
+        fullCode,
+        true,
+        "Copy this code into DungeonTimerPresets.lua",
+        false, nil, nil, nil, nil,
+        nil, nil,
+        "Close", nil
+    )
+
+    print("NorskenUI: Presets code generated! Copy from the dialog.")
+end

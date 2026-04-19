@@ -3,6 +3,7 @@
 
     <Script file="InstanceReset.lua" />
     <Script file="HealerMana.lua" />
+    <Script file="DungeonTimerPresets.lua" />
     <Script file="DungeonTimers.lua" />
     <Script file="DungeonCasts.lua" />
 </Ui>

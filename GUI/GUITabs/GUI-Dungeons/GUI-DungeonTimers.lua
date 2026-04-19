@@ -2256,6 +2256,18 @@ end
 ----------------------------------------------------------------
 -- Sub-Tab: General
 ----------------------------------------------------------------
+-- Ordered list of dungeons for Import/Export UI
+local DUNGEON_ORDER = {
+    { key = "MagistersTerrace",   name = "Magisters' Terrace" },
+    { key = "MaisaraCaverns",     name = "Maisara Caverns" },
+    { key = "NexusPointXenas",    name = "Nexus-Point Xenas" },
+    { key = "WindrunnerSpire",    name = "Windrunner Spire" },
+    { key = "AlgetharAcademy",    name = "Algeth'ar Academy" },
+    { key = "PitOfSaron",         name = "Pit of Saron" },
+    { key = "SeatOfTriumvirate",  name = "Seat of the Triumvirate" },
+    { key = "Skyreach",           name = "Skyreach" },
+}
+
 local function RenderGeneralTab(scrollChild, yOffset, activeCards)
     local db = GetSettingsDB()
     if not db then return yOffset end
@@ -2291,6 +2303,261 @@ local function RenderGeneralTab(scrollChild, yOffset, activeCards)
     row1:AddWidget(enableCheck, 1)
     card1:AddRow(row1, 36)
     yOffset = yOffset + card1:GetContentHeight() + (Theme.paddingSmall or 8)
+
+    ----------------------------------------------------------------
+    -- Card 2: Import / Export
+    ----------------------------------------------------------------
+    local card2 = GUIFrame:CreateCard(scrollChild, "Import / Export", yOffset)
+    table_insert(activeCards, card2)
+
+    local padding = Theme.paddingSmall or 8
+    local buttonWidth = 70
+    local buttonHeight = 24
+    local buttonSpacing = 3
+
+    -- Helper to refresh GUI after import
+    local function RefreshAfterImport()
+        if DT and DT.ApplySettings then DT:ApplySettings() end
+        C_Timer.After(0.1, function()
+            GUIFrame:RefreshContent()
+        end)
+    end
+
+    -- "All Dungeons" row
+    local rowAll = GUIFrame:CreateRow(card2.content, 32)
+
+    local labelAll = rowAll:CreateFontString(nil, "OVERLAY")
+    if NRSKNUI.ApplyThemeFont then
+        NRSKNUI:ApplyThemeFont(labelAll, "normal")
+    else
+        labelAll:SetFont(NRSKNUI.FONT or "Fonts\\FRIZQT__.TTF", 12, "OUTLINE")
+    end
+    labelAll:SetText("All Dungeons")
+    labelAll:SetTextColor((Theme.textPrimary or {1,1,1})[1], (Theme.textPrimary or {1,1,1})[2], (Theme.textPrimary or {1,1,1})[3], 1)
+    labelAll:SetPoint("LEFT", rowAll, "LEFT", padding, 0)
+
+    -- Export All button
+    local exportAllBtn = GUIFrame:CreateButton(rowAll, "Export", {
+        width = buttonWidth,
+        height = buttonHeight,
+        callback = function()
+            if not DT then return end
+            local exportString, err = DT:ExportAllDungeonTimers()
+            if exportString then
+                NRSKNUI:CreatePrompt(
+                    "Export All Timers",
+                    exportString,
+                    true,
+                    "Copy this string to share",
+                    false, nil, nil, nil, nil,
+                    nil, nil,
+                    "Close", nil
+                )
+            else
+                NRSKNUI:Print("Export failed: " .. (err or "Unknown error"))
+            end
+        end
+    })
+    exportAllBtn:SetPoint("RIGHT", rowAll, "RIGHT", -padding - (buttonWidth + buttonSpacing) * 3, 0)
+
+    -- Import All button
+    local importAllBtn = GUIFrame:CreateButton(rowAll, "Import", {
+        width = buttonWidth,
+        height = buttonHeight,
+        callback = function()
+            NRSKNUI:CreatePrompt(
+                "Import All Timers",
+                "",
+                true,
+                "Paste import string",
+                false, nil, nil, nil, nil,
+                function(inputText)
+                    if not DT then return end
+                    local success, result = DT:ImportAllDungeonTimers(inputText)
+                    if success then
+                        NRSKNUI:Print("Import successful: " .. result)
+                        RefreshAfterImport()
+                    else
+                        NRSKNUI:Print("Import failed: " .. (result or "Unknown error"))
+                    end
+                end,
+                nil,
+                "Import", "Cancel"
+            )
+        end
+    })
+    importAllBtn:SetPoint("RIGHT", rowAll, "RIGHT", -padding - (buttonWidth + buttonSpacing) * 2, 0)
+
+    -- Import NUI All button
+    local importNUIAllBtn = GUIFrame:CreateButton(rowAll, "NUI", {
+        width = buttonWidth,
+        height = buttonHeight,
+        callback = function()
+            if not DT then return end
+            local success, result = DT:ImportAllNUIPresets()
+            if success then
+                NRSKNUI:Print("NUI Presets imported: " .. result)
+                RefreshAfterImport()
+            else
+                NRSKNUI:Print("Import failed: " .. (result or "No presets available"))
+            end
+        end
+    })
+    importNUIAllBtn:SetPoint("RIGHT", rowAll, "RIGHT", -padding - (buttonWidth + buttonSpacing), 0)
+
+    -- Reset All button
+    local resetAllBtn = GUIFrame:CreateButton(rowAll, "Reset", {
+        width = buttonWidth,
+        height = buttonHeight,
+        callback = function()
+            NRSKNUI:CreatePrompt(
+                "Reset All Timers",
+                "Are you sure you want to clear ALL timers from ALL dungeons?\n\nThis cannot be undone.",
+                false, nil, false, nil, nil, nil, nil,
+                function()
+                    if not DT then return end
+                    local success, result = DT:ResetAllDungeonTimers()
+                    if success then
+                        NRSKNUI:Print("Reset successful: " .. result)
+                        RefreshAfterImport()
+                    else
+                        NRSKNUI:Print("Reset failed: " .. (result or "Unknown error"))
+                    end
+                end,
+                nil,
+                "Reset All", "Cancel"
+            )
+        end
+    })
+    resetAllBtn:SetPoint("RIGHT", rowAll, "RIGHT", -padding, 0)
+
+    card2:AddRow(rowAll, 32)
+
+    -- Separator
+    local sepRow = GUIFrame:CreateRow(card2.content, 12)
+    local sep = sepRow:CreateTexture(nil, "ARTWORK")
+    sep:SetHeight(1)
+    sep:SetPoint("LEFT", sepRow, "LEFT", padding, 0)
+    sep:SetPoint("RIGHT", sepRow, "RIGHT", -padding, 0)
+    sep:SetColorTexture((Theme.border or {0.3,0.3,0.3,1})[1], (Theme.border or {0.3,0.3,0.3,1})[2], (Theme.border or {0.3,0.3,0.3,1})[3], 0.5)
+    card2:AddRow(sepRow, 12)
+
+    -- Per-dungeon rows
+    for _, dungeon in ipairs(DUNGEON_ORDER) do
+        local dungeonKey = dungeon.key
+        local dungeonName = dungeon.name
+
+        local dungeonRow = GUIFrame:CreateRow(card2.content, 28)
+
+        local dungeonLabel = dungeonRow:CreateFontString(nil, "OVERLAY")
+        if NRSKNUI.ApplyThemeFont then
+            NRSKNUI:ApplyThemeFont(dungeonLabel, "small")
+        else
+            dungeonLabel:SetFont(NRSKNUI.FONT or "Fonts\\FRIZQT__.TTF", 11, "OUTLINE")
+        end
+        dungeonLabel:SetText(dungeonName)
+        dungeonLabel:SetTextColor((Theme.textSecondary or {0.8,0.8,0.8})[1], (Theme.textSecondary or {0.8,0.8,0.8})[2], (Theme.textSecondary or {0.8,0.8,0.8})[3], 1)
+        dungeonLabel:SetPoint("LEFT", dungeonRow, "LEFT", padding, 0)
+
+        -- Export button
+        local exportBtn = GUIFrame:CreateButton(dungeonRow, "Export", {
+            width = buttonWidth,
+            height = buttonHeight - 2,
+            callback = function()
+                if not DT then return end
+                local exportString, err = DT:ExportDungeonTimers(dungeonKey)
+                if exportString then
+                    NRSKNUI:CreatePrompt(
+                        "Export: " .. dungeonName,
+                        exportString,
+                        true,
+                        "Copy this string to share",
+                        false, nil, nil, nil, nil,
+                        nil, nil,
+                        "Close", nil
+                    )
+                else
+                    NRSKNUI:Print("Export failed: " .. (err or "Unknown error"))
+                end
+            end
+        })
+        exportBtn:SetPoint("RIGHT", dungeonRow, "RIGHT", -padding - (buttonWidth + buttonSpacing) * 3, 0)
+
+        -- Import button
+        local importBtn = GUIFrame:CreateButton(dungeonRow, "Import", {
+            width = buttonWidth,
+            height = buttonHeight - 2,
+            callback = function()
+                NRSKNUI:CreatePrompt(
+                    "Import: " .. dungeonName,
+                    "",
+                    true,
+                    "Paste import string",
+                    false, nil, nil, nil, nil,
+                    function(inputText)
+                        if not DT then return end
+                        local success, result = DT:ImportDungeonTimers(inputText, dungeonKey)
+                        if success then
+                            NRSKNUI:Print("Import successful: " .. result)
+                            RefreshAfterImport()
+                        else
+                            NRSKNUI:Print("Import failed: " .. (result or "Unknown error"))
+                        end
+                    end,
+                    nil,
+                    "Import", "Cancel"
+                )
+            end
+        })
+        importBtn:SetPoint("RIGHT", dungeonRow, "RIGHT", -padding - (buttonWidth + buttonSpacing) * 2, 0)
+
+        -- Import NUI button
+        local importNUIBtn = GUIFrame:CreateButton(dungeonRow, "NUI", {
+            width = buttonWidth,
+            height = buttonHeight - 2,
+            callback = function()
+                if not DT then return end
+                local success, result = DT:ImportNUIPreset(dungeonKey)
+                if success then
+                    NRSKNUI:Print("NUI Preset imported: " .. result)
+                    RefreshAfterImport()
+                else
+                    NRSKNUI:Print("Import failed: " .. (result or "No presets available"))
+                end
+            end
+        })
+        importNUIBtn:SetPoint("RIGHT", dungeonRow, "RIGHT", -padding - (buttonWidth + buttonSpacing), 0)
+
+        -- Reset button
+        local resetBtn = GUIFrame:CreateButton(dungeonRow, "Reset", {
+            width = buttonWidth,
+            height = buttonHeight - 2,
+            callback = function()
+                NRSKNUI:CreatePrompt(
+                    "Reset: " .. dungeonName,
+                    "Are you sure you want to clear all timers for " .. dungeonName .. "?\n\nThis cannot be undone.",
+                    false, nil, false, nil, nil, nil, nil,
+                    function()
+                        if not DT then return end
+                        local success, result = DT:ResetDungeonTimers(dungeonKey)
+                        if success then
+                            NRSKNUI:Print("Reset successful: " .. result)
+                            RefreshAfterImport()
+                        else
+                            NRSKNUI:Print("Reset failed: " .. (result or "Unknown error"))
+                        end
+                    end,
+                    nil,
+                    "Reset", "Cancel"
+                )
+            end
+        })
+        resetBtn:SetPoint("RIGHT", dungeonRow, "RIGHT", -padding, 0)
+
+        card2:AddRow(dungeonRow, 28)
+    end
+
+    yOffset = yOffset + card2:GetContentHeight() + (Theme.paddingSmall or 8)
 
     return yOffset
 end

@@ -123,7 +123,6 @@ GUIFrame:RegisterContent("DungeonCasts", function(scrollChild, yOffset)
     -- Card 1: Main Settings
     ----------------------------------------------------------------
     local card1 = GUIFrame:CreateCard(scrollChild, "Dungeon Casts", yOffset)
-    card1:AddLabel("Displays enemy nameplate casts in a configurable stack. Only active in M+ dungeons.")
 
     local row1 = GUIFrame:CreateRow(card1.content, 40)
     local enableCheck = GUIFrame:CreateCheckbox(row1, "Enable Dungeon Casts", db.Enabled ~= false, function(checked)
@@ -242,10 +241,11 @@ GUIFrame:RegisterContent("DungeonCasts", function(scrollChild, yOffset)
     row3c:AddWidget(outlineDropdown, 0.5)
     table_insert(allWidgets, outlineDropdown)
 
-    local sparkCheck = GUIFrame:CreateCheckbox(row3c, "Show Spark", db.BarDisplay.SparkEnabled ~= false, function(checked)
-        db.BarDisplay.SparkEnabled = checked
-        ApplySettings()
-    end)
+    local sparkCheck = GUIFrame:CreateCheckbox(row3c, "Show Spark", db.BarDisplay.SparkEnabled ~= false,
+        function(checked)
+            db.BarDisplay.SparkEnabled = checked
+            ApplySettings()
+        end)
     row3c:AddWidget(sparkCheck, 0.5)
     table_insert(allWidgets, sparkCheck)
     card3:AddRow(row3c, 40)
@@ -276,10 +276,11 @@ GUIFrame:RegisterContent("DungeonCasts", function(scrollChild, yOffset)
     card4:AddRow(row4a, 40)
 
     local row4b = GUIFrame:CreateRow(card4.content, 40)
-    local raidIconCheck = GUIFrame:CreateCheckbox(row4b, "Show Raid Target Icon", db.RaidIcon.Enabled ~= false, function(checked)
-        db.RaidIcon.Enabled = checked
-        ApplySettings()
-    end)
+    local raidIconCheck = GUIFrame:CreateCheckbox(row4b, "Show Raid Target Icon", db.RaidIcon.Enabled ~= false,
+        function(checked)
+            db.RaidIcon.Enabled = checked
+            ApplySettings()
+        end)
     row4b:AddWidget(raidIconCheck, 0.5)
     table_insert(allWidgets, raidIconCheck)
 
@@ -308,17 +309,19 @@ GUIFrame:RegisterContent("DungeonCasts", function(scrollChild, yOffset)
     row5a:AddWidget(castingColorPicker, 0.33)
     table_insert(allWidgets, castingColorPicker)
 
-    local channelingColorPicker = GUIFrame:CreateColorPicker(row5a, "Channeling", db.ChannelingColor, function(r, g, b, a)
-        db.ChannelingColor = { r, g, b, a }
-        ApplySettings()
-    end)
+    local channelingColorPicker = GUIFrame:CreateColorPicker(row5a, "Channeling", db.ChannelingColor,
+        function(r, g, b, a)
+            db.ChannelingColor = { r, g, b, a }
+            ApplySettings()
+        end)
     row5a:AddWidget(channelingColorPicker, 0.33)
     table_insert(allWidgets, channelingColorPicker)
 
-    local shieldedColorPicker = GUIFrame:CreateColorPicker(row5a, "Shielded", db.NotInterruptibleColor, function(r, g, b, a)
-        db.NotInterruptibleColor = { r, g, b, a }
-        ApplySettings()
-    end)
+    local shieldedColorPicker = GUIFrame:CreateColorPicker(row5a, "Shielded", db.NotInterruptibleColor,
+        function(r, g, b, a)
+            db.NotInterruptibleColor = { r, g, b, a }
+            ApplySettings()
+        end)
     row5a:AddWidget(shieldedColorPicker, 0.34)
     table_insert(allWidgets, shieldedColorPicker)
     card5:AddRow(row5a, 40)
@@ -368,18 +371,19 @@ GUIFrame:RegisterContent("DungeonCasts", function(scrollChild, yOffset)
     -- Card 6b: Target Settings
     ----------------------------------------------------------------
     local card6b = GUIFrame:CreateCard(scrollChild, "Target Settings", yOffset)
-    card6b:AddLabel("Show the target of enemy casts on the cast bar.")
 
     local row6b1 = GUIFrame:CreateRow(card6b.content, 40)
-    local targetCheck = GUIFrame:CreateCheckbox(row6b1, "Show Cast Target", db.Target and db.Target.Enabled ~= false, function(checked)
-        db.Target = db.Target or {}
-        db.Target.Enabled = checked
-        ApplySettings()
-    end)
+    local targetCheck = GUIFrame:CreateCheckbox(row6b1, "Show Cast Target", db.Target and db.Target.Enabled ~= false,
+        function(checked)
+            db.Target = db.Target or {}
+            db.Target.Enabled = checked
+            ApplySettings()
+        end)
     row6b1:AddWidget(targetCheck, 0.5)
     table_insert(allWidgets, targetCheck)
 
-    local classColorCheck = GUIFrame:CreateCheckbox(row6b1, "Use Class Colors", db.Target and db.Target.ShowClassColor ~= false, function(checked)
+    local classColorCheck = GUIFrame:CreateCheckbox(row6b1, "Use Class Colors",
+        db.Target and db.Target.ShowClassColor ~= false, function(checked)
         db.Target = db.Target or {}
         db.Target.ShowClassColor = checked
         ApplySettings()
