@@ -218,7 +218,7 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
         function(key)
             db.FontFace = key
             ApplySettings()
-        end, true)
+        end, { searchable = true })
     row4a:AddWidget(fontDropdown, 0.5)
     table_insert(allWidgets, fontDropdown)
 

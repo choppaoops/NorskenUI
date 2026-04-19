@@ -421,7 +421,7 @@ local function RenderRaidBuffsTab(scrollChild, yOffset, activeCards)
         function(key)
             db.RaidBuffDisplay.FontFace = key
             ApplySettings()
-        end, true)
+        end, { searchable = true })
     row4a:AddWidget(fontDropdown, 0.5)
     table_insert(allWidgets, fontDropdown)
 
@@ -895,7 +895,7 @@ local function RenderStancesTab(scrollChild, yOffset, activeCards)
         function(key)
             db.StanceDisplay.FontFace = key
             ApplySettings()
-        end, true)
+        end, { searchable = true })
     row4a:AddWidget(fontDropdown, 0.5)
     table_insert(allWidgets, fontDropdown)
 
@@ -1120,7 +1120,7 @@ local function RenderStanceTextsTab(scrollChild, yOffset, activeCards)
         function(key)
             db.StanceText.FontFace = key
             ApplySettings()
-        end, true)
+        end, { searchable = true })
     row4a:AddWidget(fontDropdown, 0.5)
     table_insert(allWidgets, fontDropdown)
 

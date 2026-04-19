@@ -205,7 +205,7 @@ GUIFrame:RegisterContent("DungeonCasts", function(scrollChild, yOffset)
         function(selected)
             db.BarDisplay.StatusBarTexture = selected
             ApplySettings()
-        end)
+        end, { searchable = true })
     row3a:AddWidget(textureDropdown, 1)
     table_insert(allWidgets, textureDropdown)
     card3:AddRow(row3a, 40)
@@ -216,7 +216,7 @@ GUIFrame:RegisterContent("DungeonCasts", function(scrollChild, yOffset)
         function(selected)
             db.BarDisplay.FontFace = selected
             ApplySettings()
-        end, true)
+        end, { searchable = true })
     row3b:AddWidget(fontDropdown, 0.5)
     table_insert(allWidgets, fontDropdown)
 

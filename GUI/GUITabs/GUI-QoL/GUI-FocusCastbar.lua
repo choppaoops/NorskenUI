@@ -141,7 +141,7 @@ GUIFrame:RegisterContent("FocusCastbar", function(scrollChild, yOffset)
         function(key)
             db.StatusBarTexture = key
             ApplySettings()
-        end)
+        end, { searchable = true })
     row2b:AddWidget(statusbarDropdown, 1)
     table_insert(allWidgets, statusbarDropdown)
     card2:AddRow(row2b, 36)
@@ -181,7 +181,7 @@ GUIFrame:RegisterContent("FocusCastbar", function(scrollChild, yOffset)
         function(key)
             db.FontFace = key
             ApplySettings()
-        end, true)
+        end, { searchable = true })
     row4a:AddWidget(fontDropdown, 0.5)
     table_insert(allWidgets, fontDropdown)
 

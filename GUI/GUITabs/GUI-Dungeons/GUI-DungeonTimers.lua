@@ -2658,7 +2658,7 @@ local function RenderBarsTab(scrollChild, yOffset, activeCards)
         function(key)
             db.BarDisplay.barTexture = key
             ApplyAndUpdate()
-        end)
+        end, { searchable = true })
     row3:AddWidget(textureDropdown, 0.5)
     displayCard:AddRow(row3, 40)
 

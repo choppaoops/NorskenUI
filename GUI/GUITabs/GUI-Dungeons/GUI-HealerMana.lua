@@ -229,7 +229,7 @@ GUIFrame:RegisterContent("HealerMana", function(scrollChild, yOffset)
         function(value)
             db.FontFace = value
             Refresh()
-        end, true)
+        end, { searchable = true })
     rowFont:AddWidget(fontDropdown, 0.5)
     table_insert(allWidgets, fontDropdown)
 

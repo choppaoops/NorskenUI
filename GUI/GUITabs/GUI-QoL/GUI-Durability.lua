@@ -171,7 +171,7 @@ local function RenderGeneralTab(scrollChild, yOffset, activeCards)
         function(key)
             db.FontFace = key
             ApplyFonts()
-        end, true)
+        end, { searchable = true })
     row2:AddWidget(fontDropdown, 0.5)
     table_insert(allWidgets, fontDropdown)
 
