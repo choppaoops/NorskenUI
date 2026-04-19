@@ -98,6 +98,7 @@ GUIFrame.SidebarConfig = {
                 { id = "tooltips",          text = "Tooltips" },
                 { id = "DetailsBackdrop",   text = "Details Backdrop" },
                 { id = "BlizzardRM",        text = "Raid Manager" },
+                { id = "UIWidgets",         text = "UI Widgets" },
             }
         },
         {
@@ -106,6 +107,8 @@ GUIFrame.SidebarConfig = {
             text = "• Dungeons",
             defaultExpanded = false,
             items = {
+                { id = "InstanceReset",               text = "Instance Reset" },
+                { id = "HealerMana",                  text = "Healer Mana" },
                 { id = "DungeonCasts",                text = "Dungeon Casts" },
                 { id = "Dungeon_Settings",            text = "Timers Settings" },
                 { id = "Dungeon_MagistersTerrace",    text = "Magisters' Terrace" },
@@ -128,6 +131,15 @@ GUIFrame.SidebarConfig = {
                 { id = "CustomSkin_Buffs",      text = "Buffs" },
                 { id = "CustomSkin_Debuffs",    text = "Debuffs" },
                 { id = "CustomSkin_Externals",  text = "External Buffs" },
+            }
+        },
+        {
+            id = "miscellaneous_section",
+            type = "header",
+            text = "• Miscellaneous",
+            defaultExpanded = false,
+            items = {
+                { id = "IncarnStacks", text = "Incarn Stacks" },
             }
         },
     },

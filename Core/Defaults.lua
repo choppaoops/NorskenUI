@@ -124,7 +124,7 @@ local Defaults = {
         },
         -- Minimap Icon Settings
         Minimap = {
-            hide = false, -- Show/hide minimap icon
+            hide = false,        -- Show/hide minimap icon
             LoginMessage = true, -- Show login chat message
         },
         -- Combat Timer Settings
@@ -294,6 +294,60 @@ local Defaults = {
             },
         },
 
+        -- Incarnation Stack Tracker
+        IncarnStacks = {
+            Enabled = true,
+            IconSize = 40,
+
+            -- Stack Text (shows stack count)
+            ShowStacks = true,
+            StackTextColor = { 1, 1, 1, 1 },
+            StackFontFace = "Expressway",
+            StackFontSize = 18,
+            StackFontOutline = "OUTLINE",
+
+            -- Timer Text (on icon)
+            ShowTimer = true,
+            TimerTextColor = { 1, 1, 1, 1 },
+            TimerFontFace = "Expressway",
+            TimerFontSize = 16,
+            TimerFontOutline = "SOFTOUTLINE",
+
+            -- Glow
+            GlowEnabled = true,
+            GlowType = "proc",
+            GlowColor = { 0, 1, 0, 1 },
+
+            -- Glow Shared Settings
+            GlowXOffset = 0,
+            GlowYOffset = 0,
+
+            -- Pixel Glow Specific
+            GlowLines = 8,
+            GlowFrequency = 0.25,
+            GlowLength = 10,
+            GlowThickness = 1,
+            GlowBorder = false,
+
+            -- AutoCast Specific
+            GlowScale = 1,
+
+            -- Proc Specific
+            GlowDuration = 1,
+            GlowStartAnim = false,
+
+            -- Position
+            Strata = "HIGH",
+            anchorFrameType = "UIPARENT",
+            ParentFrame = "UIParent",
+            Position = {
+                AnchorFrom = "CENTER",
+                AnchorTo = "CENTER",
+                XOffset = 0,
+                YOffset = -50,
+            },
+        },
+
         PetTexts = {
             Enabled = true, -- Master toggle
             -- State texts
@@ -317,6 +371,40 @@ local Defaults = {
                 AnchorTo = "CENTER",           -- Anchor point to
                 XOffset = 0,                   -- X offset
                 YOffset = 105,                 -- Y offset
+            },
+        },
+
+        -- Healer Mana Tracker (Party only - shows 1 healer)
+        HealerMana = {
+            Enabled = true,
+            -- Frame settings
+            IconSize = 40,
+            FrameWidth = 120,
+
+            -- Name text settings
+            NameFontSize = 18,
+            NameXOffset = 4,
+            NameYOffset = 10,
+
+            -- Mana text settings
+            ManaFontSize = 18,
+            ManaXOffset = 4,
+            ManaYOffset = -10,
+
+            -- Font settings
+            FontFace = "Expressway",
+            FontOutline = "SOFTOUTLINE",
+            HighManaColor = { 1, 1, 1, 1 },
+
+            -- Position settings
+            Strata = "HIGH",
+            anchorFrameType = "UIPARENT",
+            ParentFrame = "UIParent",
+            Position = {
+                AnchorFrom = "CENTER",
+                AnchorTo = "CENTER",
+                XOffset = -537,
+                YOffset = -72,
             },
         },
 
@@ -1392,6 +1480,32 @@ local Defaults = {
                 },
             },
 
+            -- UI Widgets Skinning (M+ timer, power bars, etc.)
+            UIWidgets = {
+                Enabled = true,
+                Font = "Expressway",
+                FontOutline = "OUTLINE",
+                -- Status bar widgets (M+ timer, power bars)
+                StatusBar = {
+                    Enabled = true,
+                    Width = 0,               -- Custom width (0 = use default)
+                    StyleLabel = true,       -- Style the label above bars
+                    StyleBarText = true,     -- Style text on the bar
+                    LabelSize = 14,          -- Font size for labels
+                    BarTextSize = 12,        -- Font size for bar text
+                    StripTextures = true,    -- Remove Blizzard textures and add backdrop
+                    BackdropColor = { 0, 0, 0, 0.8 },
+                    BorderColor = { 0, 0, 0, 1 },
+                },
+                -- Text widgets
+                TextWidget = {
+                    Enabled = true,
+                    Width = 0,               -- Custom width (0 = use default)
+                    StyleText = true,
+                    Size = 14,
+                },
+            },
+
             -- Tooltip Skinning
             Tooltips = {
                 Enabled = true,
@@ -1599,6 +1713,12 @@ local Defaults = {
             }
         },
 
+        -- Instance Reset Message
+        InstanceReset = {
+            Enabled = true,
+            Message = "Instance reset!",
+        },
+
         -- Dungeon Timers (BigWigs Integration)
         DungeonTimers = {
             Enabled = false,
@@ -1607,10 +1727,10 @@ local Defaults = {
             BarDisplay = {
                 barWidth = 200,
                 barHeight = 20,
-                barTexture = "NorskenUI",  -- LSM statusbar texture key
+                barTexture = "NorskenUI", -- LSM statusbar texture key
                 fontFace = "Expressway",
                 fontSize = 12,
-                fontOutline = "OUTLINE",   -- NONE, OUTLINE, THICKOUTLINE, SOFTOUTLINE
+                fontOutline = "OUTLINE", -- NONE, OUTLINE, THICKOUTLINE, SOFTOUTLINE
                 iconEnabled = true,
             },
 
@@ -1618,8 +1738,8 @@ local Defaults = {
             TextDisplay = {
                 fontFace = "Expressway",
                 fontSize = 14,
-                fontOutline = "SOFTOUTLINE",  -- NONE, OUTLINE, THICKOUTLINE, SOFTOUTLINE
-                textAlign = "LEFT",  -- LEFT, CENTER, RIGHT
+                fontOutline = "SOFTOUTLINE", -- NONE, OUTLINE, THICKOUTLINE, SOFTOUTLINE
+                textAlign = "LEFT",          -- LEFT, CENTER, RIGHT
             },
 
             -- Global group settings (applies to all dungeons)
@@ -1646,14 +1766,14 @@ local Defaults = {
 
             -- Per-dungeon triggers (instanceId maps to BigWigs/LittleWigs boss modules)
             Dungeons = {
-                MagistersTerrace   = { Enabled = true, instanceId = 2811, Triggers = {} },
-                MaisaraCaverns     = { Enabled = true, instanceId = 2874, Triggers = {} },
-                NexusPointXenas    = { Enabled = true, instanceId = 2915, Triggers = {} },
-                WindrunnerSpire    = { Enabled = true, instanceId = 2805, Triggers = {} },
-                AlgetharAcademy    = { Enabled = true, instanceId = 2526, Triggers = {} },
-                PitOfSaron         = { Enabled = true, instanceId = 658, Triggers = {} },
-                SeatOfTriumvirate  = { Enabled = true, instanceId = 1753, Triggers = {} },
-                Skyreach           = { Enabled = true, instanceId = 1209, Triggers = {} },
+                MagistersTerrace  = { Enabled = true, instanceId = 2811, Triggers = {} },
+                MaisaraCaverns    = { Enabled = true, instanceId = 2874, Triggers = {} },
+                NexusPointXenas   = { Enabled = true, instanceId = 2915, Triggers = {} },
+                WindrunnerSpire   = { Enabled = true, instanceId = 2805, Triggers = {} },
+                AlgetharAcademy   = { Enabled = true, instanceId = 2526, Triggers = {} },
+                PitOfSaron        = { Enabled = true, instanceId = 658, Triggers = {} },
+                SeatOfTriumvirate = { Enabled = true, instanceId = 1753, Triggers = {} },
+                Skyreach          = { Enabled = true, instanceId = 1209, Triggers = {} },
             },
 
             -- Default values for new triggers (template)

@@ -18,6 +18,7 @@ Utils/Utils.xml
 
 # Load modules
 Combat/Combat.xml
+Miscellaneous/Miscellaneous.xml
 QoL/QoL.xml
 Skinning/Skinning.xml
 Dungeons/Dungeons.xml
