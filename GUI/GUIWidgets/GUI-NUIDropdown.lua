@@ -16,11 +16,16 @@ local wipe = wipe
 local IsMouseButtonDown = IsMouseButtonDown
 local ipairs = ipairs
 local pairs = pairs
+local strlower = string.lower
+local strfind = string.find
 
 -- Configuration constants
 local DROPDOWN_HEIGHT = 24
 local ITEM_HEIGHT = 24
 local MAX_DROPDOWN_HEIGHT = 400
+local SEARCH_BOX_HEIGHT = 24
+local SEARCH_PADDING = 6
+local SEARCH_INPUT_RIGHT_PADDING = 16
 local ANIMATION_DURATION = 0.12
 local ARROW_SIZE = 16
 local ARROW_TEX = "Interface\\AddOns\\NorskenUI\\Media\\GUITextures\\collapse.tga"
@@ -132,10 +137,17 @@ local function ReleaseItemButton(btn)
     table_insert(itemButtonPool, btn)
 end
 
-function GUIFrame:CreateDropdown(parent, labelText, options, selected, labelWidth, callback, isFontPreview)
+function GUIFrame:CreateDropdown(parent, labelText, options, selected, labelWidth, callback, isFontPreview, config)
     local tooltip = nil
     local sorting = nil
     local customHeight = nil
+
+    if type(isFontPreview) == "table" and config == nil then
+        config = isFontPreview
+        isFontPreview = config.isFontPreview
+    end
+    config = config or {}
+    local searchable = config.searchable == true
 
     -- CREATE ROW CONTAINER
     local rowHeight = customHeight or 34
@@ -215,6 +227,9 @@ function GUIFrame:CreateDropdown(parent, labelText, options, selected, labelWidt
     local startHeight = 0
     local targetHeight = 0
     local scrollHold = false
+    local filteredKeys = {}
+    local searchText = ""
+    local firstVisibleKey = nil
 
     -- Dropdown list
     local dropdownList = CreateFrame("Frame", nil, row, "BackdropTemplate")
@@ -228,11 +243,15 @@ function GUIFrame:CreateDropdown(parent, labelText, options, selected, labelWidt
 
     -- Scroll frame
     local scrollFrame = CreateFrame("ScrollFrame", nil, dropdownList)
-    scrollFrame:SetPoint("TOPLEFT", dropdownList, "TOPLEFT", 0, 0)
+    scrollFrame:SetPoint("TOPLEFT", dropdownList, "TOPLEFT", 0, searchable and -(SEARCH_BOX_HEIGHT + SEARCH_PADDING) or 0)
     scrollFrame:SetPoint("BOTTOMRIGHT", dropdownList, "BOTTOMRIGHT", 0, 0)
 
     local scrollChild = CreateFrame("Frame", nil, scrollFrame)
     scrollFrame:SetScrollChild(scrollChild)
+
+    local searchContainer = nil
+    local searchEditBox = nil
+    local emptyLabel = nil
 
     -- Scrollbar components
     local scrollbar = nil
@@ -442,6 +461,16 @@ function GUIFrame:CreateDropdown(parent, labelText, options, selected, labelWidt
         end
     end
 
+    local function SetSearchText(text, preserveCursor)
+        searchText = text or ""
+        if searchEditBox and searchEditBox:GetText() ~= searchText then
+            searchEditBox:SetText(searchText)
+            if preserveCursor then
+                searchEditBox:HighlightText(0, 0)
+            end
+        end
+    end
+
     -- Animation scripts
     if ENABLE_ANIMATIONS and animGroup then
         animGroup:SetScript("OnUpdate", function(self)
@@ -471,13 +500,13 @@ function GUIFrame:CreateDropdown(parent, labelText, options, selected, labelWidt
         end)
     end
 
-    -- Create item buttons
-    local function CreateItemButtons()
-        -- Release existing buttons back to pool
-        for _, btn in ipairs(itemButtons) do
-            ReleaseItemButton(btn)
-        end
-        wipe(itemButtons)
+    local function NormalizeSearch(text)
+        return strlower(tostring(text or ""))
+    end
+
+    local function BuildFilteredKeys()
+        wipe(filteredKeys)
+        firstVisibleKey = nil
 
         local sortedKeys
         if orderedKeys then
@@ -492,7 +521,55 @@ function GUIFrame:CreateDropdown(parent, labelText, options, selected, labelWidt
             end)
         end
 
-        for i, key in ipairs(sortedKeys) do
+        local searchLower = NormalizeSearch(searchText)
+        for _, key in ipairs(sortedKeys) do
+            local displayText = normalizedOptions[key]
+            local haystack = NormalizeSearch(displayText or key)
+            if searchLower == "" or strfind(haystack, searchLower, 1, true) then
+                table_insert(filteredKeys, key)
+                if not firstVisibleKey then
+                    firstVisibleKey = key
+                end
+            end
+        end
+    end
+
+    local function SelectValue(value)
+        currentValue = value
+        if normalizedOptions[value] then
+            selectedText:SetText(normalizedOptions[value])
+        else
+            selectedText:SetText(tostring(value))
+        end
+
+        if isFontPreview then
+            local fontPath = NRSKNUI:GetFontPath(value)
+            SafeApplyPreviewFont(selectedText, fontPath, FONT_PREVIEW_SIZE)
+        end
+
+        for _, itemBtn in ipairs(itemButtons) do
+            if itemBtn._updateColor then
+                itemBtn._updateColor()
+            end
+        end
+
+        CloseDropdown()
+
+        if callback then
+            callback(value)
+        end
+    end
+
+    local function CreateItemButtons()
+        -- Release existing buttons back to pool
+        for _, btn in ipairs(itemButtons) do
+            ReleaseItemButton(btn)
+        end
+        wipe(itemButtons)
+
+        BuildFilteredKeys()
+
+        for i, key in ipairs(filteredKeys) do
             local displayText = normalizedOptions[key]
 
             local btn = AcquireItemButton(scrollChild)
@@ -519,25 +596,7 @@ function GUIFrame:CreateDropdown(parent, labelText, options, selected, labelWidt
             UpdateItemColor()
 
             btn:SetScript("OnClick", function()
-                currentValue = btn._itemValue
-                selectedText:SetText(btn._itemText or btn._itemValue)
-                -- Apply font preview to selected text
-                if isFontPreview then
-                    local fontPath = NRSKNUI:GetFontPath(btn._itemValue)
-                    SafeApplyPreviewFont(selectedText, fontPath, FONT_PREVIEW_SIZE)
-                end
-
-                for _, itemBtn in ipairs(itemButtons) do
-                    if itemBtn._updateColor then
-                        itemBtn._updateColor()
-                    end
-                end
-
-                CloseDropdown()
-
-                if callback then
-                    callback(btn._itemValue)
-                end
+                SelectValue(btn._itemValue)
             end)
 
             btn:SetScript("OnEnter", function()
@@ -556,8 +615,62 @@ function GUIFrame:CreateDropdown(parent, labelText, options, selected, labelWidt
             table_insert(itemButtons, btn)
         end
 
-        scrollChild:SetHeight(#sortedKeys * ITEM_HEIGHT)
+        if emptyLabel then
+            emptyLabel:SetShown(#filteredKeys == 0)
+        end
+
+        scrollChild:SetHeight(#filteredKeys > 0 and (#filteredKeys * ITEM_HEIGHT) or ITEM_HEIGHT)
         itemsCreated = true
+    end
+
+    if searchable then
+        searchContainer = CreateFrame("Frame", nil, dropdownList, "BackdropTemplate")
+        searchContainer:SetHeight(SEARCH_BOX_HEIGHT)
+        searchContainer:SetPoint("TOPLEFT", dropdownList, "TOPLEFT", SEARCH_PADDING, -SEARCH_PADDING)
+        searchContainer:SetPoint("TOPRIGHT", dropdownList, "TOPRIGHT", -SEARCH_INPUT_RIGHT_PADDING, -SEARCH_PADDING)
+        searchContainer:SetBackdrop(DROPDOWN_BACKDROP)
+        searchContainer:SetBackdropColor(Theme.bgDark[1], Theme.bgDark[2], Theme.bgDark[3], 1)
+        searchContainer:SetBackdropBorderColor(Theme.border[1], Theme.border[2], Theme.border[3], 1)
+        searchContainer:Hide()
+
+        searchEditBox = CreateFrame("EditBox", nil, searchContainer)
+        searchEditBox:SetPoint("TOPLEFT", searchContainer, "TOPLEFT", 6, -4)
+        searchEditBox:SetPoint("BOTTOMRIGHT", searchContainer, "BOTTOMRIGHT", -6, 4)
+        searchEditBox:SetFontObject("GameFontNormal")
+        searchEditBox:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
+        searchEditBox:SetAutoFocus(false)
+        searchEditBox:SetText("")
+
+        searchEditBox:SetScript("OnTextChanged", function(self, userInput)
+            if not userInput then return end
+            searchText = self:GetText() or ""
+            CreateItemButtons()
+            UpdateScroll()
+        end)
+
+        searchEditBox:SetScript("OnEscapePressed", function(self)
+            self:ClearFocus()
+            CloseDropdown()
+        end)
+
+        searchEditBox:SetScript("OnEnterPressed", function(self)
+            if firstVisibleKey ~= nil then
+                SelectValue(firstVisibleKey)
+            else
+                self:ClearFocus()
+                CloseDropdown()
+            end
+        end)
+
+        emptyLabel = scrollChild:CreateFontString(nil, "OVERLAY")
+        emptyLabel:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 8, 0)
+        emptyLabel:SetPoint("TOPRIGHT", scrollChild, "TOPRIGHT", -8, 0)
+        emptyLabel:SetHeight(ITEM_HEIGHT)
+        emptyLabel:SetJustifyH("LEFT")
+        NRSKNUI:ApplyThemeFont(emptyLabel, "normal")
+        emptyLabel:SetText("No matches found")
+        emptyLabel:SetTextColor(Theme.textSecondary[1], Theme.textSecondary[2], Theme.textSecondary[3], 1)
+        emptyLabel:Hide()
     end
 
     -- Mouse wheel scrolling
@@ -577,17 +690,20 @@ function GUIFrame:CreateDropdown(parent, labelText, options, selected, labelWidt
         if isOpen then
             CloseDropdown()
         else
-            if not itemsCreated then
-                CreateItemButtons()
-            end
-
             dropdownList._logicalParent = dropdownList:GetParent()
             dropdownList:SetParent(NRSKNUI.GUIOverlay)
             dropdownList:ClearAllPoints()
             dropdownList:SetPoint("TOPLEFT", dropdownButton, "BOTTOMLEFT", 0, -2)
             dropdownList:SetPoint("TOPRIGHT", dropdownButton, "BOTTOMRIGHT", 0, -2)
 
-            local contentHeight = #itemButtons * ITEM_HEIGHT
+            if searchable and searchContainer then
+                searchContainer:Show()
+                SetSearchText("", true)
+            end
+
+            CreateItemButtons()
+            local extraHeight = searchable and (SEARCH_BOX_HEIGHT + SEARCH_PADDING * 2) or 0
+            local contentHeight = (#filteredKeys > 0 and (#filteredKeys * ITEM_HEIGHT) or ITEM_HEIGHT) + extraHeight
             local maxHeight = math_min(contentHeight, MAX_DROPDOWN_HEIGHT)
 
             startHeight = 1
@@ -628,6 +744,15 @@ function GUIFrame:CreateDropdown(parent, labelText, options, selected, labelWidt
             globalMouseChecker.activeDropdown = row
             globalMouseChecker.wasMouseDown = false
             globalMouseChecker:Show()
+
+            if searchable and searchEditBox then
+                C_Timer.After(0, function()
+                    if isOpen and searchEditBox:IsShown() then
+                        searchEditBox:SetFocus()
+                        searchEditBox:HighlightText(0, 0)
+                    end
+                end)
+            end
         end
     end
 
@@ -675,6 +800,18 @@ function GUIFrame:CreateDropdown(parent, labelText, options, selected, labelWidt
         if isOpen then
             isOpen = false
         end
+        if searchable then
+            SetSearchText("", false)
+            if searchContainer then
+                searchContainer:Hide()
+            end
+            if searchEditBox then
+                searchEditBox:ClearFocus()
+            end
+            if emptyLabel then
+                emptyLabel:Hide()
+            end
+        end
     end)
 
     dropdownButton:SetScript("OnHide", function()
@@ -701,11 +838,8 @@ function GUIFrame:CreateDropdown(parent, labelText, options, selected, labelWidt
 
         -- Only update colors if items exist
         if itemsCreated then
-            for _, btn in ipairs(itemButtons) do
-                if btn._updateColor then
-                    btn._updateColor()
-                end
-            end
+            CreateItemButtons()
+            UpdateScroll()
         end
 
         if callback and not silent then

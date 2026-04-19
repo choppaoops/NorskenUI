@@ -134,7 +134,7 @@ GUIFrame:RegisterContent("XPBar", function(scrollChild, yOffset)
         function(key)
             db.FontFace = key
             ApplySettings()
-        end, true)
+        end, { searchable = true })
     row3a:AddWidget(fontDropdown, 0.5)
     table_insert(allWidgets, fontDropdown)
 
@@ -240,7 +240,7 @@ GUIFrame:RegisterContent("XPBar", function(scrollChild, yOffset)
         function(key)
             db.StatusBarTexture = key
             ApplySettings()
-        end)
+        end, { searchable = true })
     rowTexture:AddWidget(statusbarDropdown, 1)
     table_insert(allWidgets, statusbarDropdown)
     card4:AddRow(rowTexture, 40)

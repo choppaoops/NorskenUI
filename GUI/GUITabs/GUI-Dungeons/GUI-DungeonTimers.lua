@@ -1704,7 +1704,7 @@ local function CreateDungeonPanel(dungeonId)
                 function(key)
                     selectedTrigger.actionOnShowSound = key
                     ApplySettings()
-                end)
+                end, { searchable = true })
             row1:AddWidget(onShowDropdown, 0.7)
 
             local testShowBtn = GUIFrame:CreateButton(row1, "Test", {
@@ -1728,7 +1728,7 @@ local function CreateDungeonPanel(dungeonId)
                 function(key)
                     selectedTrigger.actionOnHideSound = key
                     ApplySettings()
-                end)
+                end, { searchable = true })
             row2:AddWidget(onHideDropdown, 0.7)
 
             local testHideBtn = GUIFrame:CreateButton(row2, "Test", {
@@ -2631,7 +2631,7 @@ local function RenderBarsTab(scrollChild, yOffset, activeCards)
         function(key)
             db.BarDisplay.fontFace = key
             ApplyAndUpdate()
-        end, true)
+        end, { searchable = true })
     row2:AddWidget(fontDropdown, 0.5)
 
     local fontSizeSlider = GUIFrame:CreateSlider(row2, "Font Size", 8, 24, 1,
@@ -2658,7 +2658,7 @@ local function RenderBarsTab(scrollChild, yOffset, activeCards)
         function(key)
             db.BarDisplay.barTexture = key
             ApplyAndUpdate()
-        end)
+        end, { searchable = true })
     row3:AddWidget(textureDropdown, 0.5)
     displayCard:AddRow(row3, 40)
 
@@ -2771,7 +2771,7 @@ local function RenderTextsTab(scrollChild, yOffset, activeCards)
         function(key)
             db.TextDisplay.fontFace = key
             ApplyAndUpdate()
-        end, true)
+        end, { searchable = true })
     row1:AddWidget(fontDropdown, 0.5)
 
     local fontSizeSlider = GUIFrame:CreateSlider(row1, "Font Size", 8, 32, 1,
