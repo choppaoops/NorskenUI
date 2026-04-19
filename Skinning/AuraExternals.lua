@@ -24,8 +24,18 @@ local wipe = wipe
 local tinsert = table.insert
 local tsort = table.sort
 local math_min = math.min
+local math_floor = math.floor
 local GameTooltip = GameTooltip
 local C_UnitAuras = C_UnitAuras
+
+-- Coalescing flag for UNIT_AURA events
+local pendingAuraUpdate = false
+
+-- Reusable tables to avoid garbage creation
+local slotsCache = {}
+local auraDataCache = {}
+local FILTER = "HELPFUL|EXTERNAL_DEFENSIVE"
+local FILTER_PLAYER = FILTER .. "|PLAYER"
 
 -- Update db, used for profile changes
 function EXTERNALS:UpdateDB()
@@ -154,7 +164,7 @@ local function PositionButtons(self)
         if button:IsShown() then
             visibleCount = visibleCount + 1
             local col = (visibleCount - 1) % iconsPerRow
-            local row = math.floor((visibleCount - 1) / iconsPerRow)
+            local row = math_floor((visibleCount - 1) / iconsPerRow)
 
             button:ClearAllPoints()
             button:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", -col * spacing, -row * spacing)
@@ -176,28 +186,36 @@ function EXTERNALS:UpdateAuras()
 
     local db = self.db
     local unit = "player"
-    local filter = "HELPFUL|EXTERNAL_DEFENSIVE"
 
-    -- Get all aura slots matching the filter
-    local slots = { C_UnitAuras.GetAuraSlots(unit, filter) }
+    -- Get all aura slots matching the filter (reuse table)
+    wipe(slotsCache)
+    slotsCache[1], slotsCache[2], slotsCache[3], slotsCache[4], slotsCache[5],
+    slotsCache[6], slotsCache[7], slotsCache[8], slotsCache[9], slotsCache[10],
+    slotsCache[11], slotsCache[12], slotsCache[13], slotsCache[14], slotsCache[15],
+    slotsCache[16], slotsCache[17], slotsCache[18], slotsCache[19], slotsCache[20] = C_UnitAuras.GetAuraSlots(unit, FILTER)
 
-    -- Collect aura data
-    local auraData = {}
-    for i = 2, #slots do -- Skip first return (continuation token)
-        local data = C_UnitAuras.GetAuraDataBySlot(unit, slots[i])
+    -- Collect aura data (reuse table)
+    wipe(auraDataCache)
+    local dataIndex = 0
+    for i = 2, 20 do -- Skip first return (continuation token), max reasonable slots
+        local slot = slotsCache[i]
+        if not slot then break end
+        local data = C_UnitAuras.GetAuraDataBySlot(unit, slot)
         if data then
-            -- Check if it's from the player
-            data.isPlayerAura = not C_UnitAuras.IsAuraFilteredOutByInstanceID(unit, data.auraInstanceID,
-                filter .. "|PLAYER")
-            tinsert(auraData, data)
+            -- Check if it's from the player (use cached filter string)
+            data.isPlayerAura = not C_UnitAuras.IsAuraFilteredOutByInstanceID(unit, data.auraInstanceID, FILTER_PLAYER)
+            dataIndex = dataIndex + 1
+            auraDataCache[dataIndex] = data
         end
     end
 
     -- Sort auras
-    tsort(auraData, SortAuras)
+    if dataIndex > 1 then
+        tsort(auraDataCache, SortAuras)
+    end
 
     -- Calculate max visible
-    local maxVisible = math_min(db.IconsPerRow * db.MaxRows, #auraData)
+    local maxVisible = math_min(db.IconsPerRow * db.MaxRows, dataIndex)
 
     -- Ensure we have enough buttons
     while #self.buttonPool < maxVisible do
@@ -207,8 +225,8 @@ function EXTERNALS:UpdateAuras()
 
     -- Update buttons
     for i = 1, #self.buttonPool do
-        if i <= maxVisible and auraData[i] then
-            UpdateAuraButton(self.buttonPool[i], unit, auraData[i])
+        if i <= maxVisible and auraDataCache[i] then
+            UpdateAuraButton(self.buttonPool[i], unit, auraDataCache[i])
         else
             self.buttonPool[i]:Hide()
         end
@@ -318,9 +336,14 @@ function EXTERNALS:UpdatePosition(pos)
     self:ApplyPosition()
 end
 
--- UNIT_AURA event handler
+-- UNIT_AURA event handler (coalesced to prevent multiple updates per frame)
 function EXTERNALS:UNIT_AURA(_, unit)
-    if unit == "player" then self:UpdateAuras() end
+    if unit ~= "player" or pendingAuraUpdate then return end
+    pendingAuraUpdate = true
+    C_Timer.After(0, function()
+        pendingAuraUpdate = false
+        EXTERNALS:UpdateAuras()
+    end)
 end
 
 -- Module OnEnable
@@ -473,7 +496,7 @@ function EXTERNALS:ShowPreview()
     for i = 1, previewCount do
         local button = CreatePreviewButton(self.previewFrame, i, self.db)
         local col = (i - 1) % self.db.IconsPerRow
-        local row = math.floor((i - 1) / self.db.IconsPerRow)
+        local row = math_floor((i - 1) / self.db.IconsPerRow)
         button:SetPoint("TOPRIGHT", self.previewFrame, "TOPRIGHT", -col * spacing, -row * spacing)
         button:Show()
         self.previewButtons[i] = button

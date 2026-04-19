@@ -1274,9 +1274,10 @@ local function OnAuraChange(unit, updateInfo)
     if unit ~= "player" and not (unit and (unit:find("party") or unit:find("raid"))) then return end
 
     -- In combat or encounter: check combat-safe elements (SAFE_BUFFS + stances)
+    -- Use CheckForMissingBuffs to respect throttle logic
     if InCombatLockdown() or isEncounterInProgress then
         if unit == "player" then
-            CheckCombatSafeElements()
+            CheckForMissingBuffs()
         end
         return
     end

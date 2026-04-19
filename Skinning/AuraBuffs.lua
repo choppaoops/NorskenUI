@@ -30,6 +30,9 @@ local C_UnitAuras = C_UnitAuras
 local C_DurationUtil = C_DurationUtil
 local GameTooltip = GameTooltip
 
+-- Reusable duration object to avoid garbage creation
+local reusableDurationObj = C_DurationUtil.CreateDuration()
+
 -- Update db, used for profile changes
 function BUFFS:UpdateDB()
     self.db = NRSKNUI.db.profile.Skinning.BuffTracking
@@ -92,7 +95,7 @@ local function auraUpdateEnchant(button, inventorySlotIndex)
     if inventorySlotIndex == 16 then     -- main hand
         _, duration, count = GetWeaponEnchantInfo()
     elseif inventorySlotIndex == 17 then -- off hand
-        _, _, _, _, duration, count = GetWeaponEnchantInfo()
+        _, _, _, _, _, duration, count = GetWeaponEnchantInfo()
     else
         return
     end
@@ -102,9 +105,8 @@ local function auraUpdateEnchant(button, inventorySlotIndex)
     button:SetBorderColor(unpack(BUFFS.db.EnchantBorderColor))
 
     if button.Cooldown and duration then
-        local durationObj = C_DurationUtil.CreateDuration()
-        durationObj:SetTimeFromStart(GetTime(), duration / 1000)
-        button.Cooldown:SetCooldownFromDurationObject(durationObj)
+        reusableDurationObj:SetTimeFromStart(GetTime(), duration / 1000)
+        button.Cooldown:SetCooldownFromDurationObject(reusableDurationObj)
         button.Cooldown:Show()
     elseif button.Cooldown then
         button.Cooldown:Hide()
@@ -262,7 +264,8 @@ function BUFFS:CreateBuffFrame()
 
     -- Hook attribute changes so we can skin aura buttons
     self.buffs:HookScript("OnAttributeChanged", function(_, attribute, ...)
-        if attribute:match("^child%d+$") or attribute:match("^tempenchant%d$") then
+        local prefix = attribute:sub(1, 5)
+        if prefix == "child" or prefix == "tempe" then
             auraButtonInit(...)
         end
     end)

@@ -19,6 +19,7 @@ DEBUFFS.buttons = {}
 local CreateFrame = CreateFrame
 local unpack = unpack
 local format = string.format
+local floor = math.floor
 local wipe = wipe
 local pairs = pairs
 local RegisterAttributeDriver = RegisterAttributeDriver
@@ -225,7 +226,7 @@ function DEBUFFS:CreateDebuffFrame()
 
     -- Hook attribute changes so we can skin aura buttons
     self.debuffs:HookScript("OnAttributeChanged", function(_, attribute, ...)
-        if attribute:match("^child%d+$") then auraButtonInit(...) end
+        if attribute:sub(1, 5) == "child" then auraButtonInit(...) end
     end)
     self.debuffs:Show()
 end
@@ -428,7 +429,7 @@ function DEBUFFS:ShowPreview()
     for i = 1, previewCount do
         local button = CreatePreviewButton(self.previewFrame, i, self.db)
         local col = (i - 1) % self.db.IconsPerRow
-        local row = math.floor((i - 1) / self.db.IconsPerRow)
+        local row = floor((i - 1) / self.db.IconsPerRow)
         button:SetPoint("TOPRIGHT", self.previewFrame, "TOPRIGHT", -col * spacing, -row * spacing)
         button:Show()
         self.previewButtons[i] = button
