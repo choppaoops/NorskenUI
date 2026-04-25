@@ -617,27 +617,40 @@ local Defaults = {
             },
             DragonRiding = {
                 Enabled = true,
-                Width = 252,               -- Total width of the UI
-                BarHeight = 6,             -- Height of each row
-                Spacing = 3,               -- Spacing between rows
-                FontFace = "Expressway",
-                SpeedFontSize = 14,        -- Speed text font size
-                Position = {               -- Position settings
-                    AnchorFrom = "CENTER", -- Anchor point from
-                    AnchorTo = "CENTER",   -- Anchor point to
-                    XOffset = 0,           -- X offset
-                    YOffset = 280,         -- Y offset
+                Width = 252,
+                BarHeight = 6,
+                Spacing = 3,
+                StatusBarTexture = "NorskenUI",
+                Position = {
+                    AnchorFrom = "CENTER",
+                    AnchorTo = "CENTER",
+                    XOffset = 0,
+                    YOffset = 280,
                 },
                 Colors = {
-                    Vigor = { 0.898, 0.063, 0.224, 1 },       -- Normal vigor color
-                    VigorThrill = { 0, 1, 0.137, 1 },         -- Thrill of the Skies active
-                    WhirlingSurge = { 0.411, 0.8, 0.941, 1 }, -- Whirling Surge
-                    SecondWind = { 0.917, 0.168, 0.901, 1 },  -- Second Wind
+                    Vigor = { 0.898, 0.063, 0.224, 1 },
+                    VigorThrill = { 0, 1, 0.137, 1 },
+                    WhirlingSurge = { 0.411, 0.8, 0.941, 1 },
+                    SecondWind = { 0.917, 0.168, 0.901, 1 },
+                },
+                SpeedText = {
+                    Enabled = true,
+                    FontFace = "Expressway",
+                    FontSize = 14,
+                    FontOutline = "SOFTOUTLINE",
+                    XOffset = 0,
+                    YOffset = 0,
+                    FontShadow = {
+                        Enabled = false,
+                        Color = { 0, 0, 0, 1 },
+                        OffsetX = 0,
+                        OffsetY = 0,
+                    },
                 },
             },
             CooldownStrings = {
                 Enabled = true,
-                Profiles = {}, -- { [name] = { String = "", Created = timestamp, SpecID = number } }
+                Profiles = {},
             },
             FocusCastbar = {
                 Enabled = true,
