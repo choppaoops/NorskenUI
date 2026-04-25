@@ -146,6 +146,11 @@ function DUR:UpdateText()
         local r, g, b = unpack(self.db.Text.Color)
         self.Text:SetTextColor(r, g, b, 1)
     end
+
+    -- Sync softoutline after frame is shown
+    if self.Text.softOutline then
+        self.Text.softOutline:SetShown(true)
+    end
 end
 
 -- Create low durability warning text
@@ -190,6 +195,12 @@ function DUR:UpdateWarning()
 
     self.WarningText:SetText(self.db.WarningText.WarningText)
     self.WarningText:SetTextColor(unpack(color))
+
+    -- Sync softoutline after text is set
+    if self.WarningText.softOutline then
+        self.WarningText.softOutline:SetShown(true)
+    end
+
     DUR:OnEvent()
 end
 
