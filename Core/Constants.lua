@@ -44,22 +44,22 @@ NRSKNUI.RANGED_RANGE_ABILITIES = {
 
 NRSKNUI.MOVEMENT_SPELLS = {
     -- Death Knight
-    [250]  = { spellID = 48265, iconID = 237511 },    -- Blood: Death's Advance
-    [251]  = { spellID = 48265, iconID = 237511 },    -- Frost: Death's Advance
-    [252]  = { spellID = 48265, iconID = 237511 },    -- Unholy: Death's Advance
+    [250]  = { spellID = 48265, iconID = 237561 },    -- Blood: Death's Advance
+    [251]  = { spellID = 48265, iconID = 237561 },    -- Frost: Death's Advance
+    [252]  = { spellID = 48265, iconID = 237561 },    -- Unholy: Death's Advance
     -- Demon Hunter
     [577]  = { spellID = 195072, iconID = 1247261 },  -- Havoc: Fel Rush
     [581]  = { spellID = 189110, iconID = 1344650 },  -- Vengeance: Infernal Strike
     [1480] = { spellID = 1234796, iconID = 7554213 }, -- Devourer: Shift
     -- Druid
-    [102]  = { spellID = 1850, iconID = 132144 },     -- Balance: Dash
-    [103]  = { spellID = 1850, iconID = 132144 },     -- Feral: Dash
-    [104]  = { spellID = 1850, iconID = 132144 },     -- Guardian: Dash
-    [105]  = { spellID = 1850, iconID = 132144 },     -- Restoration: Dash
+    [102]  = { spellID = 1850, iconID = 132120 },     -- Balance: Dash
+    [103]  = { spellID = 1850, iconID = 132120 },     -- Feral: Dash
+    [104]  = { spellID = 1850, iconID = 132120 },     -- Guardian: Dash
+    [105]  = { spellID = 1850, iconID = 132120 },     -- Restoration: Dash
     -- Evoker
-    [1467] = { spellID = 358267, iconID = 4622464 },  -- Devastation: Hover
-    [1468] = { spellID = 358267, iconID = 4622464 },  -- Preservation: Hover
-    [1473] = { spellID = 358267, iconID = 4622464 },  -- Augmentation: Hover
+    [1467] = { spellID = 358267, iconID = 4622463 },  -- Devastation: Hover
+    [1468] = { spellID = 358267, iconID = 4622463 },  -- Preservation: Hover
+    [1473] = { spellID = 358267, iconID = 4622463 },  -- Augmentation: Hover
     -- Hunter
     [253]  = { spellID = 186257, iconID = 132242 },   -- Beast Mastery: Aspect of the Cheetah
     [254]  = { spellID = 186257, iconID = 132242 },   -- Marksmanship: Aspect of the Cheetah
@@ -85,9 +85,9 @@ NRSKNUI.MOVEMENT_SPELLS = {
     [260]  = { spellID = 2983, iconID = 132307 },     -- Outlaw: Sprint
     [261]  = { spellID = 2983, iconID = 132307 },     -- Subtlety: Sprint
     -- Shaman
-    [262]  = { spellID = 192063, iconID = 1029585 },  -- Elemental: Gust of Wind
-    [263]  = { spellID = 58875, iconID = 538576 },    -- Enhancement: Spirit Walk
-    [264]  = { spellID = 192063, iconID = 1029585 },  -- Restoration: Gust of Wind
+    [262]  = { spellID = 192063, iconID = 463565 },  -- Elemental: Gust of Wind
+    [263]  = { spellID = 58875, iconID = 132328 },    -- Enhancement: Spirit Walk
+    [264]  = { spellID = 192063, iconID = 463565 },  -- Restoration: Gust of Wind
     -- Warlock
     [265]  = { spellID = 48020, iconID = 607512 },    -- Affliction: Demonic Circle: Teleport
     [266]  = { spellID = 48020, iconID = 607512 },    -- Demonology: Demonic Circle: Teleport
