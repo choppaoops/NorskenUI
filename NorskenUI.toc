@@ -12,17 +12,17 @@
 # Load Libraries
 Libs/Init.xml
 
-# Load Core files (initialization, database, events, commands)
+# Load Core files
 Core/Core.xml
-Utils/Utils.xml
+Core/Utils/Utils.xml
 
 # Load modules
-Combat/Combat.xml
-MissingBuffs/MissingBuffs.xml
-ClassUtil/ClassUtil.xml
-QoL/QoL.xml
-Skinning/Skinning.xml
-Dungeons/Dungeons.xml
+Modules/Combat/Combat.xml
+Modules/MissingBuffs/MissingBuffs.xml
+Modules/ClassUtil/ClassUtil.xml
+Modules/QoL/QoL.xml
+Modules/Skinning/Skinning.xml
+Modules/Dungeons/Dungeons.xml
 
-# Load GUI Framework (main window, tabs, shared widgets)
+# Load GUI
 GUI/GUI.xml
