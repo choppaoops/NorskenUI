@@ -97,11 +97,16 @@ local Defaults = {
             ColorThree = { 1, 0.82, 0 },
             ColorFour = { 0, 1, 0 },
 
-            -- Font
             FontFace = "Expressway",
             FontSize = 24,
             FontOutline = "SOFTOUTLINE",
-            -- Position
+            FontShadow = {
+                Enabled = false,
+                Color = { 0, 0, 0, 1 },
+                OffsetX = 1,
+                OffsetY = -1,
+            },
+
             Strata = "HIGH",
             anchorFrameType = "SELECTFRAME",
             ParentFrame = "UIParent",
@@ -650,7 +655,13 @@ local Defaults = {
 
                 FontFace = "Expressway",
                 FontSize = 14,
-                FontOutline = "OUTLINE",
+                FontOutline = "SOFTOUTLINE",
+                FontShadow = {
+                    Enabled = false,
+                    Color = { 0, 0, 0, 1 },
+                    OffsetX = 1,
+                    OffsetY = -1,
+                },
 
                 Strata = "HIGH",
                 anchorFrameType = "UIPARENT",
@@ -663,9 +674,7 @@ local Defaults = {
                 },
 
                 -- Colors
-                CastingColor = { 0.623, 0.749, 1, 1 },
-                ChannelingColor = { 0.623, 0.749, 1, 1 },
-                EmpoweringColor = { 0.8, 0.4, 1, 1 },
+                CastColor = { 0.623, 0.749, 1, 1 },
                 NotInterruptibleColor = { 0.780, 0.250, 0.250, 1 },
                 HideNotInterruptible = false,
                 TextColor = { 1, 1, 1, 1 },
@@ -689,7 +698,6 @@ local Defaults = {
                 -- Kick Indicator
                 KickIndicator = {
                     Enabled = true,
-                    ReadyColor = { 0.623, 0.749, 1, 1 },
                     NotReadyColor = { 0.5, 0.5, 0.5, 1 },
                     TickColor = { 0.1, 0.8, 0.1, 1 },
                 },

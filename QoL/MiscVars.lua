@@ -42,16 +42,6 @@ MVAR.DEFS = {
         default = false,
     },
     {
-        key = "cameraDistanceFixedValue",
-        label = "Fixed Camera Distance",
-        description = "Fixed camera distance in yards. Set to -1 to disable.",
-        type = "number",
-        min = -1,
-        max = 50,
-        step = 1,
-        default = -1,
-    },
-    {
         key = "cameraDistanceMaxZoomFactor",
         label = "Max Camera Distance",
         description = "Adjust the maximum distance the camera will follow behind you.",

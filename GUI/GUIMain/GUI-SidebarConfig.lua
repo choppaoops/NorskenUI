@@ -25,11 +25,18 @@ GUIFrame.SidebarConfig = {
                 { id = "battleRes",     text = "Combat Res" },
                 { id = "combatMessage", text = "Combat Texts" },
                 { id = "cursorCircle",  text = "Cursor Circle" },
-                { id = "gateway",       text = "Gateway Alert" },
                 { id = "FocusCastbar",  text = "Focus Castbar" },
                 { id = "RangeChecker",  text = "Range Checker Text" },
                 { id = "TimeSpiral",    text = "Time Spiral" },
-                { id = "missingBuffs",  text = "Missing Buffs" },
+            }
+        },
+        {
+            id = "missingBuffs_section",
+            type = "header",
+            text = "Missing Buffs & Stances",
+            defaultExpanded = false,
+            items = {
+                { id = "missingBuffs", text = "Missing Buffs" },
             }
         },
         {
@@ -41,6 +48,7 @@ GUIFrame.SidebarConfig = {
                 { id = "IncarnStacks", text = "Incarn Stacks" },
                 { id = "HuntersMark",  text = "Hunters Mark Missing" },
                 { id = "PetTexts",     text = "Pet Status Texts" },
+                { id = "gateway",      text = "Gateway Alert" },
             }
         },
         {
@@ -96,7 +104,7 @@ GUIFrame.SidebarConfig = {
         {
             id = "dungeons_section",
             type = "header",
-            text = "Dungeon Util",
+            text = "Dungeon & Party Util",
             defaultExpanded = false,
             items = {
                 { id = "InstanceReset",             text = "Instance Reset" },

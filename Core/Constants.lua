@@ -98,3 +98,19 @@ NRSKNUI.MOVEMENT_SPELLS = {
     [72]   = { spellID = 6544, iconID = 236171 },     -- Fury: Heroic Leap
     [73]   = { spellID = 6544, iconID = 236171 },     -- Protection: Heroic Leap
 }
+
+NRSKNUI.CLASS_INTERRUPTS = {
+    [1] = { 6552 },                         -- Warrior
+    [2] = { 31935, 96231 },                 -- Paladin
+    [3] = { 147362, 187707 },               -- Hunter
+    [4] = { 1766 },                         -- Rogue
+    [5] = { 15487 },                        -- Priest
+    [6] = { 47528 },                        -- Death Knight
+    [7] = { 57994 },                        -- Shaman
+    [8] = { 2139 },                         -- Mage
+    [9] = { 19647, 89766, 119910, 132409 }, -- Warlock
+    [10] = { 116705 },                      -- Monk
+    [11] = { 78675, 106839 },               -- Druid
+    [12] = { 183752 },                      -- Demon Hunter
+    [13] = { 351338 },                      -- Evoker
+}

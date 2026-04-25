@@ -25,7 +25,13 @@ local ALPHA_STRENGTH = { 1.0, 0.7, 1.0, 0.7, 1.0, 0.7, 1.0, 0.7 }
 local function StripEscapeCodes(text)
     if type(text) ~= "string" then return "" end
     if issecretvalue and issecretvalue(text) then return text end
-    return text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", "   "):gsub("|A.-|a", "   ")
+    return text
+        :gsub("|c%x%x%x%x%x%x%x%x", "")
+        :gsub("|cn[^:]-:", "")
+        :gsub("|r", "")
+        :gsub("|T.-|t", "   ")
+        :gsub("|A.-|a", "   ")
+        :gsub("|H.-|h(.-)|h", "%1")
 end
 
 local function HandleFadeHook(frame, outline, startAlpha)
@@ -194,11 +200,35 @@ function SoftOutline:SetShown(shown)
         self:SetFont(font, size)
     end
     self:SetText(self.main:GetText() or "")
+    self:_ApplyColor()
     self:_SyncJustify()
     self:_SyncWrapSettings()
     if self.hasExplicitWidth then self:_SyncWidth() end
 
     self:_ForEach(function(shadow) shadow:SetShown(true) end)
+end
+
+function SoftOutline:SetShownFromBoolean(condition, trueVal, falseVal)
+    if not self.shadows then return end
+    local showTrue = trueVal ~= false
+    local showFalse = falseVal == true
+
+    if showTrue and self:_IsTextVisible() then
+        local font, size = self.main:GetFont()
+        if font and font ~= "" and size and size > 0 then
+            self:SetFont(font, size)
+        end
+        self:SetText(self.main:GetText() or "")
+        self:_SyncJustify()
+        self:_SyncWrapSettings()
+        if self.hasExplicitWidth then self:_SyncWidth() end
+    end
+
+    local trueAlpha = showTrue and 1 or 0
+    local falseAlpha = showFalse and 1 or 0
+    self:_ForEach(function(shadow)
+        shadow:SetAlphaFromBoolean(condition, trueAlpha, falseAlpha)
+    end)
 end
 
 function SoftOutline:IsShown()

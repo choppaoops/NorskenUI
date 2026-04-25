@@ -40,8 +40,8 @@ function GUIFrame:CreateCheckbox(parent, labelText, config)
     local onValueChanged = config.callback
     local msgPopup = config.msgPopup
     local msgText = config.msgText
-    local msgOn = config.msgOn
-    local msgOff = config.msgOff
+    local msgOn = config.msgOn or "Enabled"
+    local msgOff = config.msgOff or "Disabled"
     local tooltip = config.tooltip
 
     local row = CreateFrame("Frame", nil, parent)

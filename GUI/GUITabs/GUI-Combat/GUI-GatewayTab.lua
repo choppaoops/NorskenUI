@@ -1,194 +1,97 @@
--- NorskenUI namespace
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
 local GUIFrame = NRSKNUI.GUIFrame
 local Theme = NRSKNUI.Theme
-local LSM = NRSKNUI.LSM
 
--- Localization
 local table_insert = table.insert
-local pairs, ipairs = pairs, ipairs
+local ipairs = ipairs
 
--- Get module reference
-local function GetModule()
-    return NorskenUI:GetModule("Gateway", true)
-end
-
--- Register Gateway tab content
 GUIFrame:RegisterContent("gateway", function(scrollChild, yOffset)
     local db = NRSKNUI.db and NRSKNUI.db.profile.Miscellaneous.Gateway
-    if not db then
-        local errorCard = GUIFrame:CreateCard(scrollChild, "Error", yOffset)
-        errorCard:AddLabel("Database not available")
-        return yOffset + errorCard:GetContentHeight() + Theme.paddingMedium
-    end
+    if not db then return GUIFrame:ShowDBError(scrollChild, yOffset) end
 
-    local mod = GetModule()
-    local allWidgets = {}
+    ---@type Gateway?
+    local GATE = NorskenUI and NorskenUI:GetModule("Gateway", true)
+    local manager = GUIFrame:CreateWidgetStateManager()
+    local postUpdateCallbacks = {}
 
     local function ApplySettings()
-        if mod and mod.ApplySettings then
-            mod:ApplySettings()
-        end
-    end
-
-    local function ApplyModuleState(enabled)
-        if not mod then return end
-        db.Enabled = enabled
-        if enabled then
-            NorskenUI:EnableModule("Gateway")
-        else
-            NorskenUI:DisableModule("Gateway")
-        end
+        if GATE and GATE.ApplySettings then GATE:ApplySettings() end
     end
 
     local function UpdateAllWidgetStates()
-        local mainEnabled = db.Enabled ~= false
-
-        for _, widget in ipairs(allWidgets) do
-            if widget.SetEnabled then
-                widget:SetEnabled(mainEnabled)
+        manager:UpdateAll(db.Enabled)
+        if db.Enabled then
+            for _, callback in ipairs(postUpdateCallbacks) do
+                callback()
             end
         end
     end
 
-    ----------------------------------------------------------------
-    -- Card 1: Gateway Usable Alert (Enable)
-    ----------------------------------------------------------------
+    -- Card 1: Enable
     local card1 = GUIFrame:CreateCard(scrollChild, "Gateway Usable Alert", yOffset)
 
-    local row1 = GUIFrame:CreateRow(card1.content, 36)
+    local row1 = GUIFrame:CreateRow(card1.content, Theme.rowHeightLast)
     local enableCheck = GUIFrame:CreateCheckbox(row1, "Enable Gateway Alert", {
-        value = db.Enabled ~= false,
+        value = db.Enabled,
         callback = function(checked)
             db.Enabled = checked
-            ApplyModuleState(checked)
+            if GATE then
+                if checked then NorskenUI:EnableModule("Gateway") else NorskenUI:DisableModule("Gateway") end
+            end
             UpdateAllWidgetStates()
         end,
-        msgPopup = true, msgText = "Gateway Alert", msgOn = "On", msgOff = "Off"
+        msgPopup = true,
+        msgText = "Gateway Alert",
     })
     row1:AddWidget(enableCheck, 1)
-    card1:AddRow(row1, 36)
+    card1:AddRow(row1, Theme.rowHeightLast, 0)
 
-    yOffset = yOffset + card1:GetContentHeight() + Theme.paddingSmall
+    yOffset = card1:GetNextOffset()
 
-    ----------------------------------------------------------------
-    -- Card 2: Text Settings
-    ----------------------------------------------------------------
-    local card2 = GUIFrame:CreateCard(scrollChild, "Text Settings", yOffset)
-    table_insert(allWidgets, card2)
+    -- Card 2: Appearance
+    local card2 = GUIFrame:CreateCard(scrollChild, "Appearance", yOffset)
+    manager:Register(card2, "all")
 
-    -- Color picker
-    local row2a = GUIFrame:CreateRow(card2.content, 40)
+    local row2a = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast)
     local colorPicker = GUIFrame:CreateColorPicker(row2a, "Alert Color", {
-        color = db.Color or { 0, 1, 0, 1 },
+        color = db.Color,
         callback = function(r, g, b, a)
             db.Color = { r, g, b, a }
             ApplySettings()
         end
     })
     row2a:AddWidget(colorPicker, 1)
-    table_insert(allWidgets, colorPicker)
-    card2:AddRow(row2a, 40)
+    manager:Register(colorPicker, "all")
+    card2:AddRow(row2a, Theme.rowHeightLast, 0)
 
-    yOffset = yOffset + card2:GetContentHeight() + Theme.paddingSmall
+    yOffset = card2:GetNextOffset()
 
-    ----------------------------------------------------------------
     -- Card 3: Font Settings
-    ----------------------------------------------------------------
-    local card3 = GUIFrame:CreateCard(scrollChild, "Font Settings", yOffset)
-    table_insert(allWidgets, card3)
-
-    -- Font lookup
-    local fontList = {}
-    if LSM then
-        for name in pairs(LSM:HashTable("font")) do fontList[name] = name end
-    else
-        fontList["Friz Quadrata TT"] = "Friz Quadrata TT"
-    end
-
-    -- Font Face and Size
-    local row3a = GUIFrame:CreateRow(card3.content, 40)
-    local fontDropdown = GUIFrame:CreateDropdown(row3a, "Font", {
-        options = fontList,
-        value = db.FontFace or "Friz Quadrata TT",
-        callback = function(key)
-            db.FontFace = key
-            ApplySettings()
-        end,
-        searchable = true,
-        isFontPreview = true
-    })
-    row3a:AddWidget(fontDropdown, 0.5)
-    table_insert(allWidgets, fontDropdown)
-
-    local fontSizeSlider = GUIFrame:CreateSlider(card3.content, "Font Size", {
-        min = 8,
-        max = 72,
-        step = 1,
-        value = db.FontSize or 24,
-        labelWidth = 60,
-        callback = function(val)
-            db.FontSize = val
-            ApplySettings()
-        end
-    })
-    row3a:AddWidget(fontSizeSlider, 0.5)
-    table_insert(allWidgets, fontSizeSlider)
-    card3:AddRow(row3a, 40)
-
-    -- Font Outline Dropdown
-    local row3b = GUIFrame:CreateRow(card3.content, 37)
-    local outlineList = {
-        { key = "NONE", text = "None" },
-        { key = "OUTLINE", text = "Outline" },
-        { key = "THICKOUTLINE", text = "Thick" },
-        { key = "SOFTOUTLINE", text = "Soft" },
-    }
-    local outlineDropdown = GUIFrame:CreateDropdown(row3b, "Outline", {
-        options = outlineList,
-        value = db.FontOutline or "OUTLINE",
-        callback = function(key)
-            db.FontOutline = key
-            ApplySettings()
-        end
-    })
-    row3b:AddWidget(outlineDropdown, 1)
-    table_insert(allWidgets, outlineDropdown)
-    card3:AddRow(row3b, 37)
-
-    yOffset = yOffset + card3:GetContentHeight() + Theme.paddingSmall
-
-    ----------------------------------------------------------------
-    -- Card 4: Position Settings
-    ----------------------------------------------------------------
-    local card4, newOffset = GUIFrame:CreatePositionCard(scrollChild, yOffset, {
+    local fontCard, fontOffset, fontWidgets = GUIFrame:CreateFontSettingsCard(scrollChild, yOffset, {
         db = db,
-        defaults = {
-            anchorFrameType = "UIPARENT",
-            anchorFrameFrame = "UIParent",
-            selfPoint = "CENTER",
-            anchorPoint = "CENTER",
-            xOffset = 0,
-            yOffset = 300,
-            strata = "HIGH",
-        },
+        includeSoftOutline = true,
+        onChangeCallback = ApplySettings,
+    })
+    manager:Register(fontCard, "all")
+    manager:RegisterGroup(fontWidgets, "all")
+    if fontCard.UpdateShadowState then table_insert(postUpdateCallbacks, fontCard.UpdateShadowState) end
+
+    yOffset = fontOffset
+
+    -- Card 4: Position
+    local posCard, posOffset = GUIFrame:CreatePositionCard(scrollChild, yOffset, {
+        db = db,
         showAnchorFrameType = false,
         showStrata = true,
         onChangeCallback = ApplySettings,
     })
+    manager:Register(posCard, "all")
+    if posCard.positionWidgets then manager:RegisterGroup(posCard.positionWidgets, "all") end
 
-    if card4.positionWidgets then
-        for _, widget in ipairs(card4.positionWidgets) do
-            table_insert(allWidgets, widget)
-        end
-    end
-    table_insert(allWidgets, card4)
+    yOffset = posOffset
 
-    yOffset = newOffset
-
-    -- Apply initial widget states
     UpdateAllWidgetStates()
-    yOffset = yOffset - (Theme.paddingSmall * 2)
+
     return yOffset
 end)

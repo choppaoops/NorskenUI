@@ -1,271 +1,160 @@
--- NorskenUI namespace
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
+
 local GUIFrame = NRSKNUI.GUIFrame
 local Theme = NRSKNUI.Theme
-local LSM = NRSKNUI.LSM
 
--- Localization
 local table_insert = table.insert
-local pairs, ipairs = pairs, ipairs
+local ipairs = ipairs
 
--- Get module reference
-local function GetModule()
-    return NorskenUI:GetModule("RangeChecker", true)
-end
-
--- Register Pet Texts tab content
 GUIFrame:RegisterContent("RangeChecker", function(scrollChild, yOffset)
     local db = NRSKNUI.db and NRSKNUI.db.profile.RangeChecker
-    if not db then
-        local errorCard = GUIFrame:CreateCard(scrollChild, "Error", yOffset)
-        errorCard:AddLabel("Database not available")
-        return yOffset + errorCard:GetContentHeight() + Theme.paddingMedium
-    end
+    if not db then return GUIFrame:ShowDBError(scrollChild, yOffset) end
 
-    local RANGE = GetModule()
-    local allWidgets = {}
+    ---@type RangeChecker?
+    local RANGE = NorskenUI and NorskenUI:GetModule("RangeChecker", true)
+    local manager = GUIFrame:CreateWidgetStateManager()
+    local postUpdateCallbacks = {}
 
     local function ApplySettings()
-        if RANGE and RANGE.ApplySettings then
-            RANGE:ApplySettings()
-        end
-    end
-
-    local function ApplyModuleState(enabled)
-        if not RANGE then return end
-        db.Enabled = enabled
-        if enabled then
-            NorskenUI:EnableModule("RangeChecker")
-        else
-            NorskenUI:DisableModule("RangeChecker")
-        end
+        if RANGE and RANGE.ApplySettings then RANGE:ApplySettings() end
     end
 
     local function UpdateAllWidgetStates()
-        local mainEnabled = db.Enabled ~= false
-
-        for _, widget in ipairs(allWidgets) do
-            if widget.SetEnabled then
-                widget:SetEnabled(mainEnabled)
-            end
+        manager:UpdateAll(db.Enabled)
+        if db.Enabled then
+            for _, callback in ipairs(postUpdateCallbacks) do callback() end
         end
     end
 
-    ----------------------------------------------------------------
-    -- Card 1: Range Checker Text
-    ----------------------------------------------------------------
-    local card1 = GUIFrame:CreateCard(scrollChild, "Range Checker Text", yOffset)
+    -- Card 1: Enable
+    local card1 = GUIFrame:CreateCard(scrollChild, "Range Checker", yOffset)
 
-    local row1 = GUIFrame:CreateRow(card1.content, 36)
-    local enableCheck = GUIFrame:CreateCheckbox(row1, "Enable Range Checker Text", {
-        value = db.Enabled ~= false,
+    local row1 = GUIFrame:CreateRow(card1.content, Theme.rowHeightLast)
+    local enableCheck = GUIFrame:CreateCheckbox(row1, "Enable Range Checker", {
+        value = db.Enabled,
         callback = function(checked)
             db.Enabled = checked
-            ApplyModuleState(checked)
+            if RANGE then
+                if checked then NorskenUI:EnableModule("RangeChecker") else NorskenUI:DisableModule("RangeChecker") end
+            end
             UpdateAllWidgetStates()
         end,
         msgPopup = true,
-        msgText = "Range Checker Text",
-        msgOn = "On",
-        msgOff = "Off"
+        msgText = "Range Checker",
     })
-    row1:AddWidget(enableCheck, 0.5)
-    card1:AddRow(row1, 36)
+    row1:AddWidget(enableCheck, 1)
+    card1:AddRow(row1, Theme.rowHeightLast, 0)
 
-    yOffset = yOffset + card1:GetContentHeight() + Theme.paddingSmall
+    yOffset = card1:GetNextOffset()
 
-    ----------------------------------------------------------------
-    -- Card 1b: General Settings
-    ----------------------------------------------------------------
-    local card1b = GUIFrame:CreateCard(scrollChild, "General Settings", yOffset)
-    table_insert(allWidgets, card1b)
+    -- Card 2: General Settings
+    local card2 = GUIFrame:CreateCard(scrollChild, "General Settings", yOffset)
+    manager:Register(card2, "all")
 
-    local row1a = GUIFrame:CreateRow(card1b.content, 40)
-    local CombatOnly = GUIFrame:CreateCheckbox(row1a, "Show In Combat Only", {
-        value = db.CombatOnly ~= false,
+    local row2a = GUIFrame:CreateRow(card2.content, Theme.rowHeight)
+    local combatOnlyCheck = GUIFrame:CreateCheckbox(row2a, "Show In Combat Only", {
+        value = db.CombatOnly,
         callback = function(checked)
             db.CombatOnly = checked
             ApplySettings()
         end
     })
-    row1a:AddWidget(CombatOnly, 0.5)
-    card1b:AddRow(row1a, 40)
+    row2a:AddWidget(combatOnlyCheck, 1)
+    manager:Register(combatOnlyCheck, "all")
+    card2:AddRow(row2a, Theme.rowHeight)
 
-    -- Separator
-    local row1sep = GUIFrame:CreateRow(card1b.content, 8)
-    local sepCBCard = GUIFrame:CreateSeparator(row1sep)
-    row1sep:AddWidget(sepCBCard, 1)
-    table_insert(allWidgets, sepCBCard)
-    card1b:AddRow(row1sep, 8)
-
-    -- Update Throttle
-    local row1b = GUIFrame:CreateRow(card1b.content, 36)
-    local UpdateThrottle = GUIFrame:CreateSlider(row1b, "Update Throttle", {
+    local row2b = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast)
+    local throttleSlider = GUIFrame:CreateSlider(row2b, "Update Throttle", {
         min = 0,
         max = 1,
         step = 0.05,
         value = db.UpdateThrottle,
         callback = function(val)
             db.UpdateThrottle = val
-            ApplySettings()
         end
     })
-    row1b:AddWidget(UpdateThrottle, 1)
-    table_insert(allWidgets, UpdateThrottle)
-    card1b:AddRow(row1b, 36)
+    row2b:AddWidget(throttleSlider, 1)
+    manager:Register(throttleSlider, "all")
+    card2:AddRow(row2b, Theme.rowHeightLast, 0)
 
-    yOffset = yOffset + card1b:GetContentHeight() + Theme.paddingSmall
+    yOffset = card2:GetNextOffset()
 
-    ----------------------------------------------------------------
-    -- Card 2: Color Settings
-    ----------------------------------------------------------------
-    local card2 = GUIFrame:CreateCard(scrollChild, "Color Settings", yOffset)
-    table_insert(allWidgets, card2)
+    -- Card 3: Color Settings
+    local card3 = GUIFrame:CreateCard(scrollChild, "Color Gradient", yOffset)
+    manager:Register(card3, "all")
 
-    -- 40+ Yards Color
-    local row2a = GUIFrame:CreateRow(card2.content, 38)
-    local ColorOneColorPicker = GUIFrame:CreateColorPicker(row2a, "40+ Yards Color", {
-        color = db.ColorOne or { 1, 0.82, 0, 1 },
+    local row3a = GUIFrame:CreateRow(card3.content, Theme.rowHeight)
+    local colorOnePicker = GUIFrame:CreateColorPicker(row3a, "Far (40+ yards)", {
+        color = db.ColorOne,
         callback = function(r, g, b, a)
             db.ColorOne = { r, g, b, a }
             ApplySettings()
         end
     })
-    row2a:AddWidget(ColorOneColorPicker, 0.5)
-    table_insert(allWidgets, ColorOneColorPicker)
-    card2:AddRow(row2a, 38)
+    row3a:AddWidget(colorOnePicker, 0.5)
+    manager:Register(colorOnePicker, "all")
 
-    -- 20-40 Yards Color
-    local row2b = GUIFrame:CreateRow(card2.content, 38)
-    local ColorTwoColorPicker = GUIFrame:CreateColorPicker(row2b, "20-40 Yards Color", {
-        color = db.ColorTwo or { 1, 0.2, 0.2, 1 },
+    local colorTwoPicker = GUIFrame:CreateColorPicker(row3a, "Mid-Far (20-40)", {
+        color = db.ColorTwo,
         callback = function(r, g, b, a)
             db.ColorTwo = { r, g, b, a }
             ApplySettings()
         end
     })
-    row2b:AddWidget(ColorTwoColorPicker, 0.5)
-    table_insert(allWidgets, ColorTwoColorPicker)
-    card2:AddRow(row2b, 38)
+    row3a:AddWidget(colorTwoPicker, 0.5)
+    manager:Register(colorTwoPicker, "all")
+    card3:AddRow(row3a, Theme.rowHeight)
 
-    -- 10-20 Yards Color
-    local row2c = GUIFrame:CreateRow(card2.content, 38)
-    local ColorThreeColorPicker = GUIFrame:CreateColorPicker(row2c, "10-20 Yards Color", {
-        color = db.ColorThree or { 0.3, 0.7, 1, 1 },
+    local row3b = GUIFrame:CreateRow(card3.content, Theme.rowHeightLast)
+    local colorThreePicker = GUIFrame:CreateColorPicker(row3b, "Mid-Close (10-20)", {
+        color = db.ColorThree,
         callback = function(r, g, b, a)
             db.ColorThree = { r, g, b, a }
             ApplySettings()
         end
     })
-    row2c:AddWidget(ColorThreeColorPicker, 0.5)
-    table_insert(allWidgets, ColorThreeColorPicker)
-    card2:AddRow(row2c, 38)
+    row3b:AddWidget(colorThreePicker, 0.5)
+    manager:Register(colorThreePicker, "all")
 
-    -- 0-10 Yards Color
-    local row2d = GUIFrame:CreateRow(card2.content, 38)
-    local ColorFourColorPicker = GUIFrame:CreateColorPicker(row2d, "0-10 Yards Color", {
-        color = db.ColorFour or { 0.3, 0.7, 1, 1 },
+    local colorFourPicker = GUIFrame:CreateColorPicker(row3b, "Close (0-10)", {
+        color = db.ColorFour,
         callback = function(r, g, b, a)
             db.ColorFour = { r, g, b, a }
             ApplySettings()
         end
     })
-    row2d:AddWidget(ColorFourColorPicker, 0.5)
-    table_insert(allWidgets, ColorFourColorPicker)
-    card2:AddRow(row2d, 38)
+    row3b:AddWidget(colorFourPicker, 0.5)
+    manager:Register(colorFourPicker, "all")
+    card3:AddRow(row3b, Theme.rowHeightLast, 0)
 
-    yOffset = yOffset + card2:GetContentHeight() + Theme.paddingSmall
+    yOffset = card3:GetNextOffset()
 
-    ----------------------------------------------------------------
-    -- Card 3: Font Settings
-    ----------------------------------------------------------------
-    local card3 = GUIFrame:CreateCard(scrollChild, "Font Settings", yOffset)
-    table_insert(allWidgets, card3)
-
-    -- Font lookup
-    local fontList = {}
-    if LSM then
-        for name in pairs(LSM:HashTable("font")) do fontList[name] = name end
-    else
-        fontList["Friz Quadrata TT"] = "Friz Quadrata TT"
-    end
-
-    -- Font Face and Outline Dropdowns
-    local row3a = GUIFrame:CreateRow(card3.content, 40)
-    local fontDropdown = GUIFrame:CreateDropdown(row3a, "Font", {
-        options = fontList,
-        value = db.FontFace or "Friz Quadrata TT",
-        callback = function(key)
-            db.FontFace = key
-            ApplySettings()
-        end,
-        searchable = true,
-        isFontPreview = true
+    -- Card 4: Font Settings
+    local fontCard, fontOffset, fontWidgets = GUIFrame:CreateFontSettingsCard(scrollChild, yOffset, {
+        db = db,
+        includeSoftOutline = true,
+        onChangeCallback = ApplySettings,
     })
-    row3a:AddWidget(fontDropdown, 0.5)
-    table_insert(allWidgets, fontDropdown)
+    manager:Register(fontCard, "all")
+    manager:RegisterGroup(fontWidgets, "all")
+    if fontCard.UpdateShadowState then table_insert(postUpdateCallbacks, fontCard.UpdateShadowState) end
 
-    -- Font Size Slider
-    local fontSizeSlider = GUIFrame:CreateSlider(card3.content, "Font Size", {
-        min = 8,
-        max = 72,
-        step = 1,
-        value = db.FontSize or 24,
-        labelWidth = 60,
-        callback = function(val)
-            db.FontSize = val
-            ApplySettings()
-        end
-    })
-    row3a:AddWidget(fontSizeSlider, 0.5)
-    table_insert(allWidgets, fontSizeSlider)
-    card3:AddRow(row3a, 40)
+    yOffset = fontOffset
 
-    -- Font Outline Dropdown
-    local row3b = GUIFrame:CreateRow(card3.content, 37)
-    local outlineList = {
-        { key = "NONE",         text = "None" },
-        { key = "OUTLINE",      text = "Outline" },
-        { key = "THICKOUTLINE", text = "Thick" },
-        { key = "SOFTOUTLINE",  text = "Soft" },
-    }
-    local outlineDropdown = GUIFrame:CreateDropdown(row3b, "Outline", {
-        options = outlineList,
-        value = db.FontOutline or "OUTLINE",
-        callback = function(key)
-            db.FontOutline = key
-            ApplySettings()
-        end
-    })
-    row3b:AddWidget(outlineDropdown, 1)
-    table_insert(allWidgets, outlineDropdown)
-
-    card3:AddRow(row3b, 37)
-
-    yOffset = yOffset + card3:GetContentHeight() + Theme.paddingSmall
-
-    ----------------------------------------------------------------
-    -- Card 4: Position Settings
-    ----------------------------------------------------------------
-    local card4, newOffset = GUIFrame:CreatePositionCard(scrollChild, yOffset, {
+    -- Card 5: Position
+    local posCard, posOffset = GUIFrame:CreatePositionCard(scrollChild, yOffset, {
         db = db,
         showAnchorFrameType = true,
         showStrata = true,
         onChangeCallback = ApplySettings,
     })
+    manager:Register(posCard, "all")
+    if posCard.positionWidgets then manager:RegisterGroup(posCard.positionWidgets, "all") end
 
-    if card4.positionWidgets then
-        for _, widget in ipairs(card4.positionWidgets) do
-            table_insert(allWidgets, widget)
-        end
-    end
-    table_insert(allWidgets, card4)
+    yOffset = posOffset
 
-    yOffset = newOffset
-
-    -- Apply initial widget states
     UpdateAllWidgetStates()
-    yOffset = yOffset - (Theme.paddingSmall * 2)
+
     return yOffset
 end)

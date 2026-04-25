@@ -1,82 +1,57 @@
--- NorskenUI namespace
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
 local GUIFrame = NRSKNUI.GUIFrame
 local Theme = NRSKNUI.Theme
 local LSM = NRSKNUI.LSM
 
--- Localization Setup
 local table_insert = table.insert
 local ipairs = ipairs
 local pairs = pairs
 
--- Helper to get FocusCastbar module
-local function GetFocusCastbarModule()
-    if NorskenUI then
-        return NorskenUI:GetModule("FocusCastbar", true)
-    end
-    return nil
-end
-
--- Focus Castbar Tab Content
 GUIFrame:RegisterContent("FocusCastbar", function(scrollChild, yOffset)
     local db = NRSKNUI.db and NRSKNUI.db.profile.Miscellaneous.FocusCastbar
-    if not db then
-        local errorCard = GUIFrame:CreateCard(scrollChild, "Error", yOffset)
-        errorCard:AddLabel("Database not available")
-        return yOffset + errorCard:GetContentHeight() + Theme.paddingMedium
-    end
+    if not db then return GUIFrame:ShowDBError(scrollChild, yOffset) end
 
-    -- Get module
-    local FCB = GetFocusCastbarModule()
+    local FCB = NorskenUI and NorskenUI:GetModule("FocusCastbar", true)
+    local manager = GUIFrame:CreateWidgetStateManager()
+    local postUpdateCallbacks = {}
+    local holdTimerSubWidgets = {}
+    local kickIndicatorSubWidgets = {}
+    local uninterruptibleSubWidgets = {}
+    local allCards = {}
 
-    -- Track widgets that depend on the toggle
-    local allWidgets = {}
-
-    -- Helper to apply settings and update preview
     local function ApplySettings()
-        if FCB and FCB.ApplySettings then
-            FCB:ApplySettings()
+        if FCB and FCB.ApplySettings then FCB:ApplySettings() end
+    end
+
+    local function UpdateHoldTimerState()
+        local holdEnabled = db.HoldTimer and db.HoldTimer.Enabled
+        for _, widget in ipairs(holdTimerSubWidgets) do
+            if widget.SetEnabled then widget:SetEnabled(holdEnabled) end
         end
     end
 
-    -- Helper to apply position
-    local function ApplyPosition()
-        if FCB and FCB.ApplyPosition then
-            FCB:ApplyPosition()
+    local function UpdateKickIndicatorState()
+        local kickEnabled = db.KickIndicator and db.KickIndicator.Enabled
+        for _, widget in ipairs(kickIndicatorSubWidgets) do
+            if widget.SetEnabled then widget:SetEnabled(kickEnabled) end
         end
     end
 
-    -- Helper to apply new state
-    local function ApplyFocusCastbarState(enabled)
-        if not FCB then return end
-        FCB.db.Enabled = enabled
-        if enabled then
-            NorskenUI:EnableModule("FocusCastbar")
-        else
-            NorskenUI:DisableModule("FocusCastbar")
+    local function UpdateUninterruptibleState()
+        local enabled = not db.HideNotInterruptible
+        for _, widget in ipairs(uninterruptibleSubWidgets) do
+            if widget.SetEnabled then widget:SetEnabled(enabled) end
         end
     end
 
-    -- Comprehensive widget state update
     local function UpdateAllWidgetStates()
-        local mainEnabled = db.Enabled ~= false
-
-        for _, widget in ipairs(allWidgets) do
-            if widget.SetEnabled then
-                widget:SetEnabled(mainEnabled)
+        manager:UpdateAll(db.Enabled)
+        if db.Enabled then
+            for _, callback in ipairs(postUpdateCallbacks) do
+                callback()
             end
         end
-    end
-
-    -- Build LSM lists
-    local fontList = {}
-    if LSM then
-        for name in pairs(LSM:HashTable("font")) do
-            fontList[name] = name
-        end
-    else
-        fontList["Friz Quadrata TT"] = "Friz Quadrata TT"
     end
 
     local statusbarList = {}
@@ -84,581 +59,310 @@ GUIFrame:RegisterContent("FocusCastbar", function(scrollChild, yOffset)
         for name in pairs(LSM:HashTable("statusbar")) do
             statusbarList[name] = name
         end
-    else
-        statusbarList["Blizzard"] = "Blizzard"
     end
 
-    ----------------------------------------------------------------
-    -- Card 1: Focus Castbar Enable/Disable
-    ----------------------------------------------------------------
-    local card1 = GUIFrame:CreateCard(scrollChild, "Focus Castbar", yOffset)
+    local anchorOptions = {
+        { key = "LEFT", text = "Left" },
+        { key = "CENTER", text = "Center" },
+        { key = "RIGHT", text = "Right" },
+    }
 
-    local row1 = GUIFrame:CreateRow(card1.content, 36)
+    -- Card 1: Enable
+    local card1 = GUIFrame:CreateCard(scrollChild, "Focus Castbar", yOffset)
+    table_insert(allCards, card1)
+
+    local row1 = GUIFrame:CreateRow(card1.content, Theme.rowHeightLast)
     local enableCheck = GUIFrame:CreateCheckbox(row1, "Enable Focus Castbar", {
-        value = db.Enabled ~= false,
+        value = db.Enabled,
         callback = function(checked)
             db.Enabled = checked
-            ApplyFocusCastbarState(checked)
+            if FCB then
+                if checked then NorskenUI:EnableModule("FocusCastbar") else NorskenUI:DisableModule("FocusCastbar") end
+            end
             UpdateAllWidgetStates()
         end,
-        msgPopup = true, msgText = "Focus Castbar", msgOn = "On", msgOff = "Off"
+        msgPopup = true,
+        msgText = "Focus Castbar",
     })
-    row1:AddWidget(enableCheck, 0.5)
-    card1:AddRow(row1, 36)
+    row1:AddWidget(enableCheck, 1)
+    card1:AddRow(row1, Theme.rowHeightLast, 0)
 
-    yOffset = yOffset + card1:GetContentHeight() + Theme.paddingSmall
+    yOffset = card1:GetNextOffset()
 
-    ----------------------------------------------------------------
-    -- Card 2: General Settings (Size + Bar Texture)
-    ----------------------------------------------------------------
-    local card2 = GUIFrame:CreateCard(scrollChild, "General Settings", yOffset)
-    table_insert(allWidgets, card2)
+    -- Card 2: Bar Appearance
+    local card2 = GUIFrame:CreateCard(scrollChild, "Bar Appearance", yOffset)
+    table_insert(allCards, card2)
+    manager:Register(card2, "all")
 
-    -- Width and Height on same row
-    local row2 = GUIFrame:CreateRow(card2.content, 40)
-    local widthSlider = GUIFrame:CreateSlider(row2, "Width", {
-        min = 100,
-        max = 1000,
-        step = 1,
-        value = db.Width or 200,
-        callback = function(val)
-            db.Width = val
-            ApplySettings()
-        end
+    local row2a = GUIFrame:CreateRow(card2.content, Theme.rowHeight)
+    local widthSlider = GUIFrame:CreateSlider(row2a, "Width", {
+        min = 100, max = 1000, step = 1,
+        value = db.Width,
+        callback = function(val) db.Width = val; ApplySettings() end
     })
-    row2:AddWidget(widthSlider, 0.5)
-    table_insert(allWidgets, widthSlider)
+    row2a:AddWidget(widthSlider, 0.5)
+    manager:Register(widthSlider, "all")
 
-    local heightSlider = GUIFrame:CreateSlider(row2, "Height", {
-        min = 5,
-        max = 500,
-        step = 1,
-        value = db.Height or 20,
-        callback = function(val)
-            db.Height = val
-            ApplySettings()
-        end
+    local heightSlider = GUIFrame:CreateSlider(row2a, "Height", {
+        min = 5, max = 500, step = 1,
+        value = db.Height,
+        callback = function(val) db.Height = val; ApplySettings() end
     })
-    row2:AddWidget(heightSlider, 0.5)
-    table_insert(allWidgets, heightSlider)
-    card2:AddRow(row2, 40)
+    row2a:AddWidget(heightSlider, 0.5)
+    manager:Register(heightSlider, "all")
+    card2:AddRow(row2a, Theme.rowHeight)
 
-    -- Bar Texture
-    local row2b = GUIFrame:CreateRow(card2.content, 36)
+    local row2b = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast)
     local statusbarDropdown = GUIFrame:CreateDropdown(row2b, "Bar Texture", {
         options = statusbarList,
-        value = db.StatusBarTexture or "NorskenUI",
-        labelWidth = 70,
+        value = db.StatusBarTexture,
         searchable = true,
-        callback = function(key)
-            db.StatusBarTexture = key
-            ApplySettings()
+        callback = function(key) db.StatusBarTexture = key; ApplySettings() end
+    })
+    row2b:AddWidget(statusbarDropdown, 0.5)
+    manager:Register(statusbarDropdown, "all")
+
+    local bgPicker = GUIFrame:CreateColorPicker(row2b, "Background", {
+        color = db.BackdropColor,
+        callback = function(r, g, b, a) db.BackdropColor = { r, g, b, a }; ApplySettings() end
+    })
+    row2b:AddWidget(bgPicker, 0.26)
+    manager:Register(bgPicker, "all")
+
+    local borderPicker = GUIFrame:CreateColorPicker(row2b, "Border", {
+        color = db.BorderColor,
+        callback = function(r, g, b, a) db.BorderColor = { r, g, b, a }; ApplySettings() end
+    })
+    row2b:AddWidget(borderPicker, 0.24)
+    manager:Register(borderPicker, "all")
+    card2:AddRow(row2b, Theme.rowHeightLast, 0)
+
+    yOffset = card2:GetNextOffset()
+
+    -- Card 3: Colors & Indicators
+    local card3 = GUIFrame:CreateCard(scrollChild, "Colors & Indicators", yOffset)
+    table_insert(allCards, card3)
+    manager:Register(card3, "all")
+
+    local row3a = GUIFrame:CreateRow(card3.content, Theme.rowHeight)
+    local textPicker = GUIFrame:CreateColorPicker(row3a, "Text", {
+        color = db.TextColor,
+        callback = function(r, g, b, a) db.TextColor = { r, g, b, a }; ApplySettings() end
+    })
+    row3a:AddWidget(textPicker, 0.5)
+    manager:Register(textPicker, "all")
+
+    local castPicker = GUIFrame:CreateColorPicker(row3a, "Cast / Kick Ready", {
+        color = db.CastColor,
+        callback = function(r, g, b, a) db.CastColor = { r, g, b, a }; ApplySettings() end
+    })
+    row3a:AddWidget(castPicker, 0.5)
+    manager:Register(castPicker, "all")
+    card3:AddRow(row3a, Theme.rowHeight)
+
+    local sep3_1 = GUIFrame:CreateSeparator(card3.content)
+    card3:AddRow(sep3_1, Theme.rowHeightSeparator)
+
+    local row3a2 = GUIFrame:CreateRow(card3.content, Theme.rowHeight)
+    local hideNotInterruptCheck = GUIFrame:CreateCheckbox(row3a2, "Hide Uninterruptible", {
+        value = db.HideNotInterruptible,
+        callback = function(checked)
+            db.HideNotInterruptible = checked
+            UpdateUninterruptibleState()
         end
     })
-    row2b:AddWidget(statusbarDropdown, 1)
-    table_insert(allWidgets, statusbarDropdown)
-    card2:AddRow(row2b, 36)
+    row3a2:AddWidget(hideNotInterruptCheck, 0.5)
+    manager:Register(hideNotInterruptCheck, "all")
 
-    yOffset = yOffset + card2:GetContentHeight() + Theme.paddingSmall
+    local notInterruptPicker = GUIFrame:CreateColorPicker(row3a2, "Uninterruptible", {
+        color = db.NotInterruptibleColor,
+        callback = function(r, g, b, a) db.NotInterruptibleColor = { r, g, b, a }; ApplySettings() end
+    })
+    row3a2:AddWidget(notInterruptPicker, 0.5)
+    manager:Register(notInterruptPicker, "all")
+    table_insert(uninterruptibleSubWidgets, notInterruptPicker)
+    card3:AddRow(row3a2, Theme.rowHeight)
+    table_insert(postUpdateCallbacks, UpdateUninterruptibleState)
 
-    ----------------------------------------------------------------
-    -- Card 3: Position
-    ----------------------------------------------------------------
-    local card3, newYOffset = GUIFrame:CreatePositionCard(scrollChild, yOffset, {
+    local sep3_2 = GUIFrame:CreateSeparator(card3.content)
+    card3:AddRow(sep3_2, Theme.rowHeightSeparator)
+
+    local row3a3 = GUIFrame:CreateRow(card3.content, Theme.rowHeight)
+    local kickEnableCheck = GUIFrame:CreateCheckbox(row3a3, "Kick Indicator", {
+        value = db.KickIndicator.Enabled,
+        callback = function(checked) db.KickIndicator.Enabled = checked; UpdateKickIndicatorState() end
+    })
+    row3a3:AddWidget(kickEnableCheck, 0.5)
+    manager:Register(kickEnableCheck, "all")
+
+    local notReadyPicker = GUIFrame:CreateColorPicker(row3a3, "Not Ready", {
+        color = db.KickIndicator.NotReadyColor,
+        callback = function(r, g, b, a) db.KickIndicator.NotReadyColor = { r, g, b, a }; ApplySettings() end
+    })
+    row3a3:AddWidget(notReadyPicker, 0.26)
+    manager:Register(notReadyPicker, "all")
+    table_insert(kickIndicatorSubWidgets, notReadyPicker)
+
+    local tickPicker = GUIFrame:CreateColorPicker(row3a3, "Tick", {
+        color = db.KickIndicator.TickColor,
+        callback = function(r, g, b, a) db.KickIndicator.TickColor = { r, g, b, a }; ApplySettings() end
+    })
+    row3a3:AddWidget(tickPicker, 0.24)
+    manager:Register(tickPicker, "all")
+    table_insert(kickIndicatorSubWidgets, tickPicker)
+    card3:AddRow(row3a3, Theme.rowHeight)
+    table_insert(postUpdateCallbacks, UpdateKickIndicatorState)
+
+    local sep3a = GUIFrame:CreateSeparator(card3.content)
+    card3:AddRow(sep3a, Theme.rowHeightSeparator)
+
+    local row3b = GUIFrame:CreateRow(card3.content, Theme.rowHeight)
+    local holdEnableCheck = GUIFrame:CreateCheckbox(row3b, "Hold Timer", {
+        value = db.HoldTimer.Enabled,
+        callback = function(checked) db.HoldTimer.Enabled = checked; UpdateHoldTimerState() end
+    })
+    row3b:AddWidget(holdEnableCheck, 0.5)
+    manager:Register(holdEnableCheck, "all")
+
+    local interruptedPicker = GUIFrame:CreateColorPicker(row3b, "Interrupted", {
+        color = db.HoldTimer.InterruptedColor,
+        callback = function(r, g, b, a) db.HoldTimer.InterruptedColor = { r, g, b, a } end
+    })
+    row3b:AddWidget(interruptedPicker, 0.5)
+    manager:Register(interruptedPicker, "all")
+    table_insert(holdTimerSubWidgets, interruptedPicker)
+    card3:AddRow(row3b, Theme.rowHeight)
+
+    local row3b2 = GUIFrame:CreateRow(card3.content, Theme.rowHeightLast)
+    local holdSlider = GUIFrame:CreateSlider(row3b2, "Duration", {
+        min = 0, max = 2, step = 0.1,
+        value = db.HoldTimer.Duration,
+        callback = function(val) db.HoldTimer.Duration = val; db.timeToHold = val end
+    })
+    row3b2:AddWidget(holdSlider, 0.5)
+    manager:Register(holdSlider, "all")
+    table_insert(holdTimerSubWidgets, holdSlider)
+
+    local successPicker = GUIFrame:CreateColorPicker(row3b2, "Success", {
+        color = db.HoldTimer.SuccessColor,
+        callback = function(r, g, b, a) db.HoldTimer.SuccessColor = { r, g, b, a } end
+    })
+    row3b2:AddWidget(successPicker, 0.5)
+    manager:Register(successPicker, "all")
+    table_insert(holdTimerSubWidgets, successPicker)
+    card3:AddRow(row3b2, Theme.rowHeightLast, 0)
+    table_insert(postUpdateCallbacks, UpdateHoldTimerState)
+
+    yOffset = card3:GetNextOffset()
+
+    -- Card 4: Target Names
+    local card4 = GUIFrame:CreateCard(scrollChild, "Target Names", yOffset)
+    table_insert(allCards, card4)
+    manager:Register(card4, "all")
+
+    local row4a = GUIFrame:CreateRow(card4.content, Theme.rowHeight)
+    local targetAnchorDropdown = GUIFrame:CreateDropdown(row4a, "Anchor", {
+        options = anchorOptions,
+        value = db.TargetNames.Anchor,
+        callback = function(key) db.TargetNames.Anchor = key; ApplySettings() end
+    })
+    row4a:AddWidget(targetAnchorDropdown, 0.5)
+    manager:Register(targetAnchorDropdown, "all")
+
+    local targetXSlider = GUIFrame:CreateSlider(row4a, "X Offset", {
+        min = -100, max = 100, step = 1,
+        value = db.TargetNames.XOffset,
+        callback = function(val) db.TargetNames.XOffset = val; ApplySettings() end
+    })
+    row4a:AddWidget(targetXSlider, 0.5)
+    manager:Register(targetXSlider, "all")
+    card4:AddRow(row4a, Theme.rowHeight)
+
+    local row4b = GUIFrame:CreateRow(card4.content, Theme.rowHeightLast)
+    local targetYSlider = GUIFrame:CreateSlider(row4b, "Y Offset", {
+        min = -50, max = 100, step = 1,
+        value = db.TargetNames.YOffset,
+        callback = function(val) db.TargetNames.YOffset = val; ApplySettings() end
+    })
+    row4b:AddWidget(targetYSlider, 1)
+    manager:Register(targetYSlider, "all")
+    card4:AddRow(row4b, Theme.rowHeightLast, 0)
+
+    yOffset = card4:GetNextOffset()
+
+    -- Card 5: Raid Marker
+    local card5 = GUIFrame:CreateCard(scrollChild, "Raid Marker", yOffset)
+    table_insert(allCards, card5)
+    manager:Register(card5, "all")
+
+    local row5a = GUIFrame:CreateRow(card5.content, Theme.rowHeight)
+    local markerAnchorDropdown = GUIFrame:CreateDropdown(row5a, "Anchor", {
+        options = anchorOptions,
+        value = db.TargetMarker.Anchor,
+        callback = function(key) db.TargetMarker.Anchor = key; ApplySettings() end
+    })
+    row5a:AddWidget(markerAnchorDropdown, 0.5)
+    manager:Register(markerAnchorDropdown, "all")
+
+    local markerSizeSlider = GUIFrame:CreateSlider(row5a, "Size", {
+        min = 1, max = 100, step = 1,
+        value = db.TargetMarker.Size,
+        callback = function(val) db.TargetMarker.Size = val; ApplySettings() end
+    })
+    row5a:AddWidget(markerSizeSlider, 0.5)
+    manager:Register(markerSizeSlider, "all")
+    card5:AddRow(row5a, Theme.rowHeight)
+
+    local row5b = GUIFrame:CreateRow(card5.content, Theme.rowHeightLast)
+    local markerXSlider = GUIFrame:CreateSlider(row5b, "X Offset", {
+        min = -100, max = 100, step = 1,
+        value = db.TargetMarker.XOffset,
+        callback = function(val) db.TargetMarker.XOffset = val; ApplySettings() end
+    })
+    row5b:AddWidget(markerXSlider, 0.5)
+    manager:Register(markerXSlider, "all")
+
+    local markerYSlider = GUIFrame:CreateSlider(row5b, "Y Offset", {
+        min = -50, max = 100, step = 1,
+        value = db.TargetMarker.YOffset,
+        callback = function(val) db.TargetMarker.YOffset = val; ApplySettings() end
+    })
+    row5b:AddWidget(markerYSlider, 0.5)
+    manager:Register(markerYSlider, "all")
+    card5:AddRow(row5b, Theme.rowHeightLast, 0)
+
+    yOffset = card5:GetNextOffset()
+
+    -- Card 6: Font Settings
+    local fontCard, fontOffset, fontWidgets = GUIFrame:CreateFontSettingsCard(scrollChild, yOffset, {
+        db = db,
+        includeSoftOutline = true,
+        fontSizes = {
+            { label = "Spell Name", dbKey = "FontSize" },
+            { label = "Target Name", dbKey = "TargetNames.FontSize" },
+        },
+        onChangeCallback = ApplySettings,
+    })
+    table_insert(allCards, fontCard)
+    manager:Register(fontCard, "all")
+    manager:RegisterGroup(fontWidgets, "all")
+    if fontCard.UpdateShadowState then table_insert(postUpdateCallbacks, fontCard.UpdateShadowState) end
+
+    yOffset = fontOffset
+
+    -- Card 7: Position
+    local posCard, posOffset = GUIFrame:CreatePositionCard(scrollChild, yOffset, {
         db = db,
         showAnchorFrameType = true,
         showStrata = true,
-        onChangeCallback = ApplyPosition,
+        onChangeCallback = ApplySettings,
     })
-    table_insert(allWidgets, card3)
-    yOffset = newYOffset
+    table_insert(allCards, posCard)
+    manager:Register(posCard, "all")
 
-    ----------------------------------------------------------------
-    -- Card 4: Font Settings
-    ----------------------------------------------------------------
-    local card4 = GUIFrame:CreateCard(scrollChild, "Font Settings", yOffset)
-    table_insert(allWidgets, card4)
+    yOffset = posOffset
 
-    local row4a = GUIFrame:CreateRow(card4.content, 40)
-    local fontDropdown = GUIFrame:CreateDropdown(row4a, "Font", {
-        options = fontList,
-        value = db.FontFace or "Expressway",
-        labelWidth = 30,
-        searchable = true,
-        isFontPreview = true,
-        callback = function(key)
-            db.FontFace = key
-            ApplySettings()
-        end
-    })
-    row4a:AddWidget(fontDropdown, 0.5)
-    table_insert(allWidgets, fontDropdown)
-
-    local outlineList = { ["NONE"] = "None", ["OUTLINE"] = "Outline", ["THICKOUTLINE"] = "Thick" }
-    local outlineDropdown = GUIFrame:CreateDropdown(row4a, "Outline", {
-        options = outlineList,
-        value = db.FontOutline or "OUTLINE",
-        labelWidth = 45,
-        callback = function(key)
-            db.FontOutline = key
-            ApplySettings()
-        end
-    })
-    row4a:AddWidget(outlineDropdown, 0.5)
-    table_insert(allWidgets, outlineDropdown)
-    card4:AddRow(row4a, 40)
-
-    local row4b = GUIFrame:CreateRow(card4.content, 36)
-    local fontSizeSlider = GUIFrame:CreateSlider(row4b, "Font Size", {
-        min = 8,
-        max = 24,
-        step = 1,
-        value = db.FontSize or 12,
-        callback = function(val)
-            db.FontSize = val
-            ApplySettings()
-        end
-    })
-    row4b:AddWidget(fontSizeSlider, 1)
-    table_insert(allWidgets, fontSizeSlider)
-    card4:AddRow(row4b, 36)
-
-    yOffset = yOffset + card4:GetContentHeight() + Theme.paddingSmall
-
-    ----------------------------------------------------------------
-    -- Card 4b: Target Names Settings
-    ----------------------------------------------------------------
-    local card4b = GUIFrame:CreateCard(scrollChild, "Target Names", yOffset)
-    table_insert(allWidgets, card4b)
-
-    -- Initialize TargetNames db if needed
-    if not db.TargetNames then
-        db.TargetNames = {
-            Anchor = "BOTTOM",
-            XOffset = 0,
-            YOffset = 4,
-            FontSize = 10,
-        }
-    end
-
-    -- Anchor dropdown and font size
-    local row4b1 = GUIFrame:CreateRow(card4b.content, 40)
-    local anchorList = {
-        ["LEFT"] = "Left",
-        ["CENTER"] = "Center",
-        ["RIGHT"] = "Right",
-    }
-    local anchorDropdown = GUIFrame:CreateDropdown(row4b1, "Anchor", {
-        options = anchorList,
-        value = db.TargetNames.Anchor or "BOTTOM",
-        labelWidth = 50,
-        callback = function(key)
-            db.TargetNames.Anchor = key
-            ApplySettings()
-        end
-    })
-    row4b1:AddWidget(anchorDropdown, 0.5)
-    table_insert(allWidgets, anchorDropdown)
-
-    local targetFontSlider = GUIFrame:CreateSlider(row4b1, "Font Size", {
-        min = 6,
-        max = 18,
-        step = 1,
-        value = db.TargetNames.FontSize or 10,
-        callback = function(val)
-            db.TargetNames.FontSize = val
-            ApplySettings()
-        end
-    })
-    row4b1:AddWidget(targetFontSlider, 0.5)
-    table_insert(allWidgets, targetFontSlider)
-    card4b:AddRow(row4b1, 40)
-
-    -- X and Y Offset sliders
-    local row4b2 = GUIFrame:CreateRow(card4b.content, 40)
-    local targetXSlider = GUIFrame:CreateSlider(row4b2, "X Offset", {
-        min = -100,
-        max = 100,
-        step = 1,
-        value = db.TargetNames.XOffset or 0,
-        callback = function(val)
-            db.TargetNames.XOffset = val
-            ApplySettings()
-        end
-    })
-    row4b2:AddWidget(targetXSlider, 0.5)
-    table_insert(allWidgets, targetXSlider)
-
-    local targetYSlider = GUIFrame:CreateSlider(row4b2, "Y Offset", {
-        min = -50,
-        max = 100,
-        step = 1,
-        value = db.TargetNames.YOffset or 4,
-        callback = function(val)
-            db.TargetNames.YOffset = val
-            ApplySettings()
-        end
-    })
-    row4b2:AddWidget(targetYSlider, 0.5)
-    table_insert(allWidgets, targetYSlider)
-    card4b:AddRow(row4b2, 40)
-
-    yOffset = yOffset + card4b:GetContentHeight() + Theme.paddingSmall
-
-    ----------------------------------------------------------------
-    -- Card 4c: Target Marker Settings
-    ----------------------------------------------------------------
-    local card4c = GUIFrame:CreateCard(scrollChild, "Raid Marker Settings", yOffset)
-    table_insert(allWidgets, card4c)
-
-    -- Anchor dropdown and font size
-    local row4c1 = GUIFrame:CreateRow(card4c.content, 40)
-    local anchorDropdownMarker = GUIFrame:CreateDropdown(row4c1, "Anchor", {
-        options = anchorList,
-        value = db.TargetMarker.Anchor or "BOTTOM",
-        labelWidth = 50,
-        callback = function(key)
-            db.TargetMarker.Anchor = key
-            ApplySettings()
-        end
-    })
-    row4c1:AddWidget(anchorDropdownMarker, 0.5)
-    table_insert(allWidgets, anchorDropdownMarker)
-
-    local targetFontSliderMarker = GUIFrame:CreateSlider(row4c1, "Size", {
-        min = 1,
-        max = 100,
-        step = 1,
-        value = db.TargetMarker.Size or 10,
-        callback = function(val)
-            db.TargetMarker.Size = val
-            ApplySettings()
-        end
-    })
-    row4c1:AddWidget(targetFontSliderMarker, 0.5)
-    table_insert(allWidgets, targetFontSliderMarker)
-    card4c:AddRow(row4c1, 40)
-
-    -- X and Y Offset sliders
-    local row4c2 = GUIFrame:CreateRow(card4c.content, 40)
-    local targetXSliderMarker = GUIFrame:CreateSlider(row4c2, "X Offset", {
-        min = -100,
-        max = 100,
-        step = 1,
-        value = db.TargetMarker.XOffset or 0,
-        callback = function(val)
-            db.TargetMarker.XOffset = val
-            ApplySettings()
-        end
-    })
-    row4c2:AddWidget(targetXSliderMarker, 0.5)
-    table_insert(allWidgets, targetXSliderMarker)
-
-    local targetYSliderMarker = GUIFrame:CreateSlider(row4c2, "Y Offset", {
-        min = -50,
-        max = 100,
-        step = 1,
-        value = db.TargetMarker.YOffset or 4,
-        callback = function(val)
-            db.TargetMarker.YOffset = val
-            ApplySettings()
-        end
-    })
-    row4c2:AddWidget(targetYSliderMarker, 0.5)
-    table_insert(allWidgets, targetYSliderMarker)
-    card4c:AddRow(row4c2, 40)
-
-    yOffset = yOffset + card4c:GetContentHeight() + Theme.paddingSmall
-
-    ----------------------------------------------------------------
-    -- Card 5: Colors (2 rows, 4 colors at 0.5 each)
-    ----------------------------------------------------------------
-    local card5 = GUIFrame:CreateCard(scrollChild, "Colors", yOffset)
-    table_insert(allWidgets, card5)
-
-    -- Row 1: Casting + Channeling
-    local row5a = GUIFrame:CreateRow(card5.content, 40)
-    local castingColor = db.CastingColor or { 1, 0.7, 0, 1 }
-    local castingPicker = GUIFrame:CreateColorPicker(row5a, "Casting", {
-        color = castingColor,
-        callback = function(r, g, b, a)
-            db.CastingColor = { r, g, b, a }
-            ApplySettings()
-        end
-    })
-    row5a:AddWidget(castingPicker, 0.5)
-    table_insert(allWidgets, castingPicker)
-
-    local channelingColor = db.ChannelingColor or { 0, 0.7, 1, 1 }
-    local channelingPicker = GUIFrame:CreateColorPicker(row5a, "Channeling", {
-        color = channelingColor,
-        callback = function(r, g, b, a)
-            db.ChannelingColor = { r, g, b, a }
-            ApplySettings()
-        end
-    })
-    row5a:AddWidget(channelingPicker, 0.5)
-    table_insert(allWidgets, channelingPicker)
-    card5:AddRow(row5a, 40)
-
-    -- Row 2: Empowering + Not Interruptible
-    local row5b = GUIFrame:CreateRow(card5.content, 40)
-    local empoweringColor = db.EmpoweringColor or { 0.8, 0.4, 1, 1 }
-    local empoweringPicker = GUIFrame:CreateColorPicker(row5b, "Empowering", {
-        color = empoweringColor,
-        callback = function(r, g, b, a)
-            db.EmpoweringColor = { r, g, b, a }
-            ApplySettings()
-        end
-    })
-    row5b:AddWidget(empoweringPicker, 0.5)
-    table_insert(allWidgets, empoweringPicker)
-
-    local notInterruptColor = db.NotInterruptibleColor or { 0.7, 0.7, 0.7, 1 }
-    local notInterruptPicker = GUIFrame:CreateColorPicker(row5b, "Not Interruptible", {
-        color = notInterruptColor,
-        callback = function(r, g, b, a)
-            db.NotInterruptibleColor = { r, g, b, a }
-            ApplySettings()
-        end
-    })
-    row5b:AddWidget(notInterruptPicker, 0.5)
-    table_insert(allWidgets, notInterruptPicker)
-    card5:AddRow(row5b, 40)
-
-    -- Row 3: Hide Not Interruptible Toggle
-    local row5c_toggle = GUIFrame:CreateRow(card5.content, 36)
-    local hideNotInterruptCheck = GUIFrame:CreateCheckbox(row5c_toggle, "Hide Non-Interruptible Casts", {
-        value = db.HideNotInterruptible == true,
-        callback = function(checked)
-            db.HideNotInterruptible = checked
-        end,
-        msgPopup = true, msgText = "Hide", msgOn = "On", msgOff = "Off"
-    })
-    row5c_toggle:AddWidget(hideNotInterruptCheck, 1)
-    table_insert(allWidgets, hideNotInterruptCheck)
-    card5:AddRow(row5c_toggle, 36)
-
-    -- Separator
-    local rowSep1 = GUIFrame:CreateRow(card5.content, 8)
-    local sep1 = GUIFrame:CreateSeparator(rowSep1)
-    rowSep1:AddWidget(sep1, 1)
-    card5:AddRow(rowSep1, 8)
-
-    -- Text Color
-    local row5c = GUIFrame:CreateRow(card5.content, 40)
-    local textColor = db.TextColor or { 1, 1, 1, 1 }
-    local textPicker = GUIFrame:CreateColorPicker(row5c, "Text", {
-        color = textColor,
-        callback = function(r, g, b, a)
-            db.TextColor = { r, g, b, a }
-            ApplySettings()
-        end
-    })
-    row5c:AddWidget(textPicker, 0.5)
-    table_insert(allWidgets, textPicker)
-    card5:AddRow(row5c, 40)
-
-    -- Separator
-    local rowSep2 = GUIFrame:CreateRow(card5.content, 8)
-    local sep2 = GUIFrame:CreateSeparator(rowSep2)
-    rowSep2:AddWidget(sep2, 1)
-    card5:AddRow(rowSep2, 8)
-
-    local row6a = GUIFrame:CreateRow(card5.content, 36)
-    local bgColor = db.BackdropColor or { 0, 0, 0, 0.8 }
-    local bgPicker = GUIFrame:CreateColorPicker(row6a, "Background", {
-        color = bgColor,
-        callback = function(r, g, b, a)
-            db.BackdropColor = { r, g, b, a }
-            ApplySettings()
-        end
-    })
-    row6a:AddWidget(bgPicker, 0.5)
-    table_insert(allWidgets, bgPicker)
-
-    local borderColor = db.BorderColor or { 0, 0, 0, 1 }
-    local borderPicker = GUIFrame:CreateColorPicker(row6a, "Border", {
-        color = borderColor,
-        callback = function(r, g, b, a)
-            db.BorderColor = { r, g, b, a }
-            ApplySettings()
-        end
-    })
-    row6a:AddWidget(borderPicker, 0.5)
-    table_insert(allWidgets, borderPicker)
-    card5:AddRow(row6a, 36)
-
-    yOffset = yOffset + card5:GetContentHeight() + Theme.paddingSmall
-
-    ----------------------------------------------------------------
-    -- Card 7: Hold Timer After Interrupt
-    ----------------------------------------------------------------
-    local card7 = GUIFrame:CreateCard(scrollChild, "Hold Timer", yOffset)
-    table_insert(allWidgets, card7)
-
-    -- Track hold timer widgets for sub-toggle
-    local holdTimerWidgets = {}
-
-    local function UpdateHoldTimerWidgetStates()
-        local holdEnabled = db.HoldTimer and db.HoldTimer.Enabled ~= false
-        for _, widget in ipairs(holdTimerWidgets) do
-            if widget.SetEnabled then
-                widget:SetEnabled(holdEnabled)
-            end
-        end
-    end
-
-    -- Initialize HoldTimer db if needed
-    if not db.HoldTimer then
-        db.HoldTimer = {
-            Enabled = true,
-            Duration = 0.5,
-            InterruptedColor = { 0.1, 0.8, 0.1, 1 },
-            SuccessColor = { 0.8, 0.1, 0.1, 1 },
-        }
-    end
-
-    -- Enable Toggle
-    local row7a = GUIFrame:CreateRow(card7.content, 40)
-    local holdEnableCheck = GUIFrame:CreateCheckbox(row7a, "Enable Hold Timer", {
-        value = db.HoldTimer.Enabled ~= false,
-        callback = function(checked)
-            db.HoldTimer.Enabled = checked
-            UpdateHoldTimerWidgetStates()
-        end,
-        msgPopup = true, msgText = "Hold Timer", msgOn = "On", msgOff = "Off"
-    })
-    row7a:AddWidget(holdEnableCheck, 0.5)
-
-    -- Hold Duration Slider
-    local holdSlider = GUIFrame:CreateSlider(row7a, "Hold Duration", {
-        min = 0,
-        max = 2,
-        step = 0.1,
-        value = db.HoldTimer.Duration or 0.5,
-        callback = function(val)
-            db.HoldTimer.Duration = val
-            db.timeToHold = val
-        end
-    })
-    row7a:AddWidget(holdSlider, 0.5)
-    table_insert(holdTimerWidgets, holdSlider)
-    card7:AddRow(row7a, 40)
-
-    -- Separator
-    local rowSep3 = GUIFrame:CreateRow(card7.content, 8)
-    local sep3 = GUIFrame:CreateSeparator(rowSep3)
-    rowSep3:AddWidget(sep3, 1)
-    card7:AddRow(rowSep3, 8)
-
-    -- Colors Row
-    local row7c = GUIFrame:CreateRow(card7.content, 36)
-    local interruptedColor = db.HoldTimer.InterruptedColor or { 0.1, 0.8, 0.1, 1 }
-    local interruptedPicker = GUIFrame:CreateColorPicker(row7c, "Interrupted", {
-        color = interruptedColor,
-        callback = function(r, g, b, a)
-            db.HoldTimer.InterruptedColor = { r, g, b, a }
-        end
-    })
-    row7c:AddWidget(interruptedPicker, 0.5)
-    table_insert(holdTimerWidgets, interruptedPicker)
-
-    local successColor = db.HoldTimer.SuccessColor or { 0.8, 0.1, 0.1, 1 }
-    local successPicker = GUIFrame:CreateColorPicker(row7c, "Cast Success", {
-        color = successColor,
-        callback = function(r, g, b, a)
-            db.HoldTimer.SuccessColor = { r, g, b, a }
-        end
-    })
-    row7c:AddWidget(successPicker, 0.5)
-    table_insert(holdTimerWidgets, successPicker)
-    card7:AddRow(row7c, 36)
-
-    yOffset = yOffset + card7:GetContentHeight() + Theme.paddingSmall
-
-    ----------------------------------------------------------------
-    -- Card 8: Kick Indicator
-    ----------------------------------------------------------------
-    local card8 = GUIFrame:CreateCard(scrollChild, "Kick Indicator", yOffset)
-    table_insert(allWidgets, card8)
-
-    -- Track kick indicator widgets for sub-toggle
-    local kickIndicatorWidgets = {}
-
-    local function UpdateKickIndicatorWidgetStates()
-        local kickEnabled = db.KickIndicator and db.KickIndicator.Enabled ~= false
-        for _, widget in ipairs(kickIndicatorWidgets) do
-            if widget.SetEnabled then
-                widget:SetEnabled(kickEnabled)
-            end
-        end
-    end
-
-    -- Enable Toggle
-    local row8a = GUIFrame:CreateRow(card8.content, 40)
-    local kickEnableCheck = GUIFrame:CreateCheckbox(row8a, "Enable Kick Indicator", {
-        value = db.KickIndicator.Enabled ~= false,
-        callback = function(checked)
-            db.KickIndicator.Enabled = checked
-            UpdateKickIndicatorWidgetStates()
-        end,
-        msgPopup = true, msgText = "Kick Indicator", msgOn = "On", msgOff = "Off"
-    })
-    row8a:AddWidget(kickEnableCheck, 1)
-    card8:AddRow(row8a, 40)
-
-    -- Separator
-    local rowSepKick = GUIFrame:CreateRow(card8.content, 8)
-    local sepKick = GUIFrame:CreateSeparator(rowSepKick)
-    rowSepKick:AddWidget(sepKick, 1)
-    card8:AddRow(rowSepKick, 8)
-
-    -- Colors Row
-    local row8c = GUIFrame:CreateRow(card8.content, 40)
-    local readyColor = db.KickIndicator.ReadyColor or { 0.1, 0.8, 0.1, 1 }
-    local readyPicker = GUIFrame:CreateColorPicker(row8c, "Kick Ready", {
-        color = readyColor,
-        callback = function(r, g, b, a)
-            db.KickIndicator.ReadyColor = { r, g, b, a }
-            ApplySettings()
-        end
-    })
-    row8c:AddWidget(readyPicker, 0.5)
-    table_insert(kickIndicatorWidgets, readyPicker)
-
-    local notReadyColor = db.KickIndicator.NotReadyColor or { 0.5, 0.5, 0.5, 1 }
-    local notReadyPicker = GUIFrame:CreateColorPicker(row8c, "Kick Not Ready", {
-        color = notReadyColor,
-        callback = function(r, g, b, a)
-            db.KickIndicator.NotReadyColor = { r, g, b, a }
-            ApplySettings()
-        end
-    })
-    row8c:AddWidget(notReadyPicker, 0.5)
-    table_insert(kickIndicatorWidgets, notReadyPicker)
-    card8:AddRow(row8c, 40)
-
-    -- Tick Color Row
-    local row8d = GUIFrame:CreateRow(card8.content, 36)
-    local tickColor = db.KickIndicator.TickColor or { 1, 1, 1, 1 }
-    local tickPicker = GUIFrame:CreateColorPicker(row8d, "Kick Ready Tick", {
-        color = tickColor,
-        callback = function(r, g, b, a)
-            db.KickIndicator.TickColor = { r, g, b, a }
-            ApplySettings()
-        end
-    })
-    row8d:AddWidget(tickPicker, 0.5)
-    table_insert(kickIndicatorWidgets, tickPicker)
-    card8:AddRow(row8d, 36)
-
-    yOffset = yOffset + card8:GetContentHeight() + Theme.paddingSmall
-
-    -- Apply initial widget states
     UpdateAllWidgetStates()
-    UpdateHoldTimerWidgetStates()
-    UpdateKickIndicatorWidgetStates()
-    yOffset = yOffset - Theme.paddingSmall
+
     return yOffset
 end)

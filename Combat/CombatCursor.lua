@@ -1,91 +1,74 @@
--- NorskenUI namespace
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
 
--- Check for addon object
 if not NorskenUI then
     error("CursorCircle: Addon object not initialized. Check file load order!")
     return
 end
 
--- Create module
 ---@class CursorCircle: AceModule, AceEvent-3.0
 local CC = NorskenUI:NewModule("CursorCircle", "AceEvent-3.0")
 
--- Localization
 local CreateFrame = CreateFrame
 local GetCursorPosition = GetCursorPosition
 local InCombatLockdown = InCombatLockdown
 local IsMouseButtonDown = IsMouseButtonDown
+local ipairs = ipairs
 local C_Spell = C_Spell
 local UIParent = UIParent
 
--- GCD spell ID (standard global cooldown reference)
-local GCD_SPELL_ID = 61304
-
--- Define available textures
 CC.Textures = {
-    ["Circle 1"] = "Interface\\AddOns\\NorskenUI\\Media\\CursorCircles\\Circle.tga",
-    ["Circle 2"] = "Interface\\AddOns\\NorskenUI\\Media\\CursorCircles\\Aura73.tga",
-    ["Circle 3"] = "Interface\\AddOns\\NorskenUI\\Media\\CursorCircles\\Aura103.tga",
-    ["Circle 4"] = "Interface\\AddOns\\NorskenUI\\Media\\CursorCircles\\nauraThin.png",
-    ["Circle 5"] = "Interface\\AddOns\\NorskenUI\\Media\\CursorCircles\\nauraMedium.png",
-    ["Circle 6"] = "Interface\\AddOns\\NorskenUI\\Media\\CursorCircles\\nauraThick.png",
+    { key = "Circle 1", path = "Interface\\AddOns\\NorskenUI\\Media\\CursorCircles\\Circle.tga" },
+    { key = "Circle 2", path = "Interface\\AddOns\\NorskenUI\\Media\\CursorCircles\\Aura73.tga" },
+    { key = "Circle 3", path = "Interface\\AddOns\\NorskenUI\\Media\\CursorCircles\\Aura103.tga" },
+    { key = "Circle 4", path = "Interface\\AddOns\\NorskenUI\\Media\\CursorCircles\\nauraThin.png" },
+    { key = "Circle 5", path = "Interface\\AddOns\\NorskenUI\\Media\\CursorCircles\\nauraMedium.png" },
+    { key = "Circle 6", path = "Interface\\AddOns\\NorskenUI\\Media\\CursorCircles\\nauraThick.png" },
 }
 
--- Texture display order for GUI
-CC.TextureOrder = { "Circle 1", "Circle 2", "Circle 3", "Circle 4", "Circle 5", "Circle 6" }
-
--- GCD Ring textures
-CC.GCDRingTextures = CC.Textures
-CC.GCDRingTextureOrder = CC.TextureOrder
-
--- GCD Mode options for GUI
 CC.GCDModeOptions = {
-    ["disabled"] = "Disabled",
-    ["integrated"] = "Integrated (overlay on circle)",
-    ["separate"] = "Separate (own ring)",
+    { key = "disabled", text = "Disabled" },
+    { key = "integrated", text = "Integrated" },
+    { key = "separate", text = "Separate Ring" },
 }
 
--- Visibility Mode options for GUI
 CC.VisibilityModeOptions = {
-    ["always"] = "Always Visible",
-    ["mouseDown"] = "Only When Mouse Button Held",
+    { key = "always", text = "Always Visible" },
+    { key = "mouseDown", text = "Mouse Button Held" },
 }
 
--- Module state
-CC.frame = nil
-CC.gcdFrame = nil
+function CC:GetTexturePath(textureKey)
+    for _, tex in ipairs(self.Textures) do
+        if tex.key == textureKey then return tex.path end
+    end
+    return self.Textures[1].path
+end
 
--- Update db, used for profile changes
 function CC:UpdateDB()
     self.db = NRSKNUI.db.profile.Miscellaneous.CursorCircle
 end
 
--- Module init
 function CC:OnInitialize()
     self:UpdateDB()
     self:SetEnabledState(false)
 end
 
--- Read GCD cooldown info
 local function GetGCDCooldown()
-    local info = C_Spell.GetSpellCooldown(GCD_SPELL_ID)
+    local info = C_Spell.GetSpellCooldown(61304)
     if info then
         return info.startTime, info.duration, info.modRate
     end
     return nil, nil, nil
 end
 
--- Create the cursor circle frame
 function CC:CreateFrame()
     if self.frame then return end
 
     local db = self.db
-    local mainTexPath = CC.Textures[db.Texture] or CC.Textures["Circle 3"]
+    local mainTexPath = self:GetTexturePath(db.Texture)
 
     local f = CreateFrame("Frame", "NRSKNUI_CursorCircleFrame", UIParent)
-    f:SetSize(db.Size or 50, db.Size or 50)
+    f:SetSize(db.Size, db.Size)
     f:SetFrameStrata("TOOLTIP")
     f:SetFrameLevel(9999)
     f:EnableMouse(false)
@@ -95,7 +78,6 @@ function CC:CreateFrame()
     f.texture:SetTexture(mainTexPath)
     f:Hide()
 
-    -- Create integrated GCD cooldown overlay (on main circle)
     local gcdIntegrated = CreateFrame("Cooldown", nil, f, "CooldownFrameTemplate")
     gcdIntegrated:SetAllPoints()
     gcdIntegrated:EnableMouse(false)
@@ -104,23 +86,17 @@ function CC:CreateFrame()
     gcdIntegrated:SetHideCountdownNumbers(true)
     if gcdIntegrated.SetDrawBling then gcdIntegrated:SetDrawBling(false) end
     if gcdIntegrated.SetUseCircularEdge then gcdIntegrated:SetUseCircularEdge(true) end
-
-    if gcdIntegrated.SetSwipeTexture then
-        gcdIntegrated:SetSwipeTexture(mainTexPath)
-    end
+    if gcdIntegrated.SetSwipeTexture then gcdIntegrated:SetSwipeTexture(mainTexPath) end
     gcdIntegrated:SetFrameLevel(f:GetFrameLevel() + 2)
     gcdIntegrated:Hide()
     f.gcdCooldown = gcdIntegrated
 
-    -- OnUpdate for cursor following
     local updateElapsed = 0
     local mouseHoldTime = 0
     f:SetScript("OnUpdate", function(frame, elapsed)
-        local useThrottle = db.UseUpdateInterval
-        if useThrottle then
-            local updateInterval = db.UpdateInterval or 0.016
+        if db.UseUpdateInterval then
             updateElapsed = updateElapsed + elapsed
-            if updateElapsed < updateInterval then return end
+            if updateElapsed < db.UpdateInterval then return end
             updateElapsed = 0
         end
 
@@ -129,9 +105,7 @@ function CC:CreateFrame()
         frame:ClearAllPoints()
         frame:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)
 
-        -- Handle visibility mode
-        local visMode = db.VisibilityMode or "always"
-        if visMode == "mouseDown" then
+        if db.VisibilityMode == "mouseDown" then
             local isMouseDown = IsMouseButtonDown("LeftButton") or IsMouseButtonDown("RightButton")
             local r, g, b, a = NRSKNUI:GetAccentColor(db.ColorMode, db.Color)
 
@@ -152,16 +126,15 @@ function CC:CreateFrame()
     self:CreateGCDRing()
 end
 
--- Create the separate GCD ring frame
 function CC:CreateGCDRing()
     if self.gcdFrame then return end
 
     local db = self.db
-    local gcdSettings = db.GCD or {}
-    local texPath = CC.GCDRingTextures[gcdSettings.Texture] or CC.GCDRingTextures["Circle 5"]
+    local gcdSettings = db.GCD
+    local texPath = self:GetTexturePath(gcdSettings.Texture)
 
     local gf = CreateFrame("Frame", "NRSKNUI_GCDRingFrame", UIParent)
-    gf:SetSize(gcdSettings.Size or 25, gcdSettings.Size or 25)
+    gf:SetSize(gcdSettings.Size, gcdSettings.Size)
     gf:SetFrameStrata("FULLSCREEN_DIALOG")
     gf:SetFrameLevel(9998)
     gf:EnableMouse(false)
@@ -178,22 +151,17 @@ function CC:CreateGCDRing()
     gcdCooldown:SetHideCountdownNumbers(true)
     if gcdCooldown.SetDrawBling then gcdCooldown:SetDrawBling(false) end
     if gcdCooldown.SetUseCircularEdge then gcdCooldown:SetUseCircularEdge(true) end
-    if gcdCooldown.SetSwipeTexture then
-        gcdCooldown:SetSwipeTexture(texPath)
-    end
+    if gcdCooldown.SetSwipeTexture then gcdCooldown:SetSwipeTexture(texPath) end
     gcdCooldown:SetFrameLevel(gf:GetFrameLevel() + 2)
     gf.gcdCooldown = gcdCooldown
     gf:Hide()
 
-    -- OnUpdate for cursor following
     local updateElapsed = 0
     local mouseHoldTime = 0
     gf:SetScript("OnUpdate", function(frame, elapsed)
-        local useThrottle = db.UseUpdateInterval
-        if useThrottle then
-            local updateInterval = db.UpdateInterval or 0.016
+        if db.UseUpdateInterval then
             updateElapsed = updateElapsed + elapsed
-            if updateElapsed < updateInterval then return end
+            if updateElapsed < db.UpdateInterval then return end
             updateElapsed = 0
         end
 
@@ -202,12 +170,10 @@ function CC:CreateGCDRing()
         frame:ClearAllPoints()
         frame:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)
 
-        -- Handle visibility mode
-        local visMode = db.VisibilityMode or "always"
-        if visMode == "mouseDown" then
+        if db.VisibilityMode == "mouseDown" then
             local isMouseDown = IsMouseButtonDown("LeftButton") or IsMouseButtonDown("RightButton")
-            local gcd = db.GCD or {}
-            local r, g, b, a = NRSKNUI:GetAccentColor(gcd.RingColorMode or "theme", gcd.RingColor)
+            local gcd = db.GCD
+            local r, g, b, a = NRSKNUI:GetAccentColor(gcd.RingColorMode, gcd.RingColor)
 
             if isMouseDown then
                 mouseHoldTime = mouseHoldTime + elapsed
@@ -225,37 +191,28 @@ function CC:CreateGCDRing()
     self:ApplyGCDColor()
 end
 
--- Apply color to the cursor circle
 function CC:ApplyColor()
     if not self.frame or not self.frame.texture then return end
     local db = self.db
     local r, g, b, a = NRSKNUI:GetAccentColor(db.ColorMode, db.Color)
 
-    -- If mouseDown mode, start with alpha 0
-    local visMode = db.VisibilityMode or "always"
-    if visMode == "mouseDown" then
+    if db.VisibilityMode == "mouseDown" then
         self.frame.texture:SetVertexColor(r, g, b, 0)
     else
         self.frame.texture:SetVertexColor(r, g, b, a)
     end
 end
 
--- Apply color to GCD ring
 function CC:ApplyGCDColor()
     local db = self.db
-    local gcd = db.GCD or {}
+    local gcd = db.GCD
 
-    local ringR, ringG, ringB, ringA = NRSKNUI:GetAccentColor(gcd.RingColorMode or "theme", gcd.RingColor)
-    local swipeR, swipeG, swipeB, swipeA = NRSKNUI:GetAccentColor(gcd.SwipeColorMode or "custom", gcd.SwipeColor)
+    local ringR, ringG, ringB, ringA = NRSKNUI:GetAccentColor(gcd.RingColorMode, gcd.RingColor)
+    local swipeR, swipeG, swipeB, swipeA = NRSKNUI:GetAccentColor(gcd.SwipeColorMode, gcd.SwipeColor)
 
-    -- Check visibility mode
-    local visMode = db.VisibilityMode or "always"
-
-    -- Apply to separate GCD frame
     if self.gcdFrame then
         if self.gcdFrame.texture then
-            -- If mouseDown mode, start with alpha 0
-            if visMode == "mouseDown" then
+            if db.VisibilityMode == "mouseDown" then
                 self.gcdFrame.texture:SetVertexColor(ringR, ringG, ringB, 0)
             else
                 self.gcdFrame.texture:SetVertexColor(ringR, ringG, ringB, ringA)
@@ -264,37 +221,32 @@ function CC:ApplyGCDColor()
         if self.gcdFrame.gcdCooldown then
             self.gcdFrame.gcdCooldown:SetSwipeColor(swipeR, swipeG, swipeB, swipeA)
             if self.gcdFrame.gcdCooldown.SetSwipeTexture then
-                local texPath = CC.GCDRingTextures[gcd.Texture] or CC.GCDRingTextures["Circle 5"]
-                self.gcdFrame.gcdCooldown:SetSwipeTexture(texPath)
+                self.gcdFrame.gcdCooldown:SetSwipeTexture(self:GetTexturePath(gcd.Texture))
             end
             if self.gcdFrame.gcdCooldown.SetReverse then
-                self.gcdFrame.gcdCooldown:SetReverse(gcd.Reverse or false)
+                self.gcdFrame.gcdCooldown:SetReverse(gcd.Reverse)
             end
         end
     end
 
-    -- Apply to integrated GCD cooldown
     if self.frame and self.frame.gcdCooldown then
         self.frame.gcdCooldown:SetSwipeColor(swipeR, swipeG, swipeB, swipeA)
         if self.frame.gcdCooldown.SetSwipeTexture then
-            local texPath = CC.Textures[db.Texture] or CC.Textures["Circle 3"]
-            self.frame.gcdCooldown:SetSwipeTexture(texPath)
+            self.frame.gcdCooldown:SetSwipeTexture(self:GetTexturePath(db.Texture))
         end
         if self.frame.gcdCooldown.SetReverse then
-            self.frame.gcdCooldown:SetReverse(gcd.Reverse or false)
+            self.frame.gcdCooldown:SetReverse(gcd.Reverse)
         end
     end
 end
 
--- Apply all settings
 function CC:ApplySettings()
     local db = self.db
     if not self.frame then self:CreateFrame() end
     if not self.frame then return end
 
-    -- Update main circle
-    self.frame:SetSize(db.Size or 50, db.Size or 50)
-    local texPath = CC.Textures[db.Texture] or CC.Textures["Circle 3"]
+    self.frame:SetSize(db.Size, db.Size)
+    local texPath = self:GetTexturePath(db.Texture)
     self.frame.texture:SetTexture(texPath)
     if self.frame.gcdCooldown and self.frame.gcdCooldown.SetSwipeTexture then
         self.frame.gcdCooldown:SetSwipeTexture(texPath)
@@ -302,14 +254,12 @@ function CC:ApplySettings()
 
     self:ApplyColor()
 
-    -- Update GCD ring
-    local gcd = db.GCD or {}
+    local gcd = db.GCD
     if not self.gcdFrame then self:CreateGCDRing() end
     if self.gcdFrame then
-        self.gcdFrame:SetSize(gcd.Size or 25, gcd.Size or 25)
-        local gcdTexPath = CC.GCDRingTextures[gcd.Texture] or CC.GCDRingTextures["Circle 5"]
+        self.gcdFrame:SetSize(gcd.Size, gcd.Size)
         if self.gcdFrame.texture then
-            self.gcdFrame.texture:SetTexture(gcdTexPath)
+            self.gcdFrame.texture:SetTexture(self:GetTexturePath(gcd.Texture))
         end
     end
 
@@ -323,11 +273,9 @@ function CC:ApplySettings()
     end
 end
 
--- Update GCD visibility based on mode and combat state
 function CC:UpdateGCDVisibility()
     local db = self.db
-    local gcd = db.GCD or {}
-    local mode = gcd.Mode or "integrated"
+    local gcd = db.GCD
 
     local shouldShow = db.Enabled
     if gcd.HideOutOfCombat and not InCombatLockdown() then
@@ -335,7 +283,7 @@ function CC:UpdateGCDVisibility()
     end
 
     if self.gcdFrame then
-        if mode == "separate" and shouldShow then
+        if gcd.Mode == "separate" and shouldShow then
             self.gcdFrame:Show()
         else
             self.gcdFrame:Hide()
@@ -343,46 +291,34 @@ function CC:UpdateGCDVisibility()
     end
 end
 
--- Update GCD cooldown display
 function CC:UpdateGCDCooldown()
     local db = self.db
-    local gcd = db.GCD or {}
-    local mode = gcd.Mode or "integrated"
+    local gcd = db.GCD
 
-    if mode == "disabled" then
-        if self.frame and self.frame.gcdCooldown then
-            self.frame.gcdCooldown:Hide()
-        end
-        if self.gcdFrame and self.gcdFrame.gcdCooldown then
-            self.gcdFrame.gcdCooldown:Hide()
-        end
+    if gcd.Mode == "disabled" then
+        if self.frame and self.frame.gcdCooldown then self.frame.gcdCooldown:Hide() end
+        if self.gcdFrame and self.gcdFrame.gcdCooldown then self.gcdFrame.gcdCooldown:Hide() end
         return
     end
 
     if gcd.HideOutOfCombat and not InCombatLockdown() then
-        if self.frame and self.frame.gcdCooldown then
-            self.frame.gcdCooldown:Hide()
-        end
-        if self.gcdFrame then
-            self.gcdFrame:Hide()
-        end
+        if self.frame and self.frame.gcdCooldown then self.frame.gcdCooldown:Hide() end
+        if self.gcdFrame then self.gcdFrame:Hide() end
         return
     end
 
     local start, duration, modRate = GetGCDCooldown()
 
     if start and duration and duration > 0 then
-        if mode == "integrated" and self.frame and self.frame.gcdCooldown then
+        if gcd.Mode == "integrated" and self.frame and self.frame.gcdCooldown then
             self.frame.gcdCooldown:Show()
             if modRate then
                 self.frame.gcdCooldown:SetCooldown(start, duration, modRate)
             else
                 self.frame.gcdCooldown:SetCooldown(start, duration)
             end
-        elseif mode == "separate" and self.gcdFrame and self.gcdFrame.gcdCooldown then
-            if db.Enabled then
-                self.gcdFrame:Show()
-            end
+        elseif gcd.Mode == "separate" and self.gcdFrame and self.gcdFrame.gcdCooldown then
+            if db.Enabled then self.gcdFrame:Show() end
             self.gcdFrame.gcdCooldown:Show()
             if modRate then
                 self.gcdFrame.gcdCooldown:SetCooldown(start, duration, modRate)
@@ -391,16 +327,11 @@ function CC:UpdateGCDCooldown()
             end
         end
     else
-        if self.frame and self.frame.gcdCooldown then
-            self.frame.gcdCooldown:Hide()
-        end
-        if self.gcdFrame and self.gcdFrame.gcdCooldown then
-            self.gcdFrame.gcdCooldown:Hide()
-        end
+        if self.frame and self.frame.gcdCooldown then self.frame.gcdCooldown:Hide() end
+        if self.gcdFrame and self.gcdFrame.gcdCooldown then self.gcdFrame.gcdCooldown:Hide() end
     end
 end
 
--- Combat handlers
 function CC:OnCombatStart()
     self:UpdateGCDVisibility()
     self:UpdateGCDCooldown()
@@ -410,14 +341,12 @@ function CC:OnCombatEnd()
     self:UpdateGCDVisibility()
 end
 
--- Module OnEnable
 function CC:OnEnable()
     if not self.db.Enabled then return end
 
     self:CreateFrame()
     self:ApplySettings()
 
-    -- Register events
     self:RegisterEvent("PLAYER_REGEN_DISABLED", "OnCombatStart")
     self:RegisterEvent("PLAYER_REGEN_ENABLED", "OnCombatEnd")
     self:RegisterEvent("SPELL_UPDATE_COOLDOWN", "UpdateGCDCooldown")
@@ -426,21 +355,14 @@ function CC:OnEnable()
     if self.db.Enabled then self.frame:Show() end
 end
 
--- Handle spell cast for immediate GCD update
 function CC:UNIT_SPELLCAST_SUCCEEDED(_, unit)
     if unit ~= "player" then return end
-    local gcd = self.db.GCD or {}
-    if gcd.Mode == "disabled" then return end
+    if self.db.GCD.Mode == "disabled" then return end
     self:UpdateGCDCooldown()
 end
 
--- Module OnDisable
 function CC:OnDisable()
-    if self.frame then
-        self.frame:Hide()
-    end
-    if self.gcdFrame then
-        self.gcdFrame:Hide()
-    end
+    if self.frame then self.frame:Hide() end
+    if self.gcdFrame then self.gcdFrame:Hide() end
     self:UnregisterAllEvents()
 end
