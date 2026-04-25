@@ -14,7 +14,7 @@ Libs/Init.xml
 
 # Load Core files
 Core/Core.xml
-Core/Utils/Utils.xml
+Utils/Utils.xml
 
 # Load modules
 Modules/Combat/Combat.xml
