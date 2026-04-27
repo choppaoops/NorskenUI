@@ -97,20 +97,34 @@ function DT:EventCallback(event, ...)
 end
 
 function DT:GetBigWigsModulesForInstance(instanceId)
+    if BigWigsLoader and BigWigsLoader.GetZoneMenus then
+        local menus = BigWigsLoader:GetZoneMenus()
+        local moduleList = menus and menus[instanceId]
+        if type(moduleList) == "table" then return moduleList end
+    end
     local modules = {}
     if not BigWigs or not BigWigs.IterateBossModules then return modules end
-    for _, module in BigWigs:IterateBossModules() do if module.instanceId == instanceId then table_insert(modules, module) end end
+    for _, module in BigWigs:IterateBossModules() do
+        if module.instanceId == instanceId then table_insert(modules, module) end
+    end
     return modules
 end
 
-function DT:GetSpellsForDungeon(dungeonKey, forceRefresh)
+function DT:GetSpellsForDungeon(dungeonKey, forceRefresh, isRetry)
     self:UpdateDB()
     if not self.db or not self.db.Dungeons then return {} end
 
     local dungeonData = self.db.Dungeons[dungeonKey]
     if not dungeonData or not dungeonData.instanceId then return {} end
-    if not forceRefresh and self.spellCache[dungeonKey] then return self.spellCache[dungeonKey] end
-    if BigWigsLoader and BigWigsLoader.LoadZone then BigWigsLoader:LoadZone(dungeonData.instanceId) end
+    if forceRefresh then self.spellCache[dungeonKey] = nil end
+    if self.spellCache[dungeonKey] then return self.spellCache[dungeonKey] end
+
+    if BigWigsLoader and BigWigsLoader.LoadZone then
+        BigWigsLoader:LoadZone(dungeonData.instanceId)
+        if not isRetry and not self.spellCache[dungeonKey] then
+            C_Timer.After(0.5, function() self:GetSpellsForDungeon(dungeonKey, true, true) end)
+        end
+    end
 
     local spells = {}
     local seenSpells = {}
@@ -118,7 +132,7 @@ function DT:GetSpellsForDungeon(dungeonKey, forceRefresh)
     local bossOrder = {}
 
     for _, module in ipairs(modules) do
-        if module.GetOptions then
+        if module.GetOptions or module.toggleOptions then
             local sortKey = module.journalId or module.engageId or 999999
             table_insert(bossOrder,
                 { module = module, sortKey = sortKey, name = module.displayName or module.moduleName, })
@@ -127,7 +141,7 @@ function DT:GetSpellsForDungeon(dungeonKey, forceRefresh)
     table.sort(bossOrder, function(a, b) return a.sortKey < b.sortKey end)
 
     for i, boss in ipairs(bossOrder) do
-        local options = boss.module:GetOptions()
+        local options = boss.module.toggleOptions or (boss.module.GetOptions and boss.module:GetOptions())
         if options then
             for _, option in ipairs(options) do
                 local spellId
