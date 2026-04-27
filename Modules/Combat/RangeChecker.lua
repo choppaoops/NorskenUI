@@ -111,7 +111,7 @@ function RANGE:UpdateRange()
 
     local minRange, maxRange
     if self.isPreview then
-        minRange, maxRange = 10, 15
+        minRange, maxRange = 10, 12
     elseif LRC then
         minRange, maxRange = LRC:GetRange("target")
     end

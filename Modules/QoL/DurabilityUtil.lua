@@ -123,9 +123,9 @@ function DUR:ApplySettings()
     if not self.db then return end
 
     if self.text then
+        NRSKNUI:ApplyFramePosition(self.frame, self.db.Text.Position, self.db.Text)
         NRSKNUI:ApplyFontToText(self.text, self.db.FontFace, self.db.Text.FontSize, self.db.FontOutline,
             self.db.FontShadow)
-        NRSKNUI:ApplyFramePosition(self.frame, self.db.Text.Position, self.db.Text)
 
         if self.db.Text.Enabled or self.isPreview then
             self.frame:Show()

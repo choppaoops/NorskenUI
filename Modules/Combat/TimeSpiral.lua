@@ -19,6 +19,7 @@ local GetSpecializationInfo = GetSpecializationInfo
 local GetTime = GetTime
 local next = next
 local pairs = pairs
+local math_floor = math.floor
 
 TSP.activeProcs = {}
 
@@ -109,11 +110,13 @@ end
 function TSP:ApplySettings()
     if not self.frame then return end
 
-    self.frame:SetSize(self.db.IconSize, self.db.IconSize)
+    local iconSize = math_floor(self.db.IconSize + 0.5)
+    self.frame:SetSize(iconSize, iconSize)
     self.frame.icon:SetTexture(self:GetDisplayIcon())
 
     self.frame.text:SetText(self.db.TextLabel)
-    NRSKNUI:ApplyFontToText(self.frame.text, self.db.FontFace, self.db.FontSize, self.db.FontOutline,
+    local fontSize = math_floor(self.db.FontSize + 0.5)
+    NRSKNUI:ApplyFontToText(self.frame.text, self.db.FontFace, fontSize, self.db.FontOutline,
         self.db.FontShadow or {})
 
     local textColor = self.db.TextColor
@@ -123,7 +126,8 @@ function TSP:ApplySettings()
         self.frame.text.softOutline:SetShown(self.db.ShowText and self.db.FontOutline == "SOFTOUTLINE")
     end
 
-    NRSKNUI:ApplyFontToText(self.timerText, self.db.FontFace, self.db.TimerFontSize, self.db.FontOutline,
+    local timerFontSize = math_floor(self.db.TimerFontSize + 0.5)
+    NRSKNUI:ApplyFontToText(self.timerText, self.db.FontFace, timerFontSize, self.db.FontOutline,
         self.db.FontShadow or {})
 
     local timerColor = self.db.TimerTextColor
@@ -146,6 +150,7 @@ end
 function TSP:ApplyPosition()
     if not self.db.Enabled or not self.frame then return end
     NRSKNUI:ApplyFramePosition(self.frame, self.db.Position, self.db)
+    NRSKNUI:SnapFrame(self.frame)
 end
 
 function TSP:StartGlow()
