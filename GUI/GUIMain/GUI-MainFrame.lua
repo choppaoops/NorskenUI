@@ -54,14 +54,14 @@ function GUIFrame:CreateMainFrame()
     end
 
     local frame = CreateFrame("Frame", "NorskenUIGUIFrame", UIParent, "BackdropTemplate")
-    frame:SetSize(900, 650)
+    frame:SetSize(950, 700)
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, 50)
     frame:SetFrameStrata("DIALOG")
     frame:SetToplevel(true)
     frame:SetClampedToScreen(true)
     frame:SetMovable(true)
     frame:SetResizable(true)
-    frame:SetResizeBounds(900, 650)
+    frame:SetResizeBounds(950, 700)
     frame:EnableMouse(true)
 
     frame:SetBackdrop({
@@ -992,7 +992,7 @@ function GUIFrame:CreateFooter(parent)
             if GUIFrame.sidebar and GUIFrame.sidebar.UpdateScrollBarVisibility then
                 C_Timer.After(0.05, GUIFrame.sidebar.UpdateScrollBarVisibility)
             end
-            NRSKNUI:SnapFrameToPixels(parent)
+            NRSKNUI:SnapFrame(parent)
             GUIFrame:SaveFramePosition()
         end
     end)

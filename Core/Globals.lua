@@ -322,6 +322,10 @@ end
 -- Global apply position settings func
 -- Example usage:
 -- NRSKNUI:ApplyFramePosition(self.frame, self.db.Position, self.db, extra: true or empty)
+---@param frame Frame
+---@param posConfig table Position config with AnchorFrom, AnchorTo, XOffset, YOffset
+---@param Config table Config with anchorFrameType, ParentFrame, Strata, ForcePixelPerfect
+---@param SetParent boolean? If true, also set frame parent
 function NRSKNUI:ApplyFramePosition(frame, posConfig, Config, SetParent)
     if not frame or not posConfig then return end
 
@@ -340,5 +344,5 @@ function NRSKNUI:ApplyFramePosition(frame, posConfig, Config, SetParent)
         posConfig.YOffset or 0
     )
     frame:SetFrameStrata(Config.Strata or "MEDIUM")
-    self:SnapFrameToPixels(frame)
+    self:SnapFrameToPixels(frame, Config.ForcePixelPerfect)
 end
