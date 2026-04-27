@@ -10,6 +10,7 @@ end
 ---@class DungeonTimers: AceModule, AceEvent-3.0, AceTimer-3.0
 local DT = NorskenUI:NewModule("DungeonTimers", "AceEvent-3.0", "AceTimer-3.0")
 
+local LS = LibStub("LibSpecialization")
 local CreateFrame = CreateFrame
 local GetTime = GetTime
 local unpack = unpack
@@ -22,8 +23,6 @@ local CopyTable = CopyTable
 local pcall = pcall
 local issecretvalue = issecretvalue
 local tostring, tonumber = tostring, tonumber
-local GetSpecialization = GetSpecialization
-local GetSpecializationRole = GetSpecializationRole
 local PlaySoundFile = PlaySoundFile
 local floor = math.floor
 local math_min = math.min
@@ -38,11 +37,17 @@ DT.scheduledScans = {}
 local instanceIdToDungeonKey = nil
 local VISUAL_UPDATE_INTERVAL = 0.033
 local ROLE_TO_TRIGGER_FIELD = { TANK = "loadRoleTank", HEALER = "loadRoleHealer", DAMAGER = "loadRoleDPS", }
+local POS_TO_TRIGGER_FIELD = { MELEE = "loadPosMelee", RANGED = "loadPosRanged" }
 
 local function CheckLoadConditions(trigger, isPreview)
-    if isPreview or not trigger.loadRoleEnabled then return true end
-    local role = GetSpecializationRole(GetSpecialization()) or "DAMAGER"
-    return trigger[ROLE_TO_TRIGGER_FIELD[role]] or false
+    if isPreview then return true end
+    if not trigger.loadRoleEnabled then return true end
+    if not trigger.loadPosEnabled then return true end
+
+    local specID, role, pos, talents = LS.MySpecialization()
+
+    if trigger.loadRoleEnabled then return trigger[ROLE_TO_TRIGGER_FIELD[role]] or false end
+    if trigger.loadPosEnabled then return trigger[POS_TO_TRIGGER_FIELD[pos]] or false end
 end
 
 local function PlayTriggerSound(soundName, isPreview)

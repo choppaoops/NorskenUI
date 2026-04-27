@@ -1734,6 +1734,9 @@ local Defaults = {
                 loadRoleTank = true,
                 loadRoleHealer = true,
                 loadRoleDPS = true,
+                loadPosEnabled = false,
+                loadPosMelee = true,
+                loadPosRanged = true,
                 -- Actions
                 actionOnShowSound = "None",
                 actionOnHideSound = "None",

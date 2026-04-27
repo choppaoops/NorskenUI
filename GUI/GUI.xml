@@ -24,7 +24,7 @@
     <Script file="GUIWidgets\Cards\GUI-FontSettingsCard.lua" />
     <Script file="GUIWidgets\Cards\GUI-GlowSettingsCard.lua" />
     <Script file="GUIWidgets\Cards\GUI-SoundSettingsCard.lua" />
-    <Script file="GUIWidgets\Cards\GUI-RoleFilterCard.lua" />
+    <Script file="GUIWidgets\Cards\GUI-FilterCards.lua" />
     <Script file="GUIWidgets\Cards\GUI-SpellBrowserCard.lua" />
     <Script file="GUIWidgets\Cards\GUI-TextFormatCard.lua" />
 

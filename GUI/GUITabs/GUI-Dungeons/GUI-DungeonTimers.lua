@@ -998,6 +998,15 @@ local function CreateDungeonPanel(dungeonId)
             })
             table_insert(activeCards, card1)
 
+            -- Card 2: Position Filters
+            local card2
+            card2, yOffset = GUIFrame:CreatePosFilterCard(scrollChild, yOffset, {
+                db = selectedTrigger,
+                onChangeCallback = ApplySettings,
+                onRefreshCallback = RefreshContent,
+            })
+            table_insert(activeCards, card2)
+
             return yOffset
         end
 
