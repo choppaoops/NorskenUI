@@ -3,21 +3,10 @@ local NRSKNUI = select(2, ...)
 local GUIFrame = NRSKNUI.GUIFrame
 local Theme = NRSKNUI.Theme or {}
 
-local ipairs = ipairs
 local pairs = pairs
-local CreateFrame = CreateFrame
-local wipe = wipe
 
 NRSKNUI.GUI = NRSKNUI.GUI or {}
 NRSKNUI.GUI.DungeonTimers = NRSKNUI.GUI.DungeonTimers or {}
-
-local settingsPreviewTextFrames = {}
-
-local SETTINGS_TEXT_PREVIEWS = {
-    { name = "Adds", time = 14.3, icon = 136116, color = { 1.0, 0.5, 0.2 } },
-    { name = "Heal", time = 6.9,  icon = 135915, color = { 0.4, 0.8, 1.0 } },
-    { name = "Kick", time = 2.1,  icon = 132219, color = { 0.9, 0.3, 0.9 } },
-}
 
 local SETTINGS_GROWTH_OPTIONS = {
     { key = "DOWN", text = "Down" },
@@ -52,96 +41,31 @@ end
 local function ApplySettingsChanges()
     local mod = GetModule()
     if mod then
-        if mod.Refresh then mod:Refresh() end
-        if mod.ApplySettings then mod:ApplySettings() end
+        if mod.UpdateFrameVisuals then mod:UpdateFrameVisuals() end
     end
-end
-
-local function CreateSettingsTextPreview(index, data)
-    local db = GetSettingsDB()
-    if not db then return nil end
-
-    if not db.TextDisplay then db.TextDisplay = {} end
-
-    local fontSize = db.TextDisplay.fontSize or 14
-    local fontOutline = db.TextDisplay.fontOutline or "SOFTOUTLINE"
-    local textAlign = db.TextDisplay.textAlign or "LEFT"
-    local fontFace = db.TextDisplay.fontFace or "Expressway"
-    local showIcon = false
-    local iconSize = 0
-    local lineHeight = fontSize + 6
-
-    local frame = CreateFrame("Frame", nil, UIParent)
-    frame:SetFrameStrata("HIGH")
-    frame:SetSize(200, lineHeight)
-    settingsPreviewTextFrames[index] = frame
-
-    frame.iconFrame = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-    frame.iconFrame:SetSize(fontSize + 2, fontSize + 2)
-    frame.iconFrame:SetPoint("LEFT", 0, 0)
-    frame.iconFrame:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
-    frame.iconFrame:SetBackdropBorderColor(0, 0, 0, 1)
-    frame.iconFrame:SetShown(showIcon)
-
-    frame.icon = frame.iconFrame:CreateTexture(nil, "ARTWORK")
-    frame.icon:SetPoint("TOPLEFT", 1, -1)
-    frame.icon:SetPoint("BOTTOMRIGHT", -1, 1)
-    frame.icon:SetTexture(data.icon)
-    if NRSKNUI.ApplyZoom then NRSKNUI:ApplyZoom(frame.icon, 0.1) end
-
-    local textWidth = 200 - iconSize - 4
-    frame.displayText = frame:CreateFontString(nil, "OVERLAY")
-    frame.displayText:SetJustifyH(textAlign)
-    frame.displayText:SetPoint("LEFT", frame, "LEFT", iconSize + 4, 0)
-    NRSKNUI:ApplyFontToText(frame.displayText, fontFace, fontSize, fontOutline)
-    frame.displayText:SetWidth(textWidth)
-    local textColor = data.color or { 1, 1, 1 }
-    frame.displayText:SetTextColor(textColor[1], textColor[2], textColor[3], 1)
-    frame.displayText:SetText(string.format("%s » %.1f", data.name, data.time))
-
-    return frame
 end
 
 local function HideTextPreviews()
-    for _, frame in pairs(settingsPreviewTextFrames) do
-        if frame.displayText and frame.displayText._nrsknSoftOutline then
-            frame.displayText._nrsknSoftOutline:Release()
-        end
-        frame:Hide()
+    local mod = GetModule()
+    if mod and mod.HideSettingsTextPreviews then
+        mod:HideSettingsTextPreviews()
     end
-    wipe(settingsPreviewTextFrames)
 end
 
 local function ShowSettingsTextPreviews()
-    HideTextPreviews()
-
     if not GUIFrame or not GUIFrame:IsShown() then return end
     if GUIFrame.selectedSidebarItem ~= "DT_Texts" then return end
 
-    local db = GetSettingsDB()
-    if not db then return end
+    local mod = GetModule()
+    if mod and mod.ShowSettingsTextPreviews then
+        mod:ShowSettingsTextPreviews()
+    end
+end
 
-    local fontSize = db.TextDisplay.fontSize or 14
-    local textLineHeight = fontSize + 6
-    local textPos = db.TextGroup.Position or {}
-    local textGrowth = db.TextGroup.GrowthDirection or "DOWN"
-    local textSpacing = db.TextGroup.Spacing or 2
-    local textGrowUp = textGrowth == "UP"
-
-    for i, data in ipairs(SETTINGS_TEXT_PREVIEWS) do
-        local frame = CreateSettingsTextPreview(i, data)
-        if frame then
-            frame:ClearAllPoints()
-            local offset = (i - 1) * (textLineHeight + textSpacing)
-            if textGrowUp then
-                frame:SetPoint(textPos.AnchorFrom or "CENTER", UIParent, textPos.AnchorTo or "CENTER",
-                    textPos.XOffset or 0, (textPos.YOffset or -100) + offset)
-            else
-                frame:SetPoint(textPos.AnchorFrom or "CENTER", UIParent, textPos.AnchorTo or "CENTER",
-                    textPos.XOffset or 0, (textPos.YOffset or -100) - offset)
-            end
-            frame:Show()
-        end
+local function RefreshTextPreviews()
+    local mod = GetModule()
+    if mod and mod.RefreshSettingsTextPreviews then
+        mod:RefreshSettingsTextPreviews()
     end
 end
 
@@ -172,7 +96,7 @@ GUIFrame:RegisterContent("DT_Texts", function(scrollChild, yOffset)
 
     local function ApplyAndUpdate()
         ApplySettingsChanges()
-        ShowSettingsTextPreviews()
+        RefreshTextPreviews()
     end
 
     ShowSettingsTextPreviews()

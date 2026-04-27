@@ -705,6 +705,7 @@ local Defaults = {
                     Enabled = true,
                     Duration = 0.5,
                     InterruptedColor = { 0.1, 0.8, 0.1, 1 },
+                    FailedColor = { 0.780, 0.250, 0.250, 1 },
                     SuccessColor = { 0.780, 0.250, 0.250, 1 },
                 },
                 timeToHold = 0.5,
@@ -1709,7 +1710,7 @@ local Defaults = {
                 -- Colors
                 useBigWigsColors = true,
                 barColor = { 0.772, 0.168, 0.168, 1 },
-                backgroundColor = { 0.1, 0.1, 0.1, 0.8 },
+                backgroundColor = { 0, 0, 0, 0.8 },
                 textColor = { 1, 1, 1, 1 },
                 -- Bar text settings
                 barText1Format = "Tank Hit",

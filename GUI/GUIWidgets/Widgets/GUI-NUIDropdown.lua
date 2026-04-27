@@ -56,7 +56,8 @@ function NUIDropdownMixin:SetValue(value, silent)
 
     local optionColor = self._optionColors and self._optionColors[value]
     if optionColor then
-        self._selectedText:SetTextColor(optionColor.r or optionColor[1], optionColor.g or optionColor[2], optionColor.b or optionColor[3], 1)
+        self._selectedText:SetTextColor(optionColor.r or optionColor[1], optionColor.g or optionColor[2],
+            optionColor.b or optionColor[3], 1)
     else
         self._selectedText:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
     end
@@ -611,7 +612,8 @@ function GUIFrame:CreateDropdown(parent, labelText, config)
 
         local optionColor = row._optionColors and row._optionColors[value]
         if optionColor then
-            row._selectedText:SetTextColor(optionColor.r or optionColor[1], optionColor.g or optionColor[2], optionColor.b or optionColor[3], 1)
+            row._selectedText:SetTextColor(optionColor.r or optionColor[1], optionColor.g or optionColor[2],
+                optionColor.b or optionColor[3], 1)
         else
             row._selectedText:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
         end
@@ -651,7 +653,8 @@ function GUIFrame:CreateDropdown(parent, labelText, config)
                 local isSelected = row._currentValue == btn._itemValue
                 if optionColor then
                     local alpha = isSelected and 1 or 0.7
-                    btn._text:SetTextColor(optionColor.r or optionColor[1], optionColor.g or optionColor[2], optionColor.b or optionColor[3], alpha)
+                    btn._text:SetTextColor(optionColor.r or optionColor[1], optionColor.g or optionColor[2],
+                        optionColor.b or optionColor[3], alpha)
                 elseif isSelected then
                     btn._text:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
                 else
@@ -829,7 +832,8 @@ function GUIFrame:CreateDropdown(parent, labelText, config)
         row._currentValue = selected
         local optionColor = row._optionColors[selected]
         if optionColor then
-            row._selectedText:SetTextColor(optionColor.r or optionColor[1], optionColor.g or optionColor[2], optionColor.b or optionColor[3], 1)
+            row._selectedText:SetTextColor(optionColor.r or optionColor[1], optionColor.g or optionColor[2],
+                optionColor.b or optionColor[3], 1)
         end
         if row._isFontPreview then
             local fontPath = NRSKNUI:GetFontPath(selected)
@@ -840,7 +844,8 @@ function GUIFrame:CreateDropdown(parent, labelText, config)
         row._currentValue = selected
         local optionColor = row._optionColors[selected]
         if optionColor then
-            row._selectedText:SetTextColor(optionColor.r or optionColor[1], optionColor.g or optionColor[2], optionColor.b or optionColor[3], 1)
+            row._selectedText:SetTextColor(optionColor.r or optionColor[1], optionColor.g or optionColor[2],
+                optionColor.b or optionColor[3], 1)
         end
         if row._isFontPreview then
             local fontPath = NRSKNUI:GetFontPath(selected)

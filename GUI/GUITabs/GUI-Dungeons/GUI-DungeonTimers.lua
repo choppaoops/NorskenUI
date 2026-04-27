@@ -52,7 +52,7 @@ local DISPLAY_TYPE_OPTIONS = {
     { key = "text", text = "Text Only" },
 }
 
-local SIDEBAR_WIDTH = 192
+local SIDEBAR_WIDTH = 191
 local BUTTON_HEIGHT = 28
 local LIST_PADDING = 4
 
@@ -143,7 +143,7 @@ local function CreateSpellIconPreview(parent, spellId, size)
 
     local iconFrame = CreateFrame("Frame", nil, container)
     iconFrame:SetSize(size, size)
-    iconFrame:SetPoint("LEFT", container, "LEFT", 4, 0)
+    iconFrame:SetPoint("LEFT", container, "LEFT", 0, -6)
 
     iconFrame.texture = iconFrame:CreateTexture(nil, "ARTWORK")
     iconFrame.texture:SetPoint("TOPLEFT", 1, -1)
@@ -168,10 +168,23 @@ local function CreateSpellIconPreview(parent, spellId, size)
     local spellName = spellInfo and spellInfo.name or "No spell selected"
 
     local nameLabel = container:CreateFontString(nil, "OVERLAY")
-    nameLabel:SetPoint("LEFT", iconFrame, "RIGHT", 8, 0)
+    nameLabel:SetPoint("LEFT", iconFrame, "RIGHT", Theme.paddingSmall, 0)
     nameLabel:SetFont(NRSKNUI.FONT or "Fonts\\FRIZQT__.TTF", Theme.fontSizeSmall, "OUTLINE")
     nameLabel:SetTextColor(Theme.textPrimary[1], Theme.textPrimary[2], Theme.textPrimary[3], 1)
     nameLabel:SetText(spellName)
+
+    local oldEnter = container:GetScript("OnEnter")
+    local oldLeave = container:GetScript("OnLeave")
+    container:SetScript("OnEnter", function(self, ...)
+        if oldEnter then oldEnter(self, ...) end
+        GameTooltip:SetOwner(self, "ANCHOR_CURSOR_RIGHT", 30, 0)
+        GameTooltip:SetSpellByID(spellId)
+        GameTooltip:Show()
+    end)
+    container:SetScript("OnLeave", function(self, ...)
+        if oldLeave then oldLeave(self, ...) end
+        GameTooltip:Hide()
+    end)
 
     return container
 end
@@ -552,30 +565,22 @@ local function CreateDungeonPanel(dungeonId)
 
         BuildTimerList()
 
+        -- Trigger tab
         local function RenderTriggerTab(yOffset)
             if not selectedTrigger then
                 local card = GUIFrame:CreateCard(scrollChild, "No Timer Selected", yOffset)
-                card:AddLabel("Click + to create a new timer, or select one from the list on the left.")
+                card:AddLabel("Click + to create a new timer or select one from the list on the left.")
                 table_insert(activeCards, card)
                 return yOffset + card:GetContentHeight() + (Theme.paddingSmall)
             end
 
             local padding = Theme.paddingSmall
 
+            -- Card 1: Basic settings
             local card1 = GUIFrame:CreateCard(scrollChild, "Basic Settings", yOffset)
             table_insert(activeCards, card1)
 
             local row1 = GUIFrame:CreateRow(card1.content, Theme.rowHeight)
-            local nameInput = GUIFrame:CreateEditBox(row1, "Timer Name", {
-                value = selectedTrigger.name or "",
-                callback = function(text)
-                    selectedTrigger.name = text
-                    ApplySettings()
-                    RefreshContent()
-                end
-            })
-            row1:AddWidget(nameInput, 0.5)
-
             local enableTrigger = GUIFrame:CreateCheckbox(row1, "Enabled", {
                 value = selectedTrigger.enabled ~= false,
                 callback = function(checked)
@@ -583,10 +588,23 @@ local function CreateDungeonPanel(dungeonId)
                     ApplySettings()
                 end
             })
-            row1:AddWidget(enableTrigger, 0.5)
+            row1:AddWidget(enableTrigger, 1)
             card1:AddRow(row1, Theme.rowHeight)
 
-            local row2 = GUIFrame:CreateRow(card1.content, Theme.rowHeight)
+            local separator1 = GUIFrame:CreateSeparator(card1.content)
+            card1:AddRow(separator1, Theme.rowHeightSeparator)
+
+            local row2 = GUIFrame:CreateRow(card1.content, Theme.rowHeightLast)
+            local nameInput = GUIFrame:CreateEditBox(row2, "Timer Name", {
+                value = selectedTrigger.name or "",
+                callback = function(text)
+                    selectedTrigger.name = text
+                    ApplySettings()
+                    RefreshContent()
+                end
+            })
+            row2:AddWidget(nameInput, 0.5)
+
             local typeDropdown = GUIFrame:CreateDropdown(row2, "Trigger Type", {
                 options = TRIGGER_TYPE_OPTIONS,
                 value = selectedTrigger.triggerType or "timer",
@@ -595,11 +613,12 @@ local function CreateDungeonPanel(dungeonId)
                     ApplySettings()
                 end
             })
-            row2:AddWidget(typeDropdown, 1)
-            card1:AddRow(row2, Theme.rowHeight)
+            row2:AddWidget(typeDropdown, 0.5)
+            card1:AddRow(row2, Theme.rowHeightLast, 0)
 
             yOffset = yOffset + card1:GetContentHeight() + padding
 
+            -- Card 2: Filters
             local card2 = GUIFrame:CreateCard(scrollChild, "Trigger Filters", yOffset)
             table_insert(activeCards, card2)
 
@@ -614,7 +633,7 @@ local function CreateDungeonPanel(dungeonId)
             })
             row3:AddWidget(spellInput, 0.5)
 
-            local iconPreview = CreateSpellIconPreview(row3, selectedTrigger.spellId, 32)
+            local iconPreview = CreateSpellIconPreview(row3, selectedTrigger.spellId, 24)
             row3:AddWidget(iconPreview, 0.5)
             card2:AddRow(row3, Theme.rowHeight)
 
@@ -639,23 +658,10 @@ local function CreateDungeonPanel(dungeonId)
             row4:AddWidget(msgOpDropdown, 0.5)
             card2:AddRow(row4, Theme.rowHeight)
 
-            local row5 = GUIFrame:CreateRow(card2.content, Theme.rowHeight)
-            local offsetSlider = GUIFrame:CreateSlider(row5, "Timer Offset (seconds)", {
-                min = -10,
-                max = 10,
-                step = 0.5,
-                value = selectedTrigger.extendTimer or 0,
-                labelWidth = 80,
-                callback = function(val)
-                    selectedTrigger.extendTimer = val
-                    ApplySettings()
-                end
-            })
-            row5:AddWidget(offsetSlider, 1)
-            card2:AddRow(row5, Theme.rowHeight)
-
             local row5b = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast)
             local castBarCheck = GUIFrame:CreateCheckbox(row5b, "Exclude BigWigs cast bars", {
+                tooltip =
+                "Some BigWigs bars are used for both timers and casts, this setting makes the trigger only look for timers, ignoring casts.",
                 value = selectedTrigger.excludeCastBars == true,
                 callback = function(checked)
                     selectedTrigger.excludeCastBars = checked
@@ -663,14 +669,15 @@ local function CreateDungeonPanel(dungeonId)
                 end
             })
             row5b:AddWidget(castBarCheck, 1)
-            card2:AddRow(row5b, Theme.rowHeightLast)
+            card2:AddRow(row5b, Theme.rowHeightLast, 0)
 
             yOffset = yOffset + card2:GetContentHeight() + padding
 
-            local card3 = GUIFrame:CreateCard(scrollChild, "Remaining Time Condition", yOffset)
+            -- Card 3: Remaining time condition
+            local card3 = GUIFrame:CreateCard(scrollChild, "Time Conditions", yOffset)
             table_insert(activeCards, card3)
 
-            local row6 = GUIFrame:CreateRow(card3.content, Theme.rowHeightLast)
+            local row6 = GUIFrame:CreateRow(card3.content, Theme.rowHeight)
             local remCheck = GUIFrame:CreateCheckbox(row6, "Enable remaining time condition", {
                 value = selectedTrigger.remainingEnabled == true,
                 callback = function(checked)
@@ -680,7 +687,7 @@ local function CreateDungeonPanel(dungeonId)
                 end
             })
             row6:AddWidget(remCheck, 1)
-            card3:AddRow(row6, Theme.rowHeightLast)
+            card3:AddRow(row6, Theme.rowHeight)
 
             if selectedTrigger.remainingEnabled then
                 local row7 = GUIFrame:CreateRow(card3.content, Theme.rowHeight)
@@ -709,11 +716,29 @@ local function CreateDungeonPanel(dungeonId)
                 card3:AddRow(row7, Theme.rowHeight)
             end
 
+            local separator2 = GUIFrame:CreateSeparator(card3.content)
+            card3:AddRow(separator2, Theme.rowHeightSeparator)
+
+            local row5 = GUIFrame:CreateRow(card3.content, Theme.rowHeightLast)
+            local offsetSlider = GUIFrame:CreateSlider(row5, "Timer Offset (seconds)", {
+                min = -10,
+                max = 10,
+                step = 0.5,
+                value = selectedTrigger.extendTimer or 0,
+                labelWidth = 80,
+                callback = function(val)
+                    selectedTrigger.extendTimer = val
+                    ApplySettings()
+                end
+            })
+            row5:AddWidget(offsetSlider, 1)
+            card3:AddRow(row5, Theme.rowHeightLast, 0)
+
             yOffset = yOffset + card3:GetContentHeight() + padding
 
+            -- Card 4: BigWigs Spell Browser (always force refresh to avoid stale cache issues)
             local mod = GetModule()
-            local spells = mod and mod.GetSpellsForDungeon and mod:GetSpellsForDungeon(dungeonKey) or {}
-
+            local spells = mod and mod.GetSpellsForDungeon and mod:GetSpellsForDungeon(dungeonKey, true) or {}
             local browserCard
             browserCard, yOffset = GUIFrame:CreateSpellBrowserCard(scrollChild, yOffset, {
                 spells = spells,
@@ -735,6 +760,7 @@ local function CreateDungeonPanel(dungeonId)
             return yOffset
         end
 
+        -- Display tab
         local function RenderDisplayTab(yOffset)
             if not selectedTrigger then
                 local card = GUIFrame:CreateCard(scrollChild, "No Timer Selected", yOffset)
@@ -746,6 +772,7 @@ local function CreateDungeonPanel(dungeonId)
             local padding = Theme.paddingSmall
             local isBar = (selectedTrigger.displayType or "bar") == "bar"
 
+            -- Card 1: Display type
             local card1 = GUIFrame:CreateCard(scrollChild, "Display Type", yOffset)
             table_insert(activeCards, card1)
 
@@ -764,7 +791,9 @@ local function CreateDungeonPanel(dungeonId)
 
             yOffset = yOffset + card1:GetContentHeight() + padding
 
+            -- Card 2: Text format
             if isBar then
+                -- Bar text settings
                 local card3
                 card3, yOffset = GUIFrame:CreateTextFormatCard(scrollChild, yOffset, {
                     title = "Text 1",
@@ -795,10 +824,11 @@ local function CreateDungeonPanel(dungeonId)
                 })
                 table_insert(activeCards, card3b)
 
+                -- Card 3: Time display settings
                 local card3c = GUIFrame:CreateCard(scrollChild, "Time Display", yOffset)
                 table_insert(activeCards, card3c)
 
-                local row3e = GUIFrame:CreateRow(card3c.content, Theme.rowHeight)
+                local row3e = GUIFrame:CreateRow(card3c.content, Theme.rowHeightLast)
                 local showDecimalsCheck = GUIFrame:CreateCheckbox(row3e, "Show Decimals", {
                     value = selectedTrigger.showDecimals == true,
                     callback = function(checked)
@@ -823,10 +853,11 @@ local function CreateDungeonPanel(dungeonId)
                     })
                     row3e:AddWidget(decimalThresholdSlider, 0.5)
                 end
-                card3c:AddRow(row3e, Theme.rowHeight)
+                card3c:AddRow(row3e, Theme.rowHeightLast, 0)
 
                 yOffset = yOffset + card3c:GetContentHeight() + padding
             else
+                -- Text timer settings
                 local card3 = GUIFrame:CreateCard(scrollChild, "Text Format", yOffset)
                 table_insert(activeCards, card3)
 
@@ -867,17 +898,19 @@ local function CreateDungeonPanel(dungeonId)
                     })
                     row3c:AddWidget(decimalThresholdSlider, 0.5)
                 end
-                card3:AddRow(row3c, Theme.rowHeight)
+                card3:AddRow(row3c, Theme.rowHeightLast, 0)
 
                 yOffset = yOffset + card3:GetContentHeight() + padding
             end
 
+            -- Card 4: Colors
             local card4 = GUIFrame:CreateCard(scrollChild, "Colors", yOffset)
             table_insert(activeCards, card4)
 
             if isBar then
+                -- Bar color settings, has BigWigs color sync option so has more settings than text timers
                 local row4 = GUIFrame:CreateRow(card4.content, Theme.rowHeightLast)
-                local bwColorCheck = GUIFrame:CreateCheckbox(row4, "Use BigWigs Colors", {
+                local bwColorCheck = GUIFrame:CreateCheckbox(row4, "Sync With BigWigs Bar Coloring", {
                     value = selectedTrigger.useBigWigsColors ~= false,
                     callback = function(checked)
                         selectedTrigger.useBigWigsColors = checked
@@ -886,138 +919,68 @@ local function CreateDungeonPanel(dungeonId)
                     end
                 })
                 row4:AddWidget(bwColorCheck, 1)
-                card4:AddRow(row4, Theme.rowHeightLast)
 
-                if not selectedTrigger.useBigWigsColors then
-                    local row5 = GUIFrame:CreateRow(card4.content, Theme.rowHeightLast)
-                    local barColorPicker = GUIFrame:CreateColorPicker(row5, "Bar", {
-                        color = selectedTrigger.barColor or { 0.2, 0.6, 1.0, 1 },
+                if selectedTrigger.useBigWigsColors then
+                    card4:AddRow(row4, Theme.rowHeightLast, 0)
+                else
+                    card4:AddRow(row4, Theme.rowHeight)
+
+                    local separator = GUIFrame:CreateSeparator(card4.content)
+                    card4:AddRow(separator, Theme.rowHeightSeparator)
+
+                    local row5 = GUIFrame:CreateRow(card4.content, Theme.rowHeight)
+                    local barColorPicker = GUIFrame:CreateColorPicker(row5, "Bar Color", {
+                        color = selectedTrigger.barColor,
                         callback = function(r, g, b, a)
                             selectedTrigger.barColor = { r, g, b, a }
                             ApplySettings()
                         end
                     })
-                    row5:AddWidget(barColorPicker, 0.5)
+                    row5:AddWidget(barColorPicker, 1)
+                    card4:AddRow(row5, Theme.rowHeight)
 
-                    local bgColorPicker = GUIFrame:CreateColorPicker(row5, "Background", {
-                        color = selectedTrigger.backgroundColor or { 0.1, 0.1, 0.1, 0.8 },
+                    local row5b = GUIFrame:CreateRow(card4.content, Theme.rowHeight)
+                    local bgColorPicker = GUIFrame:CreateColorPicker(row5b, "Background Color", {
+                        color = selectedTrigger.backgroundColor,
                         callback = function(r, g, b, a)
                             selectedTrigger.backgroundColor = { r, g, b, a }
                             ApplySettings()
                         end
                     })
-                    row5:AddWidget(bgColorPicker, 0.5)
-                    card4:AddRow(row5, Theme.rowHeightLast)
+                    row5b:AddWidget(bgColorPicker, 1)
+                    card4:AddRow(row5b, Theme.rowHeight)
 
                     local row6 = GUIFrame:CreateRow(card4.content, Theme.rowHeightLast)
-                    local textColorPicker = GUIFrame:CreateColorPicker(row6, "Text", {
-                        color = selectedTrigger.textColor or { 1, 1, 1, 1 },
+                    local textColorPicker = GUIFrame:CreateColorPicker(row6, "Text Color", {
+                        color = selectedTrigger.textColor,
                         callback = function(r, g, b, a)
                             selectedTrigger.textColor = { r, g, b, a }
                             ApplySettings()
                         end
                     })
                     row6:AddWidget(textColorPicker, 1)
-                    card4:AddRow(row6, Theme.rowHeightLast)
+                    card4:AddRow(row6, Theme.rowHeightLast, 0)
                 end
             else
+                -- Text timer color settings
                 local row4 = GUIFrame:CreateRow(card4.content, Theme.rowHeightLast)
                 local textColorPicker = GUIFrame:CreateColorPicker(row4, "Text Color", {
-                    color = selectedTrigger.textColor or { 1, 1, 1, 1 },
+                    color = selectedTrigger.textColor,
                     callback = function(r, g, b, a)
                         selectedTrigger.textColor = { r, g, b, a }
                         ApplySettings()
                     end
                 })
                 row4:AddWidget(textColorPicker, 1)
-                card4:AddRow(row4, Theme.rowHeightLast)
+                card4:AddRow(row4, Theme.rowHeightLast, 0)
             end
 
             yOffset = yOffset + card4:GetContentHeight() + padding
 
-            local textFormat = selectedTrigger.textFormat or ""
-            if string.find(textFormat, "%%c") then
-                local card5 = GUIFrame:CreateCard(scrollChild, "Custom Text Function", yOffset)
-                table_insert(activeCards, card5)
-
-                local helpRow = GUIFrame:CreateRow(card5.content, 28)
-                local helpText = helpRow:CreateFontString(nil, "OVERLAY")
-                helpText:SetPoint("LEFT", helpRow, "LEFT", 4, 0)
-                NRSKNUI:ApplyThemeFont(helpText, "small")
-                helpText:SetText("function(expirationTime, duration, remaining, name, icon, stacks)")
-                helpText:SetTextColor(Theme.textSecondary[1], Theme.textSecondary[2], Theme.textSecondary[3], 0.8)
-                card5:AddRow(helpRow, 28)
-
-                local codeRow = GUIFrame:CreateRow(card5.content, 134)
-                local codeEditor = GUIFrame:CreateMultiLineEditBox(codeRow, "Lua Code (returns value for %c placeholder)",
-                    {
-                        value = selectedTrigger.customText or "",
-                        height = 120,
-                        syntaxHighlight = true,
-                        callback = function(text)
-                            selectedTrigger.customText = text
-                            ApplySettings()
-                        end,
-                    })
-                codeRow:AddWidget(codeEditor, 1)
-                card5:AddRow(codeRow, 134)
-
-                local testRow = GUIFrame:CreateRow(card5.content, 28)
-
-                local errorLabel = testRow:CreateFontString(nil, "OVERLAY")
-                errorLabel:SetPoint("LEFT", testRow, "LEFT", 4, 0)
-                NRSKNUI:ApplyThemeFont(errorLabel, "small")
-                errorLabel:SetText("")
-
-                local function ValidateCustomText(luaCode)
-                    if not luaCode or luaCode == "" then
-                        return true
-                    end
-
-                    local func, err = loadstring("return " .. luaCode)
-                    if not func then
-                        local cleanErr = err and err:gsub('%[string ".-"%]:', '') or "Syntax error"
-                        return false, cleanErr
-                    end
-
-                    local ok, result = pcall(func)
-                    if not ok then
-                        return false, result
-                    end
-                    if type(result) ~= "function" then
-                        return false, "Must be a function"
-                    end
-
-                    return true
-                end
-
-                local testBtn = GUIFrame:CreateButton(testRow, "Test", {
-                    width = 60,
-                    callback = function()
-                        local code = codeEditor:GetValue()
-                        local valid, errMsg = ValidateCustomText(code)
-                        if valid then
-                            if code == "" then
-                                errorLabel:SetText("")
-                            else
-                                errorLabel:SetText("Valid!")
-                                errorLabel:SetTextColor(0.2, 0.8, 0.2, 1)
-                            end
-                        else
-                            errorLabel:SetText(errMsg or "Invalid")
-                            errorLabel:SetTextColor(0.9, 0.2, 0.2, 1)
-                        end
-                    end,
-                })
-                testBtn:SetPoint("RIGHT", testRow, "RIGHT", 0, 0)
-                card5:AddRow(testRow, 28)
-
-                yOffset = yOffset + card5:GetContentHeight() + padding
-            end
-
             return yOffset
         end
 
+        -- Load tab
         local function RenderLoadTab(yOffset)
             if not selectedTrigger then
                 local card = GUIFrame:CreateCard(scrollChild, "No Timer Selected", yOffset)
@@ -1026,6 +989,7 @@ local function CreateDungeonPanel(dungeonId)
                 return yOffset + card:GetContentHeight() + Theme.paddingSmall
             end
 
+            -- Card 1: Role/Spec/Class Filters
             local card1
             card1, yOffset = GUIFrame:CreateRoleFilterCard(scrollChild, yOffset, {
                 db = selectedTrigger,
@@ -1037,6 +1001,7 @@ local function CreateDungeonPanel(dungeonId)
             return yOffset
         end
 
+        -- Actions tab
         local function RenderActionsTab(yOffset)
             if not selectedTrigger then
                 local card = GUIFrame:CreateCard(scrollChild, "No Timer Selected", yOffset)

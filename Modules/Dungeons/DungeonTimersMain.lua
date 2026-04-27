@@ -141,7 +141,7 @@ function DT:UpdateGroupPosition(groupType)
     local group = groupType == "bar" and self:GetBarGroupFrame() or self:GetTextGroupFrame()
     local pos = self:GetGroupSettings(groupType).Position
     group:ClearAllPoints()
-    group:SetPoint(pos.AnchorFrom, UIParent, pos.AnchorTo, pos.XOffset, pos.YOffset)
+    group:SetPoint(pos.AnchorFrom, UIParent, pos.AnchorTo, pos.XOffset + 0.1, pos.YOffset + 0.1)
 end
 
 function DT:UpdateBarGroupPosition()
@@ -194,7 +194,7 @@ function DT:PositionAllBars()
             yPos = baseY - offset
         end
 
-        frame:SetPoint(anchorFrom, UIParent, anchorTo, baseX, yPos)
+        frame:SetPoint(anchorFrom, UIParent, anchorTo, baseX + 0.1, yPos + 0.1)
     end
 end
 
@@ -241,7 +241,7 @@ function DT:PositionAllTexts()
             yPos = baseY - offset
         end
 
-        frame:SetPoint(anchorFrom, UIParent, anchorTo, baseX, yPos)
+        frame:SetPoint(anchorFrom, UIParent, anchorTo, baseX + 0.1, yPos + 0.1)
     end
 end
 
@@ -311,6 +311,7 @@ function DT:GetTriggerConfig(trigger)
         textJustify = textDisplay.textAlign,
         useBigWigsColors = trigger.useBigWigsColors ~= false,
         barColor = trigger.barColor,
+        backgroundColor = trigger.backgroundColor,
         textColor = trigger.textColor,
         barText1Format = trigger.barText1Format,
         barText1Justify = trigger.barText1Justify or "LEFT",
@@ -508,7 +509,7 @@ function DT:CreateBarFrame(dungeonKey, triggerId, trigger)
         edgeFile = "Interface\\Buttons\\WHITE8X8",
         edgeSize = 1,
     })
-    frame.barContainer:SetBackdropColor(0, 0, 0, 0.8)
+    frame.barContainer:SetBackdropColor(unpack(config.backgroundColor))
     frame.barContainer:SetBackdropBorderColor(0, 0, 0, 1)
 
     frame.bar = CreateFrame("StatusBar", nil, frame.barContainer)
@@ -540,14 +541,14 @@ function DT:CreateBarFrame(dungeonKey, triggerId, trigger)
     local fontOutline = config.fontOutline
 
     frame.text1 = frame.bar:CreateFontString(nil, "OVERLAY")
-    frame.text1:SetPoint(config.barText1Justify, frame.bar, config.barText1Justify, config.barText1XOffset,
-        config.barText1YOffset)
+    frame.text1:SetPoint(config.barText1Justify, frame.bar, config.barText1Justify,
+        config.barText1XOffset, config.barText1YOffset)
     NRSKNUI:ApplyFontToText(frame.text1, config.fontFace, fontSize, fontOutline)
     frame.text1:SetTextColor(unpack(config.textColor))
 
     frame.text2 = frame.bar:CreateFontString(nil, "OVERLAY")
-    frame.text2:SetPoint(config.barText2Justify, frame.bar, config.barText2Justify, config.barText2XOffset,
-        config.barText2YOffset)
+    frame.text2:SetPoint(config.barText2Justify, frame.bar, config.barText2Justify,
+        config.barText2XOffset, config.barText2YOffset)
     NRSKNUI:ApplyFontToText(frame.text2, config.fontFace, fontSize, fontOutline)
     frame.text2:SetTextColor(unpack(config.textColor))
 
@@ -619,6 +620,7 @@ function DT:ApplyBarColors(frame, config, barData)
     if not frame.bar then return end
 
     local barColor = config.barColor
+    local backgroundColor = config.backgroundColor
     local textColor = config.textColor
 
     if config.useBigWigsColors and barData.bwBarColor then barColor = barData.bwBarColor end
@@ -626,6 +628,10 @@ function DT:ApplyBarColors(frame, config, barData)
 
     if barColor and type(barColor) == "table" then
         frame.bar:SetStatusBarColor(barColor[1] or 1, barColor[2] or 1, barColor[3] or 1, barColor[4] or 1)
+    end
+
+    if backgroundColor and type(backgroundColor) == "table" and frame.barContainer then
+        frame.barContainer:SetBackdropColor(unpack(config.backgroundColor))
     end
 
     if textColor and type(textColor) == "table" then
@@ -658,15 +664,15 @@ function DT:ShowTriggerDisplay(dungeonKey, triggerId, trigger, barData)
     if frame.isBarDisplay then
         if frame.text1 then
             frame.text1:ClearAllPoints()
-            frame.text1:SetPoint(config.barText1Justify, frame.bar, config.barText1Justify, config.barText1XOffset,
-                config.barText1YOffset)
+            frame.text1:SetPoint(config.barText1Justify, frame.bar, config.barText1Justify,
+                config.barText1XOffset, config.barText1YOffset)
             frame.text1:SetText(self:GetFormattedText("barText1Format", config, barData, remaining))
             if frame.text1._nrsknSoftOutline then frame.text1._nrsknSoftOutline:_ApplyOffsets() end
         end
         if frame.text2 then
             frame.text2:ClearAllPoints()
-            frame.text2:SetPoint(config.barText2Justify, frame.bar, config.barText2Justify, config.barText2XOffset,
-                config.barText2YOffset)
+            frame.text2:SetPoint(config.barText2Justify, frame.bar, config.barText2Justify,
+                config.barText2XOffset, config.barText2YOffset)
             frame.text2:SetText(self:GetFormattedText("barText2Format", config, barData, remaining))
             if frame.text2._nrsknSoftOutline then frame.text2._nrsknSoftOutline:_ApplyOffsets() end
         end
@@ -958,15 +964,24 @@ function DT:OnVisualUpdate()
                         if frame.text1 then
                             frame.text1:SetText(self:GetFormattedText("barText1Format", config, barData,
                                 remaining))
+                            if frame.text1._nrsknSoftOutline then
+                                frame.text1._nrsknSoftOutline:_ApplyOffsets()
+                            end
                         end
                         if frame.text2 then
                             frame.text2:SetText(self:GetFormattedText("barText2Format", config, barData,
                                 remaining))
+                            if frame.text2._nrsknSoftOutline then
+                                frame.text2._nrsknSoftOutline:_ApplyOffsets()
+                            end
                         end
                     else
                         if frame.displayText then
                             frame.displayText:SetText(self:GetFormattedText("textFormat", config,
-                            barData, remaining))
+                                barData, remaining))
+                            if frame.displayText._nrsknSoftOutline then
+                                frame.displayText._nrsknSoftOutline:_ApplyOffsets()
+                            end
                         end
                     end
                 end
@@ -1044,6 +1059,73 @@ function DT:ApplySettings()
             NorskenUI:DisableModule("DungeonTimers")
         end
     end
+end
+
+function DT:UpdateFrameVisuals()
+    self:UpdateDB()
+    if not self.db then return end
+
+    local barDisplay = self:GetBarDisplaySettings()
+    local textDisplay = self:GetTextDisplaySettings()
+    local texturePath = self:GetStatusbarPath()
+
+    for _, frame in pairs(self.triggerFrames) do
+        if frame and frame:IsShown() then
+            if frame.isBarDisplay then
+                local showIcon = barDisplay.iconEnabled
+                local iconSize = showIcon and barDisplay.barHeight or 0
+
+                frame:SetSize(barDisplay.barWidth, barDisplay.barHeight)
+
+                if frame.barContainer then
+                    frame.barContainer:ClearAllPoints()
+                    frame.barContainer:SetPoint("TOPLEFT", iconSize, 0)
+                    frame.barContainer:SetPoint("BOTTOMRIGHT", 0, 0)
+                end
+
+                if frame.bar then
+                    frame.bar:SetStatusBarTexture(texturePath)
+                end
+
+                if frame.iconFrame then
+                    frame.iconFrame:SetSize(barDisplay.barHeight, barDisplay.barHeight)
+                    frame.iconFrame:SetShown(showIcon)
+                end
+
+                if frame.text1 then
+                    NRSKNUI:ApplyFontToText(frame.text1, barDisplay.fontFace, barDisplay.fontSize, barDisplay
+                        .fontOutline)
+                    if frame.text1._nrsknSoftOutline then
+                        frame.text1._nrsknSoftOutline:_ApplyOffsets()
+                    end
+                end
+
+                if frame.text2 then
+                    NRSKNUI:ApplyFontToText(frame.text2, barDisplay.fontFace, barDisplay.fontSize, barDisplay
+                        .fontOutline)
+                    if frame.text2._nrsknSoftOutline then
+                        frame.text2._nrsknSoftOutline:_ApplyOffsets()
+                    end
+                end
+            else
+                local fontSize = textDisplay.fontSize or 14
+                frame:SetSize(400, fontSize + 4)
+
+                if frame.displayText then
+                    frame.displayText:ClearAllPoints()
+                    frame.displayText:SetJustifyH(textDisplay.textAlign or "LEFT")
+                    frame.displayText:SetPoint(textDisplay.textAlign or "LEFT", frame, textDisplay.textAlign or "LEFT", 0,
+                        0)
+                    NRSKNUI:ApplyFontToText(frame.displayText, textDisplay.fontFace, fontSize, textDisplay.fontOutline)
+                    if frame.displayText._nrsknSoftOutline then
+                        frame.displayText._nrsknSoftOutline:_ApplyOffsets()
+                    end
+                end
+            end
+        end
+    end
+
+    self:PositionAllFrames()
 end
 
 function DT:Refresh()
@@ -1283,4 +1365,166 @@ end
 function DT:DisablePreviews()
     self.previewsAllowed = false
     self:HideAllPreviews()
+end
+
+local SETTINGS_BAR_PREVIEWS = {
+    { name = "Tank Hit", duration = 20, icon = 136116, color = { 0.2, 0.6, 1.0 } },
+    { name = "Soak",     duration = 10, icon = 135994, color = { 1.0, 0.5, 0.0 } },
+    { name = "Frontal",  duration = 5,  icon = 132155, color = { 1.0, 0.2, 0.2 } },
+}
+
+local SETTINGS_TEXT_PREVIEWS = {
+    { name = "ADDS", duration = 20, icon = 136116, color = { 1.0, 0.5, 0.2 } },
+    { name = "HEAL", duration = 10, icon = 135915, color = { 0.4, 0.8, 1.0 } },
+    { name = "KICK", duration = 5,  icon = 132219, color = { 0.9, 0.3, 0.9 } },
+}
+
+function DT:ShowSettingsBarPreview(index)
+    local data = SETTINGS_BAR_PREVIEWS[index]
+    if not data then return end
+
+    local trigger = {
+        displayType = "bar",
+        name = data.name,
+        barColor = data.color,
+        textColor = { 1, 1, 1, 1 },
+        backgroundColor = { 0, 0, 0, 0.8 },
+        barText1Format = "%n",
+        barText2Format = "%p",
+    }
+
+    local selfRef = self
+    local barData = {
+        text = data.name,
+        icon = data.icon,
+        duration = data.duration,
+        effectiveDuration = data.duration,
+        expirationTime = GetTime() + data.duration,
+        count = 0,
+        isPreview = true,
+        isSettingsPreview = true,
+        loopCallback = function()
+            if selfRef.previewsAllowed then
+                selfRef:ShowSettingsBarPreview(index)
+            end
+        end,
+    }
+
+    self:ShowTriggerDisplay("_settings", "bar_" .. index, trigger, barData)
+end
+
+function DT:ShowSettingsBarPreviews()
+    self:HideSettingsBarPreviews()
+    self:UpdateDB()
+    if not self.db then return end
+
+    self.previewsAllowed = true
+
+    for i = 1, #SETTINGS_BAR_PREVIEWS do
+        self:ShowSettingsBarPreview(i)
+    end
+end
+
+function DT:HideSettingsBarPreviews()
+    for i = 1, #SETTINGS_BAR_PREVIEWS do
+        local frameKey = "_settings_bar_" .. i
+        if self.triggerFrames[frameKey] then
+            self:HideTriggerDisplay(frameKey)
+        end
+    end
+end
+
+function DT:ShowSettingsTextPreview(index)
+    local data = SETTINGS_TEXT_PREVIEWS[index]
+    if not data then return end
+
+    local trigger = {
+        displayType = "text",
+        name = data.name,
+        textColor = data.color,
+        textFormat = "%n » %p",
+    }
+
+    local selfRef = self
+    local barData = {
+        text = data.name,
+        icon = data.icon,
+        duration = data.duration,
+        effectiveDuration = data.duration,
+        expirationTime = GetTime() + data.duration,
+        isPreview = true,
+        isSettingsPreview = true,
+        loopCallback = function()
+            if selfRef.previewsAllowed then
+                selfRef:ShowSettingsTextPreview(index)
+            end
+        end,
+    }
+
+    self:ShowTriggerDisplay("_settings", "text_" .. index, trigger, barData)
+end
+
+function DT:ShowSettingsTextPreviews()
+    self:HideSettingsTextPreviews()
+    self:UpdateDB()
+    if not self.db then return end
+
+    self.previewsAllowed = true
+
+    for i = 1, #SETTINGS_TEXT_PREVIEWS do
+        self:ShowSettingsTextPreview(i)
+    end
+end
+
+function DT:HideSettingsTextPreviews()
+    for i = 1, #SETTINGS_TEXT_PREVIEWS do
+        local frameKey = "_settings_text_" .. i
+        if self.triggerFrames[frameKey] then
+            self:HideTriggerDisplay(frameKey)
+        end
+    end
+end
+
+function DT:RefreshSettingsBarPreviews()
+    local GUIFrame = NRSKNUI.GUIFrame
+    if not GUIFrame or not GUIFrame:IsShown() or GUIFrame.selectedSidebarItem ~= "DT_Bars" then
+        return
+    end
+
+    local hasAny = false
+    for i = 1, #SETTINGS_BAR_PREVIEWS do
+        if self.triggerFrames["_settings_bar_" .. i] then
+            hasAny = true
+            break
+        end
+    end
+
+    if not hasAny then
+        self:ShowSettingsBarPreviews()
+        return
+    end
+
+    self:UpdateFrameVisuals()
+end
+
+function DT:RefreshSettingsTextPreviews()
+    local GUIFrame = NRSKNUI.GUIFrame
+    if not GUIFrame or not GUIFrame:IsShown() or GUIFrame.selectedSidebarItem ~= "DT_Texts" then
+        return
+    end
+
+    local hasAny = false
+    for i = 1, #SETTINGS_TEXT_PREVIEWS do
+        if self.triggerFrames["_settings_text_" .. i] then
+            hasAny = true
+            break
+        end
+    end
+
+    if not hasAny then
+        self:ShowSettingsTextPreviews()
+        return
+    end
+
+    self:UpdateFrameVisuals()
 end

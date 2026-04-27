@@ -103,8 +103,8 @@ local function CreateAnchorButtons(parent, labelText, value, callback)
             if not container.disabled then
                 self.tex:SetVertexColor(Theme.accentHover[1], Theme.accentHover[2], Theme.accentHover[3], 1)
             end
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetText(DIRECTION_NAMES[direction] or direction, 1, 0.82, 0)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT", 0, 4)
+            GameTooltip:SetText(DIRECTION_NAMES[direction] or direction, Theme.accent[1], Theme.accent[2], Theme.accent[3], 1, false)
             GameTooltip:Show()
         end)
 

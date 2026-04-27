@@ -85,7 +85,7 @@ function GUIFrame:CreateRoleFilterCard(scrollChild, yOffset, config)
         })
         row4:AddWidget(dpsCheck, 1)
         table_insert(widgets, dpsCheck)
-        card:AddRow(row4, Theme.rowHeightLast)
+        card:AddRow(row4, Theme.rowHeightLast, 0)
     end
 
     card.roleWidgets = widgets

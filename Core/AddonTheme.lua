@@ -248,7 +248,7 @@ local ThemeDefaults = {
     headerHeight   = 35,
     footerHeight   = 28,
     sidebarWidth   = 242,
-    contentWidth   = 679,
+    contentWidth   = 679.1,
     borderSize     = 1,
 
     -- Spacing
@@ -285,6 +285,8 @@ NRSKNUI.FontOutlineOptions = {
     { key = "THICKOUTLINE", text = "Thick" },
     { key = "SOFTOUTLINE",  text = "Soft" },
 }
+
+NRSKNUI.GlobalZoom = 0.3
 
 -- Color keys that support class coloring
 local ClassColorKeys = {

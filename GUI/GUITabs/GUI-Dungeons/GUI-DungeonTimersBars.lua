@@ -6,18 +6,9 @@ local Theme = NRSKNUI.Theme or {}
 local table_insert = table.insert
 local ipairs = ipairs
 local pairs = pairs
-local CreateFrame = CreateFrame
 
 NRSKNUI.GUI = NRSKNUI.GUI or {}
 NRSKNUI.GUI.DungeonTimers = NRSKNUI.GUI.DungeonTimers or {}
-
-local settingsPreviewBarFrames = {}
-
-local SETTINGS_BAR_PREVIEWS = {
-    { name = "Tank Hit", time = 12.4, icon = 136116, color = { 0.2, 0.6, 1.0 } },
-    { name = "Soak",     time = 8.7,  icon = 135994, color = { 1.0, 0.5, 0.0 } },
-    { name = "Frontal",  time = 5.2,  icon = 132155, color = { 1.0, 0.2, 0.2 } },
-}
 
 local SETTINGS_GROWTH_OPTIONS = {
     { key = "DOWN", text = "Down" },
@@ -46,127 +37,31 @@ end
 local function ApplySettingsChanges()
     local mod = GetModule()
     if mod then
-        if mod.Refresh then mod:Refresh() end
-        if mod.ApplySettings then mod:ApplySettings() end
+        if mod.UpdateFrameVisuals then mod:UpdateFrameVisuals() end
     end
-end
-
-local function CreateSettingsBarPreview(index, data)
-    local db = GetSettingsDB()
-    if not db then return nil end
-
-    local barWidth = db.BarDisplay.barWidth or 200
-    local barHeight = db.BarDisplay.barHeight or 20
-    local fontSize = db.BarDisplay.fontSize or 12
-    local fontOutline = db.BarDisplay.fontOutline or "OUTLINE"
-    local fontFace = db.BarDisplay.fontFace or "Expressway"
-    local barTexture = db.BarDisplay.barTexture or "NorskenUI"
-    local showIcon = db.BarDisplay.iconEnabled ~= false
-    local texturePath = NRSKNUI:GetStatusbarPath(barTexture) or "Interface\\Buttons\\WHITE8x8"
-    local iconSize = showIcon and barHeight or 0
-
-    local frame = settingsPreviewBarFrames[index]
-    if not frame then
-        frame = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
-        frame:SetFrameStrata("HIGH")
-        settingsPreviewBarFrames[index] = frame
-
-        frame.barContainer = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-        frame.bar = CreateFrame("StatusBar", nil, frame.barContainer)
-        frame.bar:SetPoint("TOPLEFT", 1, -1)
-        frame.bar:SetPoint("BOTTOMRIGHT", -1, 1)
-
-        frame.iconFrame = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-        frame.iconFrame:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
-        frame.iconFrame:SetBackdropBorderColor(0, 0, 0, 1)
-        frame.iconFrame.bg = frame.iconFrame:CreateTexture(nil, "BACKGROUND")
-        frame.iconFrame.bg:SetAllPoints()
-        frame.iconFrame.bg:SetColorTexture(0, 0, 0, 1)
-        frame.icon = frame.iconFrame:CreateTexture(nil, "ARTWORK")
-        frame.icon:SetPoint("TOPLEFT", 1, -1)
-        frame.icon:SetPoint("BOTTOMRIGHT", -1, 1)
-        if NRSKNUI.ApplyZoom then NRSKNUI:ApplyZoom(frame.icon, 0.1) end
-
-        frame.text1 = frame.bar:CreateFontString(nil, "OVERLAY")
-        frame.text2 = frame.bar:CreateFontString(nil, "OVERLAY")
-    end
-
-    frame:SetSize(barWidth, barHeight)
-    frame.iconFrame:SetSize(barHeight, barHeight)
-    frame.iconFrame:ClearAllPoints()
-    frame.iconFrame:SetPoint("LEFT", frame, "LEFT", 0, 0)
-    frame.iconFrame:SetShown(showIcon)
-    frame.icon:SetTexture(data.icon)
-
-    frame.barContainer:ClearAllPoints()
-    frame.barContainer:SetPoint("TOPLEFT", iconSize, 0)
-    frame.barContainer:SetPoint("BOTTOMRIGHT", 0, 0)
-    frame.barContainer:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8X8",
-        edgeFile = "Interface\\Buttons\\WHITE8X8",
-        edgeSize = 1,
-    })
-    frame.barContainer:SetBackdropColor(0, 0, 0, 0.8)
-    frame.barContainer:SetBackdropBorderColor(0, 0, 0, 1)
-
-    frame.bar:SetStatusBarTexture(texturePath)
-    local barColor = data.color or { 0.2, 0.6, 1.0 }
-    frame.bar:SetStatusBarColor(barColor[1], barColor[2], barColor[3], 1)
-    frame.bar:SetMinMaxValues(0, 20)
-    frame.bar:SetValue(data.time)
-
-    frame.text1:ClearAllPoints()
-    frame.text1:SetPoint("LEFT", frame.bar, "LEFT", 4, 0)
-    frame.text1:SetJustifyH("LEFT")
-    NRSKNUI:ApplyFontToText(frame.text1, fontFace, fontSize, fontOutline)
-    frame.text1:SetTextColor(1, 1, 1, 1)
-    frame.text1:SetText(data.name)
-
-    frame.text2:ClearAllPoints()
-    frame.text2:SetPoint("RIGHT", frame.bar, "RIGHT", -4, 0)
-    frame.text2:SetJustifyH("RIGHT")
-    NRSKNUI:ApplyFontToText(frame.text2, fontFace, fontSize, fontOutline)
-    frame.text2:SetTextColor(1, 1, 1, 1)
-    frame.text2:SetText(string.format("%.1f", data.time))
-
-    return frame
 end
 
 local function HideBarPreviews()
-    for _, frame in pairs(settingsPreviewBarFrames) do
-        frame:Hide()
+    local mod = GetModule()
+    if mod and mod.HideSettingsBarPreviews then
+        mod:HideSettingsBarPreviews()
     end
 end
 
 local function ShowSettingsBarPreviews()
-    HideBarPreviews()
-
     if not GUIFrame or not GUIFrame:IsShown() then return end
     if GUIFrame.selectedSidebarItem ~= "DT_Bars" then return end
 
-    local db = GetSettingsDB()
-    if not db then return end
+    local mod = GetModule()
+    if mod and mod.ShowSettingsBarPreviews then
+        mod:ShowSettingsBarPreviews()
+    end
+end
 
-    local barHeight = db.BarDisplay.barHeight or 20
-    local barPos = db.BarGroup.Position or {}
-    local barGrowth = db.BarGroup.GrowthDirection or "DOWN"
-    local barSpacing = db.BarGroup.Spacing or 2
-    local barGrowUp = barGrowth == "UP"
-
-    for i, data in ipairs(SETTINGS_BAR_PREVIEWS) do
-        local frame = CreateSettingsBarPreview(i, data)
-        if frame then
-            frame:ClearAllPoints()
-            local offset = (i - 1) * (barHeight + barSpacing)
-            if barGrowUp then
-                frame:SetPoint(barPos.AnchorFrom or "CENTER", UIParent, barPos.AnchorTo or "CENTER",
-                    barPos.XOffset or 0, (barPos.YOffset or 100) + offset)
-            else
-                frame:SetPoint(barPos.AnchorFrom or "CENTER", UIParent, barPos.AnchorTo or "CENTER",
-                    barPos.XOffset or 0, (barPos.YOffset or 100) - offset)
-            end
-            frame:Show()
-        end
+local function RefreshBarPreviews()
+    local mod = GetModule()
+    if mod and mod.RefreshSettingsBarPreviews then
+        mod:RefreshSettingsBarPreviews()
     end
 end
 
@@ -205,7 +100,7 @@ GUIFrame:RegisterContent("DT_Bars", function(scrollChild, yOffset)
 
     local function ApplyAndUpdate()
         ApplySettingsChanges()
-        ShowSettingsBarPreviews()
+        RefreshBarPreviews()
     end
 
     ShowSettingsBarPreviews()

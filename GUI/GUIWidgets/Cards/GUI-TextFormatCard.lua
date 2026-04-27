@@ -94,7 +94,7 @@ function GUIFrame:CreateTextFormatCard(scrollChild, yOffset, config)
     })
     row2:AddWidget(ySlider, 0.5)
     table_insert(widgets, ySlider)
-    card:AddRow(row2, Theme.rowHeightLast)
+    card:AddRow(row2, Theme.rowHeightLast, 0)
 
     card.textWidgets = widgets
 
