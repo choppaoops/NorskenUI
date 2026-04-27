@@ -9,6 +9,8 @@ local CreateFrame = CreateFrame
 local C_Timer = C_Timer
 local math_floor, math_max, math_min = math.floor, math.max, math.min
 local GetTime = GetTime
+local type = type
+local tostring = tostring
 
 local STEPPER_TEXTURE = "Interface\\AddOns\\NorskenUI\\Media\\GUITextures\\collapse.tga"
 
@@ -21,6 +23,8 @@ local STEPPER_TEXTURE = "Interface\\AddOns\\NorskenUI\\Media\\GUITextures\\colla
 ---    value = number,        -- Initial value
 ---    labelWidth = number,   -- Label width (optional)
 ---    callback = function,   -- Called when value changes
+---    tooltip = string,      -- Tooltip text
+---    cvartooltip = boolean,  -- Whether to show default value in tooltip
 ---}
 ---```
 ---@param parent Frame
@@ -36,6 +40,7 @@ function GUIFrame:CreateSlider(parent, labelText, config)
     local labelWidth = config.labelWidth
     local callback = config.callback
     local tooltip = config.tooltip
+    local cvarTooltip = config.cvartooltip
 
     local rowHeight = 36
     local row = CreateFrame("Frame", nil, parent)
@@ -536,11 +541,13 @@ function GUIFrame:CreateSlider(parent, labelText, config)
             local oldLeave = frame:GetScript("OnLeave")
             frame:SetScript("OnEnter", function(self, ...)
                 if oldEnter then oldEnter(self, ...) end
-                GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
-                GameTooltip:SetText(labelText or "", Theme.accent[1], Theme.accent[2], Theme.accent[3])
-                GameTooltip:AddLine(tooltipText, Theme.textSecondary[1], Theme.textSecondary[2], Theme.textSecondary[3], true)
-                if tooltipDefault ~= nil then
-                    local defaultStr = type(tooltipDefault) == "boolean" and (tooltipDefault and "On" or "Off") or tostring(tooltipDefault)
+                GameTooltip:SetOwner(row, "ANCHOR_CURSOR_RIGHT", 30, 0)
+                GameTooltip:SetText(labelText or "", Theme.accent[1], Theme.accent[2], Theme.accent[3], 1, false)
+                GameTooltip:AddLine(tooltipText, Theme.textSecondary[1], Theme.textSecondary[2], Theme.textSecondary[3],
+                    false)
+                if tooltipDefault ~= nil and cvarTooltip then
+                    local defaultStr = type(tooltipDefault) == "boolean" and (tooltipDefault and "On" or "Off") or
+                        tostring(tooltipDefault)
                     GameTooltip:AddLine("Default: " .. defaultStr, Theme.success[1], Theme.success[2], Theme.success[3])
                 end
                 GameTooltip:Show()

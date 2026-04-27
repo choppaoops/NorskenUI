@@ -1,152 +1,107 @@
--- NorskenUI namespace
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
 
----@type NorskenUI
-local NorskenUI = _G.NorskenUI
-
--- Check for addon object
 if not NorskenUI then
     error("Automation: Addon object not initialized. Check file load order!")
     return
 end
 
--- Create module
 ---@class Automation: AceModule, AceEvent-3.0, AceHook-3.0
 local AUTO = NorskenUI:NewModule("Automation", "AceEvent-3.0", "AceHook-3.0")
 
--- Localization Setup
 local pcall = pcall
-local CinematicFrame_CancelCinematic = CinematicFrame_CancelCinematic
-local RepairAllItems = RepairAllItems
 local hooksecurefunc = hooksecurefunc
+local CreateFrame = CreateFrame
 local IsShiftKeyDown = IsShiftKeyDown
+local RepairAllItems = RepairAllItems
 local CanMerchantRepair = CanMerchantRepair
 local GetRepairAllCost = GetRepairAllCost
 local CanGuildBankRepair = CanGuildBankRepair
 local GetMoney = GetMoney
 local GetGuildBankWithdrawMoney = GetGuildBankWithdrawMoney
-local CreateFrame = CreateFrame
+local CinematicFrame_CancelCinematic = CinematicFrame_CancelCinematic
 local GameMovieFinished = GameMovieFinished
-local LFGListApplicationDialog = LFGListApplicationDialog
-local LFDRoleCheckPopup = LFDRoleCheckPopup
-local LFDRoleCheckPopupAcceptButton = LFDRoleCheckPopupAcceptButton
-local StaticPopupDialogs = StaticPopupDialogs
-local C_CVar = C_CVar
-local _G = _G
 
--- Update db, used for profile changes
 function AUTO:UpdateDB()
     self.db = NRSKNUI.db.profile.Miscellaneous.Automation
 end
 
--- Module init
 function AUTO:OnInitialize()
     self:UpdateDB()
     self:SetEnabledState(false)
 end
 
--- hide repetitive help tips
-C_CVar.RegisterCVar('hideHelptips', 1)
-for index = 1, NUM_LE_FRAME_TUTORIALS do
-	C_CVar.SetCVarBitfield('closedInfoFrames', index, true)
-end
-for index = 1, #Enum.FrameTutorialAccount do
-	C_CVar.SetCVarBitfield('closedInfoFramesAccountWide', index, true)
-end
-
--- Setup cinematic skip
 local cinematicFrame = nil
 local function SetupSkipCinematics()
     if not AUTO.db.SkipCinematics then return end
+    if cinematicFrame then return end
 
-    -- Hook cinematic start event
-    if not cinematicFrame then
-        cinematicFrame = CreateFrame("Frame")
-        cinematicFrame:RegisterEvent("CINEMATIC_START")
-        cinematicFrame:RegisterEvent("PLAY_MOVIE")
-        cinematicFrame:SetScript("OnEvent", function(self, event, movieId)
-            if event == "CINEMATIC_START" then
-                CinematicFrame_CancelCinematic()
-            elseif event == "PLAY_MOVIE" then
-                -- Stop the movie via GameMovieFinished
-                pcall(GameMovieFinished)
-            end
-        end)
-    end
+    cinematicFrame = CreateFrame("Frame")
+    cinematicFrame:RegisterEvent("CINEMATIC_START")
+    cinematicFrame:RegisterEvent("PLAY_MOVIE")
+    cinematicFrame:SetScript("OnEvent", function(_, event)
+        if event == "CINEMATIC_START" then
+            CinematicFrame_CancelCinematic()
+        elseif event == "PLAY_MOVIE" then
+            pcall(GameMovieFinished)
+        end
+    end)
 end
 
--- Hide talking head
 function AUTO:SetupTalkingHeadHider()
     if self._talkingHeadHooked then return end
+    self._talkingHeadHooked = true
 
     local function HideTalkingHead(frame)
-        if AUTO.db and AUTO.db.HideTalkingHead and frame then
-            frame:Hide()
-        end
+        if AUTO.db and AUTO.db.HideTalkingHead and frame then frame:Hide() end
     end
 
-    if _G.TalkingHeadFrame then
-        self:SecureHook(_G.TalkingHeadFrame, "PlayCurrent", HideTalkingHead)
-        self:SecureHook(_G.TalkingHeadFrame, "Reset", HideTalkingHead)
+    if TalkingHeadFrame then
+        self:SecureHook(TalkingHeadFrame, "PlayCurrent", HideTalkingHead)
+        self:SecureHook(TalkingHeadFrame, "Reset", HideTalkingHead)
     else
         self:SecureHook("TalkingHead_LoadUI", function()
-            if _G.TalkingHeadFrame then
-                self:SecureHook(_G.TalkingHeadFrame, "PlayCurrent", HideTalkingHead)
-                self:SecureHook(_G.TalkingHeadFrame, "Reset", HideTalkingHead)
+            if TalkingHeadFrame then
+                self:SecureHook(TalkingHeadFrame, "PlayCurrent", HideTalkingHead)
+                self:SecureHook(TalkingHeadFrame, "Reset", HideTalkingHead)
             end
         end)
     end
-
-    self._talkingHeadHooked = true
 end
 
--- Setup auto sell grey items and auto repair
 local merchantFrame = nil
 local function SetupAutoSellRepair()
     if merchantFrame then return end
 
-    -- Hook merchant show event
     merchantFrame = CreateFrame("Frame")
     merchantFrame:RegisterEvent("MERCHANT_SHOW")
-    merchantFrame:SetScript("OnEvent", function(self, event)
-        if event ~= "MERCHANT_SHOW" then return end
-
-        -- Auto sell grey items
+    merchantFrame:SetScript("OnEvent", function()
         if AUTO.db.AutoSellJunk then
             if not IsShiftKeyDown() and C_MerchantFrame.GetNumJunkItems() > 0 then
                 C_MerchantFrame.SellAllJunkItems()
             end
         end
 
-        -- Auto repair
         if AUTO.db.AutoRepair and CanMerchantRepair() then
             local repairCost, canRepair = GetRepairAllCost()
             if repairCost and canRepair and repairCost > 0 then
-                local playerMoney = GetMoney()
-
-                -- Try guild funds first if enabled
                 if AUTO.db.UseGuildFunds and CanGuildBankRepair() then
                     local guildBankMoney = GetGuildBankWithdrawMoney()
                     if guildBankMoney >= repairCost then
-                        RepairAllItems(true) -- true = use guild funds
+                        RepairAllItems(true)
                         return
                     end
                 end
 
-                -- Fall back to personal funds
-                if playerMoney >= repairCost then
-                    RepairAllItems(false)
-                end
+                if GetMoney() >= repairCost then RepairAllItems(false) end
             end
         end
     end)
 end
 
--- Auto role on signup
 local function SetupAutoRoleCheck()
     if not AUTO.db.AutoRoleCheck then return end
-    -- LFG Application dialog
+
     if LFGListApplicationDialog and not AUTO._lfgHooked then
         AUTO._lfgHooked = true
         LFGListApplicationDialog:HookScript("OnShow", function()
@@ -156,53 +111,52 @@ local function SetupAutoRoleCheck()
         end)
     end
 
-    -- LFD Role Check popup
     if LFDRoleCheckPopup and not AUTO._lfdHooked then
         AUTO._lfdHooked = true
         LFDRoleCheckPopup:HookScript("OnShow", function()
-            if not IsShiftKeyDown() and LFDRoleCheckPopupAcceptButton then
-                LFDRoleCheckPopupAcceptButton:Click()
-            end
+            if not IsShiftKeyDown() and LFDRoleCheckPopupAcceptButton then LFDRoleCheckPopupAcceptButton:Click() end
         end)
     end
 end
 
--- Auto fill delete text
 local function SetupAutoFillDelete()
     if not AUTO.db.AutoFillDelete then return end
     if AUTO._deleteHooked then return end
     AUTO._deleteHooked = true
 
-    -- Hook directly into the StaticPopupDialogs OnShow function
     hooksecurefunc(StaticPopupDialogs["DELETE_GOOD_ITEM"], "OnShow", function(self)
-        if self.EditBox then
-            self.EditBox:SetText("DELETE")
-        end
+        if self.EditBox then self.EditBox:SetText("DELETE") end
     end)
 end
 
--- Setup auto loot CVar
 local function ApplyAutoLoot()
-    if not AUTO.db.AutoLoot then return end
-    local value = AUTO.db.AutoLoot and "1" or "0"
-    C_CVar.SetCVar("autoLootDefault", value)
+    C_CVar.SetCVar("autoLootDefault", AUTO.db.AutoLoot and "1" or "0")
 end
 
--- Apply automation settings
+local function ApplyHideHelptips()
+    if not AUTO.db.HideHelptips then return end
+    C_CVar.RegisterCVar("hideHelptips", 1)
+    for index = 1, NUM_LE_FRAME_TUTORIALS do C_CVar.SetCVarBitfield("closedInfoFrames", index, true) end
+    for index = 1, #Enum.FrameTutorialAccount do C_CVar.SetCVarBitfield("closedInfoFramesAccountWide", index, true) end
+end
+
 function AUTO:ApplySettings()
     if not self.db.Enabled then return end
+
     SetupSkipCinematics()
     self:SetupTalkingHeadHider()
     SetupAutoSellRepair()
     SetupAutoRoleCheck()
     SetupAutoFillDelete()
     ApplyAutoLoot()
+    ApplyHideHelptips()
 end
 
--- Module OnEnable
 function AUTO:OnEnable()
     if not self.db.Enabled then return end
-    C_Timer.After(1.0, function() -- Wait for frames to be ready
-        AUTO:ApplySettings()
-    end)
+    C_Timer.After(1.0, function() self:ApplySettings() end)
+end
+
+function AUTO:OnDisable()
+    -- Hooks cannot be removed, but the db checks prevent actions
 end

@@ -605,15 +605,16 @@ local Defaults = {
                 },
             },
             Automation = {
-                Enabled = true,         -- Master toggle
-                SkipCinematics = true,  -- Skip in-game cinematics and movies
-                HideTalkingHead = true, -- Hide talking head popup frame
-                AutoSellJunk = true,    -- Auto sell grey items at merchants
-                AutoRepair = true,      -- Auto repair gear at merchants
-                UseGuildFunds = true,   -- Use guild bank for repairs when available
-                AutoRoleCheck = true,   -- Auto accept role checks and LFG signups
-                AutoFillDelete = true,  -- Auto fill DELETE text when deleting items
-                AutoLoot = true,        -- Enable auto loot by default
+                Enabled = true,
+                SkipCinematics = true,
+                HideTalkingHead = true,
+                HideHelptips = true,
+                AutoSellJunk = true,
+                AutoRepair = true,
+                UseGuildFunds = true,
+                AutoRoleCheck = true,
+                AutoFillDelete = true,
+                AutoLoot = true,
             },
             DragonRiding = {
                 Enabled = true,

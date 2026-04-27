@@ -7,6 +7,8 @@ local Theme = NRSKNUI.Theme
 local CreateFrame = CreateFrame
 local C_Timer = C_Timer
 local select = select
+local type = type
+local tostring = tostring
 
 local TOGGLE_WIDTH = 48
 local TOGGLE_HEIGHT = 24
@@ -28,6 +30,8 @@ local CROSS_TEXTURE = "Interface\\AddOns\\NorskenUI\\Media\\GUITextures\\cross-s
 ---    msgText = string,      -- Popup text prefix
 ---    msgOn = string,        -- Text for "on" state
 ---    msgOff = string,       -- Text for "off" state
+---    tooltip = string,      -- Tooltip text
+---    cvartooltip = boolean,  -- Whether to show default value in tooltip
 ---}
 ---```
 ---@param parent Frame
@@ -43,6 +47,7 @@ function GUIFrame:CreateCheckbox(parent, labelText, config)
     local msgOn = config.msgOn or "Enabled"
     local msgOff = config.msgOff or "Disabled"
     local tooltip = config.tooltip
+    local cvarTooltip = config.cvartooltip
 
     local row = CreateFrame("Frame", nil, parent)
     row:SetHeight(36)
@@ -326,13 +331,13 @@ function GUIFrame:CreateCheckbox(parent, labelText, config)
             local oldLeave = frame:GetScript("OnLeave")
             frame:SetScript("OnEnter", function(self, ...)
                 if oldEnter then oldEnter(self, ...) end
-                GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
-                GameTooltip:SetText(labelText or "", Theme.accent[1], Theme.accent[2], Theme.accent[3])
+                GameTooltip:SetOwner(row, "ANCHOR_CURSOR_RIGHT", 30, 0)
+                GameTooltip:SetText(labelText or "", Theme.accent[1], Theme.accent[2], Theme.accent[3], 1, false)
                 GameTooltip:AddLine(tooltipText, Theme.textSecondary[1], Theme.textSecondary[2], Theme.textSecondary[3],
-                    true)
-                if tooltipDefault ~= nil then
+                    false)
+                if tooltipDefault ~= nil and cvarTooltip then
                     local defaultStr = type(tooltipDefault) == "boolean" and (tooltipDefault and "On" or "Off") or
-                    tostring(tooltipDefault)
+                        tostring(tooltipDefault)
                     GameTooltip:AddLine("Default: " .. defaultStr, Theme.success[1], Theme.success[2], Theme.success[3])
                 end
                 GameTooltip:Show()

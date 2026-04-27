@@ -29,6 +29,7 @@ GUIFrame:RegisterContent("MiscVars", function(scrollChild, yOffset)
                 widget = GUIFrame:CreateCheckbox(widgetRow, def.label, {
                     value = db[key],
                     tooltip = tooltipConfig,
+                    cvartooltip = true,
                     callback = function(checked)
                         db[key] = checked
                         MVAR._suppressCVarUpdate = true
@@ -46,6 +47,7 @@ GUIFrame:RegisterContent("MiscVars", function(scrollChild, yOffset)
                     step = def.step,
                     value = db[key],
                     tooltip = tooltipConfig,
+                    cvartooltip = true,
                     callback = function(value)
                         db[key] = value
                         MVAR._suppressCVarUpdate = true
