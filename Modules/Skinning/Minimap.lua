@@ -20,6 +20,7 @@ local ipairs = ipairs
 local CreateFrame = CreateFrame
 local unpack = unpack
 local LibStub = LibStub
+local InCombatLockdown = InCombatLockdown
 local _G = _G
 local mailBtn = MiniMapMailIcon
 local qBtn = QueueStatusButton
@@ -39,6 +40,7 @@ local pendingSettingsUpdate = false
 local pendingApplySettings = false
 local lastAppliedSize = nil
 local pendingSizeRefresh = false
+local pendingCombatUpdate = false
 
 -- Update db, used for profile changes
 function MAP:UpdateDB()
@@ -422,6 +424,20 @@ end
 function MAP:ApplySettings()
     if NRSKNUI:ShouldNotLoadModule() then return end
     if not self.db.Enabled then return end
+
+    -- Protection for when you enter loading screen while in combat
+    if InCombatLockdown() then
+        if not pendingCombatUpdate then
+            pendingCombatUpdate = true
+            self:RegisterEvent("PLAYER_REGEN_ENABLED", function()
+                self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+                pendingCombatUpdate = false
+                MAP:ApplySettings()
+            end)
+        end
+        return
+    end
+
     MAP:ApplyPosSize()
     MAP:UpdateMinimapBorder()
     MAP:UpdateSettings()
