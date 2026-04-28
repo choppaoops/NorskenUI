@@ -98,7 +98,7 @@ GUIFrame.SidebarConfig = {
             items = {
                 { id = "CustomSkin_Buffs",     text = "Buffs" },
                 { id = "CustomSkin_Debuffs",   text = "Debuffs" },
-                { id = "CustomSkin_Externals", text = "External Buffs" },
+                { id = "CustomSkin_Externals", text = "External & Defensive Buffs" },
             }
         },
         {

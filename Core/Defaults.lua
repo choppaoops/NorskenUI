@@ -1540,6 +1540,7 @@ local Defaults = {
             -- ExternalBuffTracking (External defensive buffs like Pain Suppression, Ironbark, etc.)
             ExternalBuffTracking = {
                 Enabled = false,
+                ShowBigDefensives = true,
 
                 -- Icon settings
                 IconSize = 52,
@@ -1547,6 +1548,8 @@ local Defaults = {
                 IconsPerRow = 4,
                 MaxRows = 1,
                 IconZoom = 0.32,
+                Swipe = false,
+                Reverse = false,
 
                 -- Visual settings
                 BorderColor = { 0.2, 0.8, 0.2, 1 }, -- Green for externals
@@ -1577,9 +1580,20 @@ local Defaults = {
                     YOffset = 200,
                 },
 
-                -- Sorting
-                SortMethod = "TIME",
-                SortDirection = "-",
+                GlowEnabled = true,
+                GlowType = "proc",
+                GlowColor = { 0, 1, 0, 1 },
+                GlowLines = 8,
+                GlowFrequency = 0.25,
+                GlowLength = 8,
+                GlowThickness = 2,
+                GlowBorder = false,
+                GlowScale = 1,
+                GlowStartAnim = false,
+                GlowDuration = 1,
+
+                SoundEnabled = false,
+                Sound = "None",
             },
 
             -- Details Backdrop Settings

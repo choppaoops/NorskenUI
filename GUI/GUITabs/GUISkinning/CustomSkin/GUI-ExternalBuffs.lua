@@ -1,389 +1,330 @@
--- NorskenUI namespace
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
 local GUIFrame = NRSKNUI.GUIFrame
 local Theme = NRSKNUI.Theme
 local LSM = NRSKNUI.LSM
 
--- Localization Setup
 local table_insert = table.insert
 local ipairs = ipairs
 local pairs = pairs
 
--- Helper to get ExternalBuffTracking module
-local function GetExternalBuffTrackingModule()
-    if NorskenUI then
-        return NorskenUI:GetModule("ExternalBuffTracking", true)
-    end
-    return nil
-end
-
-----------------------------------------------------------------
--- EXTERNAL BUFFS TAB
-----------------------------------------------------------------
 GUIFrame:RegisterContent("CustomSkin_Externals", function(scrollChild, yOffset)
     if NRSKNUI:ShouldNotLoadModule() then return yOffset end
     local db = NRSKNUI.db and NRSKNUI.db.profile.Skinning.ExternalBuffTracking
-    if not db then
-        local errorCard = GUIFrame:CreateCard(scrollChild, "Error", yOffset)
-        errorCard:AddLabel("Database not available")
-        return yOffset + errorCard:GetContentHeight() + Theme.paddingMedium
+    if not db then return GUIFrame:ShowDBError(scrollChild, yOffset) end
+
+    ---@type ExternalBuffTracking?
+    local EXTERNALS = NorskenUI and NorskenUI:GetModule("ExternalBuffTracking", true)
+    local manager = GUIFrame:CreateWidgetStateManager()
+    local postUpdateCallbacks = {}
+    local allCards = {}
+    local SwipeWidgets = {}
+
+    local function RelayoutCards()
+        local y = allCards[1] and allCards[1]:GetNextOffset() or yOffset
+        for i = 2, #allCards do
+            local card = allCards[i]
+            card:ClearAllPoints()
+            card:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", Theme.paddingSmall, -y)
+            card:SetPoint("RIGHT", scrollChild, "RIGHT", -Theme.paddingSmall, 0)
+            card._yOffset = y
+            y = card:GetNextOffset()
+        end
     end
 
-    local EXTERNALS = GetExternalBuffTrackingModule()
-    local allWidgets = {}
-
     local function ApplySettings()
-        if not EXTERNALS or not EXTERNALS:IsEnabled() then return end
-        if EXTERNALS.ApplySettings then
+        if EXTERNALS and EXTERNALS:IsEnabled() and EXTERNALS.ApplySettings then
             EXTERNALS:ApplySettings()
         end
     end
 
-    local function ApplyExternalsState(enabled)
-        if not EXTERNALS then return end
-        EXTERNALS.db.Enabled = enabled
-        if enabled then
-            NorskenUI:EnableModule("ExternalBuffTracking")
-        else
-            NorskenUI:DisableModule("ExternalBuffTracking")
-        end
-    end
-
     local function UpdateAllWidgetStates()
-        local mainEnabled = db.Enabled ~= false
-        for _, widget in ipairs(allWidgets) do
-            if widget.SetEnabled then
-                widget:SetEnabled(mainEnabled)
+        manager:UpdateAll(db.Enabled)
+        if db.Enabled then
+            for _, callback in ipairs(postUpdateCallbacks) do
+                callback()
             end
         end
     end
 
-    ----------------------------------------------------------------
-    -- Card 1: Enable
-    ----------------------------------------------------------------
-    local card1 = GUIFrame:CreateCard(scrollChild, "External Buff Frame", yOffset)
+    local function UpdateSwipeState()
+        local swipeEnabled = db.Swipe
+        for _, widget in ipairs(SwipeWidgets) do
+            if widget.SetEnabled then widget:SetEnabled(swipeEnabled) end
+        end
+    end
 
-    local row1 = GUIFrame:CreateRow(card1.content, 36)
-    local enableCheck = GUIFrame:CreateCheckbox(row1, "Enable External Buff Frame", {
-        value = db.Enabled ~= false,
+    -- Card 1
+    local card1 = GUIFrame:CreateCard(scrollChild, "External & Defensive Buffs", yOffset)
+    table_insert(allCards, card1)
+
+    local row1 = GUIFrame:CreateRow(card1.content, Theme.rowHeight)
+    local enableCheck = GUIFrame:CreateCheckbox(row1, "External & Defensive Buffs Frame", {
+        value = db.Enabled,
         callback = function(checked)
             db.Enabled = checked
-            ApplyExternalsState(checked)
+            if EXTERNALS then
+                EXTERNALS.db.Enabled = checked
+                if checked then
+                    NorskenUI:EnableModule("ExternalBuffTracking")
+                    EXTERNALS:ShowPreview()
+                else
+                    NorskenUI:DisableModule("ExternalBuffTracking")
+                    EXTERNALS:HidePreview()
+                end
+            end
             UpdateAllWidgetStates()
         end,
         msgPopup = true,
-        msgText = "External Buff Frame",
-        msgOn = "On",
-        msgOff = "Off"
+        msgText = "External & Defensive Buffs Frame",
     })
-    row1:AddWidget(enableCheck, 0.5)
+    row1:AddWidget(enableCheck, 1)
+    card1:AddRow(row1, Theme.rowHeight)
 
-    -- Preview toggle button
-    local previewBtn
-    previewBtn = GUIFrame:CreateButton(row1, "Show Preview", {
-        width = 130,
-        height = 28,
-        callback = function()
-            if EXTERNALS and EXTERNALS.TogglePreview then
-                local isActive = EXTERNALS:TogglePreview()
-                previewBtn:SetLabel(isActive and "Hide Preview" or "Show Preview")
+    local separator1 = GUIFrame:CreateSeparator(card1.content)
+    card1:AddRow(separator1, Theme.rowHeightSeparator)
+
+    local row1b = GUIFrame:CreateRow(card1.content, Theme.rowHeightLast)
+    local bigDefCheck = GUIFrame:CreateCheckbox(row1b, "Track Defensives", {
+        tooltip = "Uses Blizzards " .. "|cffFFFFFFBIG_DEFENSIVE|r" .. " filter, might not include all defensive buffs.",
+        value = db.ShowBigDefensives,
+        callback = function(checked)
+            db.ShowBigDefensives = checked
+            if EXTERNALS and EXTERNALS:IsEnabled() and EXTERNALS.UpdateAuras then
+                EXTERNALS:UpdateAuras()
+                EXTERNALS:TogglePreview()
             end
         end
     })
-    row1:AddWidget(previewBtn, 0.5)
+    row1b:AddWidget(bigDefCheck, 1)
+    manager:Register(bigDefCheck, "all")
+    card1:AddRow(row1b, Theme.rowHeightLast, 0)
 
-    -- Update button text based on current state
-    if EXTERNALS and EXTERNALS:IsPreviewActive() then
-        previewBtn:SetLabel("Hide Preview")
-    end
+    yOffset = card1:GetNextOffset()
 
-    card1:AddRow(row1, 36)
-
-    card1:AddLabel("Tracks external defensive buffs like Pain Suppression, Ironbark, etc.")
-
-    yOffset = yOffset + card1:GetContentHeight() + Theme.paddingSmall
-
-    ----------------------------------------------------------------
-    -- Card 2: Icon Settings
-    ----------------------------------------------------------------
+    -- Card 2
     local card2 = GUIFrame:CreateCard(scrollChild, "Icon Settings", yOffset)
+    table_insert(allCards, card2)
+    manager:Register(card2, "all")
 
-    -- Icon Size slider
-    local row2a = GUIFrame:CreateRow(card2.content, 40)
+    local row2a = GUIFrame:CreateRow(card2.content, Theme.rowHeight)
     local iconSizeSlider = GUIFrame:CreateSlider(row2a, "Icon Size", {
         min = 16,
         max = 100,
         step = 1,
-        value = db.IconSize or 50,
+        value = db.IconSize,
         callback = function(value)
             db.IconSize = value
             ApplySettings()
         end
     })
     row2a:AddWidget(iconSizeSlider, 0.5)
-    table_insert(allWidgets, iconSizeSlider)
+    manager:Register(iconSizeSlider, "all")
 
-    -- Icon Spacing slider
     local iconSpacingSlider = GUIFrame:CreateSlider(row2a, "Icon Spacing", {
         min = 0,
         max = 10,
         step = 1,
-        value = db.IconSpacing or 2,
+        value = db.IconSpacing,
         callback = function(value)
             db.IconSpacing = value
             ApplySettings()
         end
     })
     row2a:AddWidget(iconSpacingSlider, 0.5)
-    table_insert(allWidgets, iconSpacingSlider)
-    card2:AddRow(row2a, 40)
+    manager:Register(iconSpacingSlider, "all")
+    card2:AddRow(row2a, Theme.rowHeight)
 
-    -- Icons Per Row slider
-    local row2b = GUIFrame:CreateRow(card2.content, 40)
+    local row2b = GUIFrame:CreateRow(card2.content, Theme.rowHeight)
     local iconsPerRowSlider = GUIFrame:CreateSlider(row2b, "Icons Per Row", {
         min = 1,
         max = 20,
         step = 1,
-        value = db.IconsPerRow or 6,
+        value = db.IconsPerRow,
         callback = function(value)
             db.IconsPerRow = value
             ApplySettings()
         end
     })
     row2b:AddWidget(iconsPerRowSlider, 0.5)
-    table_insert(allWidgets, iconsPerRowSlider)
+    manager:Register(iconsPerRowSlider, "all")
 
-    -- Max Rows slider
     local maxRowsSlider = GUIFrame:CreateSlider(row2b, "Max Rows", {
         min = 1,
         max = 5,
         step = 1,
-        value = db.MaxRows or 1,
+        value = db.MaxRows,
         callback = function(value)
             db.MaxRows = value
             ApplySettings()
         end
     })
     row2b:AddWidget(maxRowsSlider, 0.5)
-    table_insert(allWidgets, maxRowsSlider)
-    card2:AddRow(row2b, 40)
+    manager:Register(maxRowsSlider, "all")
+    card2:AddRow(row2b, Theme.rowHeight)
 
-    -- Icon Zoom slider
-    local row2c = GUIFrame:CreateRow(card2.content, 40)
+    local row2c = GUIFrame:CreateRow(card2.content, Theme.rowHeight)
     local iconZoomSlider = GUIFrame:CreateSlider(row2c, "Icon Zoom", {
         min = 0,
-        max = 0.5,
+        max = 1,
         step = 0.01,
-        value = db.IconZoom or 0.32,
+        value = db.IconZoom,
         callback = function(value)
             db.IconZoom = value
             ApplySettings()
         end
     })
     row2c:AddWidget(iconZoomSlider, 0.5)
-    table_insert(allWidgets, iconZoomSlider)
-    card2:AddRow(row2c, 40)
+    manager:Register(iconZoomSlider, "all")
 
-    yOffset = yOffset + card2:GetContentHeight() + Theme.paddingSmall
-
-    ----------------------------------------------------------------
-    -- Card 3: Visual Settings
-    ----------------------------------------------------------------
-    local card3 = GUIFrame:CreateCard(scrollChild, "Visual Settings", yOffset)
-
-    -- Border Color
-    local row3a = GUIFrame:CreateRow(card3.content, 40)
-    local borderColorPicker = GUIFrame:CreateColorPicker(row3a, "Border Color", {
+    local borderColorPicker = GUIFrame:CreateColorPicker(row2c, "Border Color", {
         color = db.BorderColor,
         callback = function(r, g, b, a)
             db.BorderColor = { r, g, b, a }
             ApplySettings()
         end
     })
-    row3a:AddWidget(borderColorPicker, 0.5)
-    table_insert(allWidgets, borderColorPicker)
+    row2c:AddWidget(borderColorPicker, 0.5)
+    manager:Register(borderColorPicker, "all")
+    card2:AddRow(row2c, Theme.rowHeight)
 
-    -- Background Color
-    local bgColorPicker = GUIFrame:CreateColorPicker(row3a, "Background Color", {
-        color = db.BackgroundColor,
-        callback = function(r, g, b, a)
-            db.BackgroundColor = { r, g, b, a }
+    local separator3 = GUIFrame:CreateSeparator(card2.content)
+    card2:AddRow(separator3, Theme.rowHeightSeparator)
+
+    table_insert(postUpdateCallbacks, UpdateSwipeState)
+    local rowSwipe = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast)
+    local swipeCheck = GUIFrame:CreateCheckbox(rowSwipe, "Enable Swipe", {
+        value = db.Swipe,
+        callback = function(checked)
+            db.Swipe = checked
             ApplySettings()
+            UpdateSwipeState()
+            if EXTERNALS then EXTERNALS:TogglePreview() end
         end
     })
-    row3a:AddWidget(bgColorPicker, 0.5)
-    table_insert(allWidgets, bgColorPicker)
-    card3:AddRow(row3a, 40)
+    rowSwipe:AddWidget(swipeCheck, 0.5)
+    manager:Register(swipeCheck, "all")
 
-    yOffset = yOffset + card3:GetContentHeight() + Theme.paddingSmall
+    local reverseCheck = GUIFrame:CreateCheckbox(rowSwipe, "Reverse Swipe", {
+        value = db.Reverse,
+        callback = function(checked)
+            db.Reverse = checked
+            ApplySettings()
+            if EXTERNALS then EXTERNALS:TogglePreview() end
+        end
+    })
+    rowSwipe:AddWidget(reverseCheck, 0.5)
+    manager:Register(reverseCheck, "all")
+    table_insert(SwipeWidgets, reverseCheck)
+    card2:AddRow(rowSwipe, Theme.rowHeightLast, 0)
 
-    ----------------------------------------------------------------
-    -- Card 4: Font Settings
-    ----------------------------------------------------------------
-    local card4 = GUIFrame:CreateCard(scrollChild, "Font Settings", yOffset)
+    yOffset = card2:GetNextOffset()
 
-    -- Font list
-    local fontList = {}
+    -- Card 3
+    local fontCard, fontOffset, fontWidgets = GUIFrame:CreateFontSettingsCard(scrollChild, yOffset, {
+        title = "Font Settings",
+        db = db,
+        dbKeys = { fontFace = "FontFace", fontOutline = "FontOutline" },
+        fontSizes = {
+            { label = "Count Size", dbKey = "FontSize" },
+            { label = "Timer Size", dbKey = "TimerFontSize" },
+        },
+        includeSoftOutline = true,
+        onChangeCallback = ApplySettings,
+    })
+    table_insert(allCards, fontCard)
+    manager:Register(fontCard, "all")
+    manager:RegisterGroup(fontWidgets, "all")
+    if fontCard.UpdateShadowState then table_insert(postUpdateCallbacks, fontCard.UpdateShadowState) end
+
+    yOffset = fontOffset
+
+    -- Card 4
+    local glowCard, glowOffset, glowWidgets = GUIFrame:CreateGlowSettingsCard(scrollChild, yOffset, {
+        title = "Glow Settings (External Defensives Only)",
+        db = db,
+        onChangeCallback = function()
+            ApplySettings()
+            if EXTERNALS then EXTERNALS:TogglePreview() end
+        end,
+        onHeightChange = RelayoutCards,
+    })
+    table_insert(allCards, glowCard)
+    manager:Register(glowCard, "all")
+    manager:RegisterGroup(glowWidgets, "all")
+    if glowCard.updateTypeVisibility then table_insert(postUpdateCallbacks, glowCard.updateTypeVisibility) end
+
+    yOffset = glowOffset
+
+    -- Card 5
+    local soundCard = GUIFrame:CreateCard(scrollChild, "Sound (External Defensives Only)", yOffset)
+    table_insert(allCards, soundCard)
+    manager:Register(soundCard, "all")
+
+    local soundList = { ["None"] = "None" }
     if LSM then
-        for name in pairs(LSM:HashTable("font")) do fontList[name] = name end
-    else
-        fontList["Friz Quadrata TT"] = "Friz Quadrata TT"
+        for name in pairs(LSM:HashTable("sound")) do soundList[name] = name end
     end
 
-    -- Font Face and Outline
-    local row4a = GUIFrame:CreateRow(card4.content, 40)
-    local fontDropdown = GUIFrame:CreateDropdown(row4a, "Font", {
-        options = fontList,
-        value = db.FontFace,
+    local rowSound = GUIFrame:CreateRow(soundCard.content, Theme.rowHeight)
+    local soundEnableCheck = GUIFrame:CreateCheckbox(rowSound, "Enable Sound", {
+        value = db.SoundEnabled,
+        callback = function(checked)
+            db.SoundEnabled = checked
+        end
+    })
+    rowSound:AddWidget(soundEnableCheck, 1)
+    manager:Register(soundEnableCheck, "all")
+    soundCard:AddRow(rowSound, Theme.rowHeight)
+
+    local separator2 = GUIFrame:CreateSeparator(soundCard.content)
+    soundCard:AddRow(separator2, Theme.rowHeightSeparator)
+
+    local rowSound2 = GUIFrame:CreateRow(soundCard.content, Theme.rowHeightLast)
+    local soundDropdown = GUIFrame:CreateDropdown(rowSound2, "On Application Sound", {
+        options = soundList,
+        value = db.Sound,
         callback = function(key)
-            db.FontFace = key
-            ApplySettings()
+            db.Sound = key
         end,
-        searchable = true,
-        isFontPreview = true
+        searchable = true
     })
-    row4a:AddWidget(fontDropdown, 0.5)
-    table_insert(allWidgets, fontDropdown)
+    rowSound2:AddWidget(soundDropdown, 0.5)
+    manager:Register(soundDropdown, "all")
 
-    local outlineList = {
-        { key = "NONE",         text = "None" },
-        { key = "OUTLINE",      text = "Outline" },
-        { key = "THICKOUTLINE", text = "Thick" },
-    }
-    local outlineDropdown = GUIFrame:CreateDropdown(row4a, "Outline", {
-        options = outlineList,
-        value = db.FontOutline or "OUTLINE",
-        callback = function(key)
-            db.FontOutline = key
-            ApplySettings()
-        end
-    })
-    row4a:AddWidget(outlineDropdown, 0.5)
-    table_insert(allWidgets, outlineDropdown)
-    card4:AddRow(row4a, 40)
-
-    -- Font Size
-    local row4b = GUIFrame:CreateRow(card4.content, 40)
-    local fontSizeSlider = GUIFrame:CreateSlider(row4b, "Count Font Size", {
-        min = 8,
-        max = 24,
-        step = 1,
-        value = db.FontSize or 14,
-        callback = function(value)
-            db.FontSize = value
-            ApplySettings()
-        end
-    })
-    row4b:AddWidget(fontSizeSlider, 0.5)
-    table_insert(allWidgets, fontSizeSlider)
-
-    -- Timer Font Size
-    local timerFontSizeSlider = GUIFrame:CreateSlider(row4b, "Timer Font Size", {
-        min = 8,
-        max = 32,
-        step = 1,
-        value = db.TimerFontSize or 16,
-        callback = function(value)
-            db.TimerFontSize = value
-            ApplySettings()
-        end
-    })
-    row4b:AddWidget(timerFontSizeSlider, 0.5)
-    table_insert(allWidgets, timerFontSizeSlider)
-    card4:AddRow(row4b, 40)
-
-    -- Timer Position Offsets
-    local timerPos = db.TimerPosition or {}
-    local row4c = GUIFrame:CreateRow(card4.content, 40)
-    local timerXSlider = GUIFrame:CreateSlider(row4c, "Timer X Offset", {
-        min = -50,
-        max = 50,
-        step = 1,
-        value = timerPos.XOffset or 0,
-        callback = function(value)
-            db.TimerPosition = db.TimerPosition or {}
-            db.TimerPosition.XOffset = value
-            ApplySettings()
-        end
-    })
-    row4c:AddWidget(timerXSlider, 0.5)
-    table_insert(allWidgets, timerXSlider)
-
-    local timerYSlider = GUIFrame:CreateSlider(row4c, "Timer Y Offset", {
-        min = -50,
-        max = 50,
-        step = 1,
-        value = timerPos.YOffset or 0,
-        callback = function(value)
-            db.TimerPosition = db.TimerPosition or {}
-            db.TimerPosition.YOffset = value
-            ApplySettings()
-        end
-    })
-    row4c:AddWidget(timerYSlider, 0.5)
-    table_insert(allWidgets, timerYSlider)
-    card4:AddRow(row4c, 40)
-
-    yOffset = yOffset + card4:GetContentHeight() + Theme.paddingSmall
-
-    ----------------------------------------------------------------
-    -- Card 5: Sorting Options
-    ----------------------------------------------------------------
-    local card5 = GUIFrame:CreateCard(scrollChild, "Sorting Options", yOffset)
-
-    -- Sort Method and Direction
-    local row5a = GUIFrame:CreateRow(card5.content, 40)
-    local sortMethodList = { ["TIME"] = "Time", ["NAME"] = "Name", ["INDEX"] = "Index" }
-    local sortMethodDropdown = GUIFrame:CreateDropdown(row5a, "Sort Method", {
-        options = sortMethodList,
-        value = db.SortMethod,
-        callback = function(key)
-            db.SortMethod = key
-            if EXTERNALS and EXTERNALS:IsEnabled() and EXTERNALS.UpdateAuras then
-                EXTERNALS:UpdateAuras()
+    local testSoundBtn = GUIFrame:CreateButton(rowSound2, "Test", {
+        width = 60,
+        height = 24,
+        callback = function()
+            local soundName = db.Sound
+            if soundName and soundName ~= "None" and LSM then
+                NRSKNUI:PlaySound(LSM:Fetch("sound", soundName))
             end
-        end
+        end,
     })
-    row5a:AddWidget(sortMethodDropdown, 0.5)
-    table_insert(allWidgets, sortMethodDropdown)
+    rowSound2:AddWidget(testSoundBtn, 0.5, nil, 0, -14)
+    manager:Register(testSoundBtn, "all")
+    soundCard:AddRow(rowSound2, Theme.rowHeightLast, 0)
 
-    local sortDirList = { ["-"] = "Descending", ["+"] = "Ascending" }
-    local sortDirDropdown = GUIFrame:CreateDropdown(row5a, "Sort Direction", {
-        options = sortDirList,
-        value = db.SortDirection,
-        callback = function(key)
-            db.SortDirection = key
-            if EXTERNALS and EXTERNALS:IsEnabled() and EXTERNALS.UpdateAuras then
-                EXTERNALS:UpdateAuras()
-            end
-        end
-    })
-    row5a:AddWidget(sortDirDropdown, 0.5)
-    table_insert(allWidgets, sortDirDropdown)
-    card5:AddRow(row5a, 40)
+    yOffset = soundCard:GetNextOffset()
 
-    yOffset = yOffset + card5:GetContentHeight() + Theme.paddingSmall
-
-    ----------------------------------------------------------------
-    -- Card 6: Position
-    ----------------------------------------------------------------
-    local card6 = GUIFrame:CreatePositionCard(scrollChild, yOffset, {
-        title = "Position",
+    -- Card 7
+    local posCard, posOffset = GUIFrame:CreatePositionCard(scrollChild, yOffset, {
         db = db,
         showAnchorFrameType = true,
         showStrata = true,
         onChangeCallback = function()
-            local EXTERNALS = GetExternalBuffTrackingModule()
             if EXTERNALS and EXTERNALS.ApplyPosition then
                 EXTERNALS:ApplyPosition()
             end
         end,
     })
-    yOffset = yOffset + card6:GetContentHeight() + Theme.paddingSmall
+    table_insert(allCards, posCard)
+    manager:Register(posCard, "all")
 
-    -- Apply initial widget states
+    yOffset = posOffset
+
     UpdateAllWidgetStates()
-    yOffset = yOffset - (Theme.paddingSmall * 3)
+
     return yOffset
 end)
