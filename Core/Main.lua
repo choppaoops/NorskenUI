@@ -5,9 +5,14 @@ local NRSKNUI = select(2, ...)
 -- Localization Setup
 local IsInInstance = IsInInstance
 local LibStub = LibStub
+local string_gsub = string.gsub
+local ReloadUI = ReloadUI
 local Theme = NRSKNUI.Theme
 
 local aceAddon = LibStub("AceAddon-3.0")
+local LDB = LibStub("LibDataBroker-1.1")
+local LDBIcon = LibStub("LibDBIcon-1.0")
+local LDS = LibStub("LibDualSpec-1.0")
 
 -- Constants
 local DEFAULT_PROFILE = "Default"
@@ -27,8 +32,8 @@ function NorskenUI:OnInitialize()
         defaults = { profile = {} }
     end
     NRSKNUI.db = LibStub("AceDB-3.0"):New("NorskenUIDB", defaults, true)
-    if NRSKNUI.LDS then
-        NRSKNUI.LDS:EnhanceDatabase(NRSKNUI.db, "NorskenUI")
+    if LDS then
+        LDS:EnhanceDatabase(NRSKNUI.db, "NorskenUI")
     end
     if NRSKNUI.db.global and NRSKNUI.db.global.UseGlobalProfile then
         local profileName = NRSKNUI.db.global.GlobalProfile or DEFAULT_PROFILE
@@ -64,11 +69,7 @@ function NorskenUI:OnInitialize()
     end)
 end
 
--- Setup minimap icon using LibDataBroker and LibDBIcon
 function NRSKNUI:SetupMinimapIcon()
-    -- Setup minimap icon
-    local LDB = NRSKNUI.LDB
-    local LDBIcon = NRSKNUI.LDBIcon
     if not LDB or not LDBIcon then return end
     local MyLDB = LDB:NewDataObject("NorskenUI", {
         type = "launcher",
@@ -94,8 +95,6 @@ function NRSKNUI:SetupMinimapIcon()
             tt:AddLine("Right-Click to toggle anchors", 0.70, 0.70, 0.70)
         end,
     })
-
-    -- Register minimap icon
     LDBIcon:Register("NorskenUI", MyLDB, NRSKNUI.db.profile.Minimap)
 end
 
@@ -122,10 +121,47 @@ local function OnPlayerEnteringWorld()
     end
 end
 
+-- Setup slash commands
+local function SetupSlashCommands()
+    SLASH_NRSKNUI1 = "/nui"
+    SLASH_NRSKNUI2 = "/norskenui"
+    SlashCmdList["NRSKNUI"] = function(msg)
+        msg = (msg or ""):lower()
+        msg = string_gsub(msg, "^%s+", "")
+        msg = string_gsub(msg, "%s+$", "")
+        if msg == "" or msg == "gui" then
+            if NRSKNUI.GUIFrame then
+                NRSKNUI.GUIFrame:Toggle()
+            end
+        elseif msg == "edit" or msg == "unlock" then
+            if NRSKNUI.EditMode then
+                NRSKNUI.EditMode:Toggle()
+            end
+        end
+    end
+
+    -- Show login message if enabled
+    if NRSKNUI.db and NRSKNUI.db.profile.Minimap.LoginMessage ~= false then
+        NRSKNUI:Print(NRSKNUI:ColorTextByTheme("/nui") .. " to open the configuration window.")
+    end
+
+    -- TODO: Add these into gui so user can toggle
+    -- /rl instead of /reload shortcut :)
+    SLASH_NRSKNUI_RL1 = "/rl"
+    SlashCmdList["NRSKNUI_RL"] = function() ReloadUI() end
+
+    -- /fs instead of /fstack shortcut :)
+    SLASH_NRSKNUI_FS1 = "/fs"
+    SlashCmdList["NRSKNUI_FS"] = function()
+        UIParentLoadAddOn("Blizzard_DebugTools")
+        FrameStackTooltip_Toggle()
+    end
+end
+
 -- OnEnable: Called when the addon is enabled
 function NorskenUI:OnEnable()
     if NRSKNUI.RefreshTheme then NRSKNUI:RefreshTheme() end
-    if NRSKNUI.Init then NRSKNUI:Init() end
+    SetupSlashCommands()
 
     -- Automatically enable modules based on their saved settings
     for name, module in self:IterateModules() do

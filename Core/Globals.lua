@@ -2,173 +2,86 @@
 ---@class NRSKNUI
 ---@diagnostic disable: undefined-field
 local NRSKNUI = select(2, ...)
+local N = select(1, ...)
 
--- Localization
-local ipairs = ipairs
+NRSKNUI.AddOnName = C_AddOns.GetAddOnMetadata(N, "Title")
+NRSKNUI.Version = C_AddOns.GetAddOnMetadata(N, "Version")
+NRSKNUI.Author = C_AddOns.GetAddOnMetadata(N, "Author")
+
 local print = print
-local string_gsub = string.gsub
-local ReloadUI = ReloadUI
 local C_AddOns = C_AddOns
 local EditModeManagerFrame = EditModeManagerFrame
 local _G = _G
 
--- Libraries
-NRSKNUI.LSM = LibStub("LibSharedMedia-3.0")
-NRSKNUI.LDB = LibStub("LibDataBroker-1.1")
-NRSKNUI.LDBIcon = LibStub("LibDBIcon-1.0")
-NRSKNUI.LDS = LibStub("LibDualSpec-1.0")
-
--- Standard addon statusbar (PATH and FONT defined in AddonTheme.lua)
-NRSKNUI.SB = NRSKNUI.PATH .. [[Statusbars\]] .. 'NorskenUI.blp'
-
--- Register LSM media
-if NRSKNUI.LSM then
-    NRSKNUI.LSM:Register('font', 'Expressway', NRSKNUI.FONT)
-    NRSKNUI.LSM:Register('statusbar', 'NorskenUI', NRSKNUI.SB)
-    NRSKNUI.LSM:Register('sound', '|cffe51039NorskenWhisper|r', [[Interface\AddOns\NorskenUI\Media\Sounds\Whisper.ogg]])
-    NRSKNUI.LSM:Register('border', 'WHITE8X8', [[Interface\Buttons\WHITE8X8]])
+-- Get player data via LibSpecialization and let the Lib handle changes
+do
+    local LS = LibStub("LibSpecialization")
+    NRSKNUI.MySpec = { id = nil, role = nil, position = nil, talents = nil }
+    local function UpdateSpec()
+        NRSKNUI.MySpec.id, NRSKNUI.MySpec.role, NRSKNUI.MySpec.position, NRSKNUI.MySpec.talents = LS.MySpecialization()
+    end
+    UpdateSpec()
+    LS.RegisterPlayerSpecChange(NRSKNUI, UpdateSpec)
 end
 
-local function PreloadLSMMedia()
-    if not NRSKNUI.LSM then return end
-    local mediaTypes = { "font", "statusbar", "sound", "border" }
-    for _, mediaType in ipairs(mediaTypes) do
-        local media = NRSKNUI.LSM:HashTable(mediaType)
-        if media then
-            for name in pairs(media) do
-                NRSKNUI.LSM:Fetch(mediaType, name)
-            end
-        end
+-- Check if ElvUI is loaded use ElvUI skinning is enabled
+function NRSKNUI:ShouldNotLoadModule() return C_AddOns.IsAddOnLoaded("ElvUI") and NRSKNUI.db.profile.UseElvUI.Enabled end
+
+-- Check if Blizzard Edit Mode is currently active
+function NRSKNUI:IsEditModeActive() return EditModeManagerFrame and EditModeManagerFrame:IsShown() end
+
+-- Print message with class colored addon name prefix
+function NRSKNUI:Print(msg) print(self:ColorTextByTheme("Norsken") .. "UI:|r " .. msg) end
+
+-- Preview Utilities --
+
+local PreviewManager = { guiOpen = false, editModeActive = false, previewsActive = false, }
+NRSKNUI.PreviewManager = PreviewManager
+
+function PreviewManager:UpdatePreviewState()
+    local shouldShowPreviews = self.guiOpen or self.editModeActive
+
+    if shouldShowPreviews and not self.previewsActive then
+        self:StartAllPreviews()
+        self.previewsActive = true
+    elseif not shouldShowPreviews and self.previewsActive then
+        self:StopAllPreviews()
+        self.previewsActive = false
     end
 end
 
-local preloadFrame = CreateFrame("Frame")
-preloadFrame:RegisterEvent("PLAYER_LOGIN")
-preloadFrame:SetScript("OnEvent", function(self)
-    self:UnregisterAllEvents()
-    C_Timer.After(1.5, PreloadLSMMedia)
-end)
-
-local DEFAULT_FONT = "Expressway"
-
-local function IsFontKey(key)
-    if type(key) ~= "string" then return false end
-    return key == "Font" or key == "FontFace" or key:match("FontFace$")
+function PreviewManager:SetGUIOpen(open)
+    self.guiOpen = open
+    self:UpdatePreviewState()
 end
 
-local function ValidateFontsRecursive(tbl, defaults)
-    if type(tbl) ~= "table" then return end
-    local LSM = NRSKNUI.LSM
-    if not LSM then return end
+function PreviewManager:SetEditModeActive(active)
+    self.editModeActive = active
+    self:UpdatePreviewState()
+end
 
-    for key, value in pairs(tbl) do
-        if IsFontKey(key) and type(value) == "string" then
-            if not LSM:IsValid("font", value) then
-                local defaultVal = defaults and defaults[key] or DEFAULT_FONT
-                if not LSM:IsValid("font", defaultVal) then
-                    defaultVal = DEFAULT_FONT
-                end
-                tbl[key] = defaultVal
-            end
-        elseif type(value) == "table" then
-            local subDefaults = defaults and defaults[key]
-            ValidateFontsRecursive(value, subDefaults)
-        end
+function PreviewManager:StartAllPreviews()
+    if self._startingPreviews then return end
+    self._startingPreviews = true
+    for _, module in NorskenUI:IterateModules() do
+        if module.ShowPreview and module.db and module.db.Enabled then module:ShowPreview() end
+    end
+    self._startingPreviews = false
+end
+
+function PreviewManager:StopAllPreviews()
+    for _, module in NorskenUI:IterateModules() do
+        if module.HidePreview then module:HidePreview() end
     end
 end
 
-function NRSKNUI:ValidateProfileFonts()
-    if not self.db or not self.db.profile then return end
-    local defaults = self.db.defaults and self.db.defaults.profile
-    ValidateFontsRecursive(self.db.profile, defaults)
+function PreviewManager:IsPreviewActive()
+    return self.previewsActive
 end
 
--- Helper to get Font Path from Name
-function NRSKNUI:GetFontPath(fontName)
-    if NRSKNUI.LSM and fontName then
-        local path = NRSKNUI.LSM:Fetch("font", fontName)
-        if path then return path end
-    end
-    return "Fonts\\FRIZQT__.TTF"
-end
+-- Positioning Utilities --
 
--- Helper to get statusbar Path from Name
-function NRSKNUI:GetStatusbarPath(barName)
-    if NRSKNUI.LSM and barName then
-        local path = NRSKNUI.LSM:Fetch("statusbar", barName)
-        if path then return path end
-    end
-    return "Interface\\TargetingFrame\\UI-StatusBar"
-end
-
--- Addon information (cached metadata calls)
-local function GetAddonMetadata()
-    if not C_AddOns then return end
-    local name = "NorskenUI"
-    NRSKNUI.AddOnName = C_AddOns.GetAddOnMetadata(name, "Title")
-    NRSKNUI.Version = C_AddOns.GetAddOnMetadata(name, "Version")
-    NRSKNUI.Author = C_AddOns.GetAddOnMetadata(name, "Author")
-end
-GetAddonMetadata()
-
--- Helper to check if a module should load or not based on ElvUI presence and user settings
-function NRSKNUI:ShouldNotLoadModule()
-    return C_AddOns.IsAddOnLoaded("ElvUI") and NRSKNUI.db.profile.UseElvUI.Enabled
-end
-
--- IsEditModeActive: Check if Edit Mode is currently active
-function NRSKNUI:IsEditModeActive()
-    return EditModeManagerFrame and EditModeManagerFrame:IsShown()
-end
-
--- Print: Print message to chat with addon prefix
-function NRSKNUI:Print(msg)
-    print(self:ColorTextByTheme("Norsken") .. "UI:|r " .. msg)
-end
-
--- Setup slash commands
-local function SetupSlashCommands()
-    SLASH_NRSKNUI1 = "/nui"
-    SLASH_NRSKNUI2 = "/norskenui"
-    SlashCmdList["NRSKNUI"] = function(msg)
-        msg = (msg or ""):lower()
-        msg = string_gsub(msg, "^%s+", "")
-        msg = string_gsub(msg, "%s+$", "")
-        if msg == "" or msg == "gui" then
-            if NRSKNUI.GUIFrame then
-                NRSKNUI.GUIFrame:Toggle()
-            end
-        elseif msg == "edit" or msg == "unlock" then
-            if NRSKNUI.EditMode then
-                NRSKNUI.EditMode:Toggle()
-            end
-        end
-    end
-
-    -- Show login message if enabled
-    if NRSKNUI.db and NRSKNUI.db.profile.Minimap.LoginMessage ~= false then
-        NRSKNUI:Print(NRSKNUI:ColorTextByTheme("/nui") .. " to open the configuration window.")
-    end
-
-    -- TODO: Add these into gui so user can toggle
-    -- /rl instead of /reload shortcut :)
-    SLASH_NRSKNUI_RL1 = "/rl"
-    SlashCmdList["NRSKNUI_RL"] = function() ReloadUI() end
-
-    -- /fs instead of /fstack shortcut :)
-    SLASH_NRSKNUI_FS1 = "/fs"
-    SlashCmdList["NRSKNUI_FS"] = function()
-        UIParentLoadAddOn("Blizzard_DebugTools")
-        FrameStackTooltip_Toggle()
-    end
-end
-
--- Initialization
-function NRSKNUI:Init()
-    SetupSlashCommands()
-end
-
--- Resolve anchor frame from db settings (SCREEN, UIPARENT, SELECTFRAME)
+-- Resolve anchor frame: SCREEN, UIPARENT or SELECTFRAME
 function NRSKNUI:ResolveAnchorFrame(anchorFrameType, parentFrameName)
     if anchorFrameType == "SCREEN" or anchorFrameType == "UIPARENT" then
         return UIParent
@@ -177,36 +90,6 @@ function NRSKNUI:ResolveAnchorFrame(anchorFrameType, parentFrameName)
         return frame or UIParent
     end
     return UIParent
-end
-
--- Convert font outline value for SetFont API (NONE/SOFTOUTLINE -> "")
-function NRSKNUI:GetFontOutline(outline)
-    if not outline or outline == "NONE" or outline == "SOFTOUTLINE" or outline == "" then
-        return ""
-    end
-    return outline
-end
-
--- Safely apply font settings to a FontString with fallback
-function NRSKNUI:ApplyFont(fontString, fontName, fontSize, fontOutline)
-    if not fontString then return false end
-
-    local fontPath = self:GetFontPath(fontName)
-    if not fontPath or fontPath == "" then
-        fontPath = "Fonts\\FRIZQT__.TTF"
-    end
-
-    local outline = self:GetFontOutline(fontOutline)
-    local size = fontSize
-    if not size or size <= 0 then
-        size = 12
-    end
-
-    local success = fontString:SetFont(fontPath, size, outline)
-    if not success then
-        success = fontString:SetFont("Fonts\\FRIZQT__.TTF", size, outline)
-    end
-    return success
 end
 
 -- Get text justification based on anchor point
@@ -220,105 +103,6 @@ function NRSKNUI:GetTextJustifyFromAnchor(anchorPoint)
     return "CENTER"
 end
 
--- Get text point based on anchor
-function NRSKNUI:GetTextPointFromAnchor(anchorPoint)
-    local justify = self:GetTextJustifyFromAnchor(anchorPoint)
-    if justify == "RIGHT" then
-        return "RIGHT"
-    elseif justify == "LEFT" then
-        return "LEFT"
-    end
-    return "CENTER"
-end
-
--- Preview Manager
-local PreviewManager = {}
-NRSKNUI.PreviewManager = PreviewManager
-
--- Modules that support preview (has ShowPreview/HidePreview functions)
-local PREVIEW_MODULES = {
-    "MissingBuffs", "CombatCross", "CombatMessage", "CombatRes",
-    "CombatTimer", "PetTexts", "XPBar", "Durability", "DragonRiding", "RaidAlerts",
-    "FocusCastbar", "Gateway", "HuntersMark", "BlizzardRM", "RangeChecker", "TimeSpiral", "Recuperate",
-    "DungeonCasts"
-}
-
--- State tracking
-PreviewManager.guiOpen = false
-PreviewManager.editModeActive = false
-PreviewManager.previewsActive = false
-
--- Update preview state based on GUI and EditMode
-function PreviewManager:UpdatePreviewState()
-    local shouldShowPreviews = self.guiOpen or self.editModeActive
-
-    if shouldShowPreviews and not self.previewsActive then
-        self:StartAllPreviews()
-        self.previewsActive = true
-    elseif not shouldShowPreviews and self.previewsActive then
-        self:StopAllPreviews()
-        self.previewsActive = false
-    end
-end
-
--- Called when GUI opens/closes
-function PreviewManager:SetGUIOpen(open)
-    self.guiOpen = open
-    self:UpdatePreviewState()
-end
-
--- Called when EditMode activates/deactivates
-function PreviewManager:SetEditModeActive(active)
-    self.editModeActive = active
-    self:UpdatePreviewState()
-end
-
--- Start all module previews
-function PreviewManager:StartAllPreviews()
-    -- Prevent re-entry
-    if self._startingPreviews then return end
-    self._startingPreviews = true
-
-    local Addon = NorskenUI
-    if not Addon then
-        self._startingPreviews = false
-        return
-    end
-
-    for _, moduleName in ipairs(PREVIEW_MODULES) do
-        local module = Addon:GetModule(moduleName, true)
-        if module and module.ShowPreview and module.db and module.db.Enabled then
-            module:ShowPreview()
-        end
-    end
-
-    -- CursorCircle uses ApplySettings instead of ShowPreview
-    local CursorCircle = Addon:GetModule("CursorCircle", true)
-    if CursorCircle and CursorCircle.ApplySettings and CursorCircle.db and CursorCircle.db.Enabled then
-        CursorCircle:ApplySettings()
-    end
-
-    self._startingPreviews = false
-end
-
--- Stop all module previews
-function PreviewManager:StopAllPreviews()
-    local Addon = NorskenUI
-    if not Addon then return end
-
-    for _, moduleName in ipairs(PREVIEW_MODULES) do
-        local module = Addon:GetModule(moduleName, true)
-        if module and module.HidePreview then
-            module:HidePreview()
-        end
-    end
-end
-
--- Check if previews are currently active
-function PreviewManager:IsPreviewActive()
-    return self.previewsActive
-end
-
 -- Global apply position settings func
 -- Example usage:
 -- NRSKNUI:ApplyFramePosition(self.frame, self.db.Position, self.db, extra: true or empty)
@@ -328,13 +112,8 @@ end
 ---@param SetParent boolean? If true, also set frame parent
 function NRSKNUI:ApplyFramePosition(frame, posConfig, Config, SetParent)
     if not frame or not posConfig then return end
-
-    -- Resolve parent
     local parent = self:ResolveAnchorFrame(Config.anchorFrameType, Config.ParentFrame)
-    if SetParent then
-        frame:SetParent(parent)
-    end
-    -- Clear previous anchors and set new point
+    if SetParent then frame:SetParent(parent) end
     frame:ClearAllPoints()
     frame:SetPoint(
         posConfig.AnchorFrom or "CENTER",
