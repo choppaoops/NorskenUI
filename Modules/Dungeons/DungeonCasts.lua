@@ -104,10 +104,16 @@ function DC:CheckInstanceType()
     end
 end
 
+local function GetAnchorSize(frameDb)
+    local maxBars = frameDb.MaxBars
+    local height = maxBars * frameDb.Height + (maxBars - 1) * frameDb.Spacing
+    return frameDb.Width, height
+end
+
 function DC:CreateAnchorFrame()
     if self.anchorFrame then return end
     local anchor = CreateFrame("Frame", "NRSKNUI_DungeonCastsAnchor", UIParent)
-    anchor:SetSize(self.db.Frame.Width, 1)
+    anchor:SetSize(GetAnchorSize(self.db.Frame))
     anchor:SetFrameStrata("HIGH")
     self.anchorFrame = anchor
     self:ApplyAnchorPosition()
@@ -118,12 +124,18 @@ function DC:ApplyAnchorPosition()
     local frameDb = self.db.Frame
     local pos = frameDb.Position
     local parent = NRSKNUI:ResolveAnchorFrame(frameDb.anchorFrameType, frameDb.ParentFrame)
+    local growUp = frameDb.GrowthDirection == "UP"
 
     self.anchorFrame:SetParent(parent)
     self.anchorFrame:ClearAllPoints()
-    self.anchorFrame:SetPoint(pos.AnchorFrom, parent, pos.AnchorTo, pos.XOffset, pos.YOffset)
+    self.anchorFrame:SetSize(GetAnchorSize(frameDb))
     self.anchorFrame:SetFrameStrata(frameDb.Strata)
-    self.anchorFrame:SetSize(frameDb.Width, 1)
+
+    if growUp then
+        self.anchorFrame:SetPoint("BOTTOM", parent, pos.AnchorTo, pos.XOffset, pos.YOffset)
+    else
+        self.anchorFrame:SetPoint("TOP", parent, pos.AnchorTo, pos.XOffset, pos.YOffset)
+    end
 end
 
 -- Creates a new bar frame. This is only called when the pool is empty, so it doesn't need to apply settings or populate any data.
@@ -571,9 +583,9 @@ function DC:PositionAllBars()
             bar:ClearAllPoints()
             local offset = (i - 1) * step
             if growUp then
-                bar:SetPoint("BOTTOM", self.anchorFrame, "TOP", 0, offset)
+                bar:SetPoint("BOTTOM", self.anchorFrame, "BOTTOM", 0, offset)
             else
-                bar:SetPoint("TOP", self.anchorFrame, "BOTTOM", 0, -offset)
+                bar:SetPoint("TOP", self.anchorFrame, "TOP", 0, -offset)
             end
         end
     end
@@ -837,11 +849,13 @@ function DC:OnEnable()
         getPosition = function() return self.db.Frame.Position end,
         setPosition = function(pos)
             local p = self.db.Frame.Position
-            p.AnchorFrom = pos.AnchorFrom
             p.AnchorTo = pos.AnchorTo
             p.XOffset = pos.XOffset
             p.YOffset = pos.YOffset
             self:ApplyPosition()
+        end,
+        getAnchorFrom = function()
+            return self.db.Frame.GrowthDirection == "UP" and "BOTTOM" or "TOP"
         end,
         getParentFrame = function()
             return NRSKNUI:ResolveAnchorFrame(self.db.Frame.anchorFrameType, self.db.Frame.ParentFrame)

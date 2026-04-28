@@ -81,6 +81,7 @@ function EditMode:RegisterElement(config)
         getPosition = config.getPosition,
         setPosition = config.setPosition,
         getParentFrame = config.getParentFrame,
+        getAnchorFrom = config.getAnchorFrom,
         guiPath = config.guiPath,
         guiContext = config.guiContext, -- Specific item to select in the GUI, using this for actionbars and details backdrops
     }
@@ -232,7 +233,7 @@ function EditMode:SetupDragHandlers(overlay, element)
 
         -- Get the current position/anchor settings from the module's DB
         local currentPos = element.getPosition()
-        local anchorFrom = currentPos.AnchorFrom or "CENTER"
+        local anchorFrom = element.getAnchorFrom and element.getAnchorFrom() or currentPos.AnchorFrom or "CENTER"
         local anchorTo = currentPos.AnchorTo or "CENTER"
 
         -- Get the parent frame
