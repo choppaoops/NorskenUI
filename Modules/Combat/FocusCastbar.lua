@@ -81,7 +81,7 @@ function FCB:CreateFrame()
     local icon = iconFrame:CreateTexture(nil, "ARTWORK")
     icon:SetPoint("TOPLEFT", 1, -1)
     icon:SetPoint("BOTTOMRIGHT", -1, 1)
-    NRSKNUI:ApplyZoom(icon, 0.3)
+    NRSKNUI:ApplyZoom(icon, NRSKNUI.GlobalZoom)
 
     local castBar = CreateFrame("StatusBar", nil, frame)
     castBar:SetPoint("LEFT", iconFrame, "RIGHT", 0, 0)

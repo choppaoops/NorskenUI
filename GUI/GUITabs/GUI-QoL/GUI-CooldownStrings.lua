@@ -138,7 +138,7 @@ GUIFrame:RegisterPanel("CooldownStrings", function(container)
             local specInfo = item.specInfo
             if specInfo and specInfo.icon then
                 btn._icon:SetTexture(specInfo.icon)
-                NRSKNUI:ApplyZoom(btn._icon, 0.1)
+                NRSKNUI:ApplyZoom(btn._icon, NRSKNUI.GlobalZoom)
             else
                 btn._icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
             end

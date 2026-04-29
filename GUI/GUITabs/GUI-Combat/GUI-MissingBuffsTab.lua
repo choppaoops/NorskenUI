@@ -174,11 +174,11 @@ local function CreateIconWidget(parent, iconData, size)
             iconFrame.texture:SetAtlas(iconData.atlas)
         elseif iconData.textureId then
             -- Direct texture ID with zoom
-            NRSKNUI:ApplyZoom(iconFrame.texture, 0.3)
+            NRSKNUI:ApplyZoom(iconFrame.texture, NRSKNUI.GlobalZoom)
             iconFrame.texture:SetTexture(iconData.textureId)
         elseif iconData.spellId then
             -- Use spell texture with zoom
-            NRSKNUI:ApplyZoom(iconFrame.texture, 0.3)
+            NRSKNUI:ApplyZoom(iconFrame.texture, NRSKNUI.GlobalZoom)
 
             local texture = C_Spell.GetSpellTexture(iconData.spellId)
             if texture then
@@ -188,7 +188,7 @@ local function CreateIconWidget(parent, iconData, size)
             end
         end
     elseif type(iconData) == "number" then
-        NRSKNUI:ApplyZoom(iconFrame.texture, 0.3)
+        NRSKNUI:ApplyZoom(iconFrame.texture, NRSKNUI.GlobalZoom)
 
         local texture = C_Spell.GetSpellTexture(iconData)
         if texture then

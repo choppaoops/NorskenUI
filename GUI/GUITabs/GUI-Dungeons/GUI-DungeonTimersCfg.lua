@@ -41,7 +41,7 @@ local function CreateSpellIconPreview(parent, iconId, size)
     if texture then
         iconFrame.texture:SetTexture(texture)
         if NRSKNUI.ApplyZoom then
-            NRSKNUI:ApplyZoom(iconFrame.texture, 0.3)
+            NRSKNUI:ApplyZoom(iconFrame.texture, NRSKNUI.GlobalZoom)
         end
     else
         iconFrame.texture:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")

@@ -528,7 +528,7 @@ function ACB:CreateButtonBackdrop(button, barName, index, buttonSize)
     end
 
     -- Icon zoom stuff bcs blizz border uggy
-    NRSKNUI:ApplyZoom(button.icon, 0.6)
+    NRSKNUI:ApplyZoom(button.icon, NRSKNUI.GlobalZoom)
 
     -- Create range overlay, red tint when out of range
     local rangeOverlay = button:CreateTexture(nil, "OVERLAY", nil, 1)

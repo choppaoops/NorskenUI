@@ -211,7 +211,7 @@ function DC:ConfigureBar(bar)
         else
             bar.iconFrame:SetBorderColor(borderColor[1], borderColor[2], borderColor[3], borderColor[4])
         end
-        NRSKNUI:ApplyZoom(bar.icon, iconDb.Zoom)
+        NRSKNUI:ApplyZoom(bar.icon, NRSKNUI.GlobalZoom)
     else
         bar.iconFrame:Hide()
     end

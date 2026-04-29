@@ -88,7 +88,7 @@ local function CreateAuraButton(parent)
 
     button.Icon = button:CreateTexture(nil, "ARTWORK")
     button.Icon:SetAllPoints()
-    NRSKNUI:ApplyZoom(button.Icon, db.IconZoom)
+    NRSKNUI:ApplyZoom(button.Icon, NRSKNUI.GlobalZoom)
 
     button.Count = button:CreateFontString(nil, "OVERLAY")
     button.Count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1)
@@ -260,7 +260,7 @@ local function ApplyButtonSettings(button, db)
         button.Cooldown:SetDrawSwipe(db.Swipe)
         button.Cooldown:SetReverse(db.Reverse)
     end
-    if button.Icon then NRSKNUI:ApplyZoom(button.Icon, db.IconZoom) end
+    if button.Icon then NRSKNUI:ApplyZoom(button.Icon, NRSKNUI.GlobalZoom) end
 end
 
 local function GetFrameSize(db)

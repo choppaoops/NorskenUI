@@ -538,7 +538,7 @@ function DT:CreateBarFrame(dungeonKey, triggerId, trigger)
         frame.icon = frame.iconFrame:CreateTexture(nil, "ARTWORK")
         frame.icon:SetPoint("TOPLEFT", 1, -1)
         frame.icon:SetPoint("BOTTOMRIGHT", -1, 1)
-        if NRSKNUI.ApplyZoom then NRSKNUI:ApplyZoom(frame.icon, 0.1) end
+        if NRSKNUI.ApplyZoom then NRSKNUI:ApplyZoom(frame.icon, NRSKNUI.GlobalZoom) end
     end
 
     local fontSize = config.fontSize

@@ -235,7 +235,7 @@ function HM:UpdateHealerFrame()
         frame.icon:SetTexture(icon)
         frame.icon:SetTexCoord(0, 1, 0, 1)
         if NRSKNUI.ApplyZoom then
-            NRSKNUI:ApplyZoom(frame.icon, 0.3)
+            NRSKNUI:ApplyZoom(frame.icon, NRSKNUI.GlobalZoom)
         end
     else
         -- Fallback to healing spec icon if spec not available yet
@@ -244,7 +244,7 @@ function HM:UpdateHealerFrame()
             frame.icon:SetTexture(fallbackIcon)
             frame.icon:SetTexCoord(0, 1, 0, 1)
             if NRSKNUI.ApplyZoom then
-                NRSKNUI:ApplyZoom(frame.icon, 0.3)
+                NRSKNUI:ApplyZoom(frame.icon, NRSKNUI.GlobalZoom)
             end
         end
     end

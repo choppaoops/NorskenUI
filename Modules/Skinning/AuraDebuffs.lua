@@ -105,7 +105,7 @@ local function auraButtonInit(button)
     -- Icon texture
     button.Icon = button:CreateTexture(nil, "ARTWORK")
     button.Icon:SetAllPoints()
-    NRSKNUI:ApplyZoom(button.Icon, db.IconZoom)
+    NRSKNUI:ApplyZoom(button.Icon, NRSKNUI.GlobalZoom)
 
     -- Count text
     button.Count = button:CreateFontString(nil, "OVERLAY")
@@ -169,7 +169,7 @@ local function applyButtonSettings(button, db)
             )
         end
     end
-    if button.Icon then NRSKNUI:ApplyZoom(button.Icon, db.IconZoom) end
+    if button.Icon then NRSKNUI:ApplyZoom(button.Icon, NRSKNUI.GlobalZoom) end
 end
 
 -- Apply settings to all initialized buttons
@@ -337,7 +337,7 @@ local function CreatePreviewButton(parent, index, db)
     -- Icon texture
     button.Icon = button:CreateTexture(nil, "ARTWORK")
     button.Icon:SetAllPoints()
-    NRSKNUI:ApplyZoom(button.Icon, db.IconZoom)
+    NRSKNUI:ApplyZoom(button.Icon, NRSKNUI.GlobalZoom)
     local iconIndex = ((index - 1) % #PREVIEW_ICONS) + 1
     button.Icon:SetTexture(PREVIEW_ICONS[iconIndex])
 

@@ -153,7 +153,7 @@ local function CreateSpellIconPreview(parent, spellId, size)
     if texture then
         iconFrame.texture:SetTexture(texture)
         if NRSKNUI.ApplyZoom then
-            NRSKNUI:ApplyZoom(iconFrame.texture, 0.1)
+            NRSKNUI:ApplyZoom(iconFrame.texture, NRSKNUI.GlobalZoom)
         end
     else
         iconFrame.texture:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
@@ -453,7 +453,7 @@ local function CreateDungeonPanel(dungeonId)
             else
                 spellIcon:SetTexture(134400)
             end
-            NRSKNUI:ApplyZoom(spellIcon, 0.1)
+            NRSKNUI:ApplyZoom(spellIcon, NRSKNUI.GlobalZoom)
             btn.spellIcon = spellIcon
 
             local typeIndicator = btn:CreateFontString(nil, "OVERLAY")
