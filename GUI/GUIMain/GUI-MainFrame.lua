@@ -939,7 +939,7 @@ function GUIFrame:CreateFooter(parent)
     local logoTwitch, logoTwitchTexture, logoTwitchText = CreateSocialButton(supportLogoContainer, {
         text = "Twitch",
         width = 62,
-        texturePath = "Interface\\AddOns\\NorskenUI\\Media\\SupportLogos\\Twitchv2W.png",
+        texturePath = "Interface\\AddOns\\NorskenUI\\Media\\SupportLogos\\twitchv2W.png",
         promptTitle = "Support My |cff9146FFTwitch|r",
         link = "www.twitch.tv/norskenwow",
         point = "LEFT",
@@ -953,7 +953,7 @@ function GUIFrame:CreateFooter(parent)
     local logoDiscord, logoDiscordTexture, logoDiscordText = CreateSocialButton(supportLogoContainer, {
         text = "Discord",
         width = 68,
-        texturePath = "Interface\\AddOns\\NorskenUI\\Media\\SupportLogos\\Discordv2W.png",
+        texturePath = "Interface\\AddOns\\NorskenUI\\Media\\SupportLogos\\discordv2W.png",
         promptTitle = "Join My |cff5865F2Discord|r",
         link = "https://discord.com/invite/23bS8pHfuX",
         point = "LEFT",
@@ -963,6 +963,20 @@ function GUIFrame:CreateFooter(parent)
     })
     footer.logoDiscordTexture = logoDiscordTexture
     footer.logoDiscordText = logoDiscordText
+
+    local logoGitHub, logoGitHubTexture, logoGitHubText = CreateSocialButton(supportLogoContainer, {
+        text = "GitHub",
+        width = 68,
+        texturePath = "Interface\\AddOns\\NorskenUI\\Media\\SupportLogos\\github2W.png",
+        promptTitle = "Support My |cffffffffGitHub|r",
+        link = "https://github.com/Nrsken/NorskenUI",
+        point = "LEFT",
+        anchor = logoDiscord,
+        relativePoint = "RIGHT",
+        offsetX = Theme.paddingMedium,
+    })
+    footer.logoGitHubTexture = logoGitHubTexture
+    footer.logoGitHubText = logoGitHubText
 
     local handle = CreateFrame("Button", nil, footer)
     handle:SetSize(23, 23)
