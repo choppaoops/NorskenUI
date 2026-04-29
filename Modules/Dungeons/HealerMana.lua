@@ -180,18 +180,14 @@ function HM:FindHealer()
         return
     end
 
-    -- Find healer
+    -- Find healer (only party members, not the player)
     local healerUnit, healerName, healerSpecID, healerClass
 
-    if IsHealer("player") then
-        healerUnit = "player"
-    else
-        for i = 1, 4 do
-            local unit = "party" .. i
-            if UnitExists(unit) and UnitIsConnected(unit) and IsHealer(unit) then
-                healerUnit = unit
-                break
-            end
+    for i = 1, 4 do
+        local unit = "party" .. i
+        if UnitExists(unit) and UnitIsConnected(unit) and IsHealer(unit) then
+            healerUnit = unit
+            break
         end
     end
 
