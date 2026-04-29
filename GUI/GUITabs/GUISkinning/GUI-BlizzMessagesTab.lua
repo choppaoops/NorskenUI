@@ -481,12 +481,10 @@ GUIFrame:RegisterContent("messages", function(scrollChild, yOffset)
     table_insert(bubbleWidgets, chatBubblText)
     local textureLinkActBtn = GUIFrame:CreateButton(row5ab, "Get Skin Here", {
         callback = function()
-            NRSKNUI:CreatePrompt(
+            NRSKNUI:CreateCopyDialog(
                 "ChatBubbleReplacements By |cff00e0ffLuckyone|r",
                 "https://github.com/Luckyone961/ChatBubbleReplacements",
-                true,
-                "Copy to clipboard by pressing CTRL + C",
-                true
+                "Copy to clipboard by pressing CTRL + C"
             )
         end,
         _,

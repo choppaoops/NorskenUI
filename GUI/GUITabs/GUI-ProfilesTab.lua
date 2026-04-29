@@ -52,17 +52,13 @@ GUIFrame:RegisterContent("ProfileManager", function(scrollChild, yOffset)
             if not success then
                 NRSKNUI:Print("Failed to switch profile: " .. (err or "Unknown error"))
             else
-                NRSKNUI:CreatePrompt(
-                    "Profile Changed",
-                    "Profile switched to '" .. key .. "'.\n\nA UI reload is recommended to fully apply all settings.",
-                    false, nil, false, nil, nil, nil, nil,
-                    function()
-                        ReloadUI()
-                    end,
-                    nil,
-                    "Reload Now",
-                    "Later"
-                )
+                NRSKNUI:CreatePrompt({
+                    title = "Profile Changed",
+                    text = "Profile switched to '" .. key .. "'.\n\nA UI reload is recommended to fully apply all settings.",
+                    onAccept = function() ReloadUI() end,
+                    acceptText = "Reload Now",
+                    cancelText = "Later",
+                })
             end
         end
     })
@@ -91,17 +87,13 @@ GUIFrame:RegisterContent("ProfileManager", function(scrollChild, yOffset)
             local success = PM:SetUseGlobalProfile(newState)
             if success then
                 if newState then
-                    NRSKNUI:CreatePrompt(
-                        "Global Profile Enabled",
-                        "Global profile mode enabled.\n\nA UI reload is recommended to fully apply all settings.",
-                        false, nil, false, nil, nil, nil, nil,
-                        function()
-                            ReloadUI()
-                        end,
-                        nil,
-                        "Reload Now",
-                        "Later"
-                    )
+                    NRSKNUI:CreatePrompt({
+                        title = "Global Profile Enabled",
+                        text = "Global profile mode enabled.\n\nA UI reload is recommended to fully apply all settings.",
+                        onAccept = function() ReloadUI() end,
+                        acceptText = "Reload Now",
+                        cancelText = "Later",
+                    })
                 else
                     NRSKNUI:Print("Global profile mode disabled")
                     C_Timer.After(0.1, function()
@@ -128,17 +120,13 @@ GUIFrame:RegisterContent("ProfileManager", function(scrollChild, yOffset)
             else
                 if useGlobal then
                     -- Global mode is active, so this actually switches the profile
-                    NRSKNUI:CreatePrompt(
-                        "Global Profile Changed",
-                        "Global profile switched to '" .. key .. "'.\n\nA UI reload is recommended to fully apply all settings.",
-                        false, nil, false, nil, nil, nil, nil,
-                        function()
-                            ReloadUI()
-                        end,
-                        nil,
-                        "Reload Now",
-                        "Later"
-                    )
+                    NRSKNUI:CreatePrompt({
+                        title = "Global Profile Changed",
+                        text = "Global profile switched to '" .. key .. "'.\n\nA UI reload is recommended to fully apply all settings.",
+                        onAccept = function() ReloadUI() end,
+                        acceptText = "Reload Now",
+                        cancelText = "Later",
+                    })
                 else
                     NRSKNUI:Print("Global profile set to: " .. key)
                 end
@@ -217,21 +205,18 @@ GUIFrame:RegisterContent("ProfileManager", function(scrollChild, yOffset)
         callback = function()
             local source = copyDropdown:GetValue()
             if source and source ~= "" then
-                NRSKNUI:CreatePrompt(
-                    "Copy Profile",
-                    "Copy all settings from '" ..
-                    source .. "' to current profile?\nThis will overwrite your current settings.",
-                    false, nil, false, nil, nil, nil, nil,
-                    function()
+                NRSKNUI:CreatePrompt({
+                    title = "Copy Profile",
+                    text = "Copy all settings from '" .. source .. "' to current profile?\nThis will overwrite your current settings.",
+                    onAccept = function()
                         local success, err = PM:CopyProfile(source)
                         if not success then
                             NRSKNUI:Print("Failed to copy profile: " .. (err or "Unknown error"))
                         end
                     end,
-                    nil,
-                    "Copy",
-                    "Cancel"
-                )
+                    acceptText = "Copy",
+                    cancelText = "Cancel",
+                })
             else
                 NRSKNUI:Print("Please select a source profile")
             end
@@ -266,11 +251,10 @@ GUIFrame:RegisterContent("ProfileManager", function(scrollChild, yOffset)
                     NRSKNUI:Print("Cannot delete the active profile")
                     return
                 end
-                NRSKNUI:CreatePrompt(
-                    "Delete Profile",
-                    "Are you sure you want to delete '" .. toDelete .. "'?\nThis cannot be undone.",
-                    false, nil, false, nil, nil, nil, nil,
-                    function()
+                NRSKNUI:CreatePrompt({
+                    title = "Delete Profile",
+                    text = "Are you sure you want to delete '" .. toDelete .. "'?\nThis cannot be undone.",
+                    onAccept = function()
                         local success, err = PM:DeleteProfile(toDelete)
                         if success then
                             NRSKNUI:Print("Deleted profile: " .. toDelete)
@@ -283,10 +267,9 @@ GUIFrame:RegisterContent("ProfileManager", function(scrollChild, yOffset)
                             NRSKNUI:Print("Failed to delete profile: " .. (err or "Unknown error"))
                         end
                     end,
-                    nil,
-                    "Delete",
-                    "Cancel"
-                )
+                    acceptText = "Delete",
+                    cancelText = "Cancel",
+                })
             else
                 NRSKNUI:Print("Please select a profile to delete")
             end
@@ -305,20 +288,18 @@ GUIFrame:RegisterContent("ProfileManager", function(scrollChild, yOffset)
     local row3d = GUIFrame:CreateRow(card3.content, 36)
     local resetBtn = GUIFrame:CreateButton(row3d, "Reset Current Profile to Defaults", {
         callback = function()
-            NRSKNUI:CreatePrompt(
-                "Reset Profile",
-                "Reset all settings in current profile to defaults?\nThis cannot be undone.",
-                false, nil, false, nil, nil, nil, nil,
-                function()
+            NRSKNUI:CreatePrompt({
+                title = "Reset Profile",
+                text = "Reset all settings in current profile to defaults?\nThis cannot be undone.",
+                onAccept = function()
                     local success = PM:ResetProfile()
                     if not success then
                         NRSKNUI:Print("Failed to reset profile")
                     end
                 end,
-                nil,
-                "Reset",
-                "Cancel"
-            )
+                acceptText = "Reset",
+                cancelText = "Cancel",
+            })
         end
     })
     row3d:AddWidget(resetBtn, 1)
@@ -339,13 +320,7 @@ GUIFrame:RegisterContent("ProfileManager", function(scrollChild, yOffset)
         callback = function()
             local exportString, err = PM:ExportProfile()
             if exportString then
-                NRSKNUI:CreatePrompt(
-                    "Export Profile",
-                    exportString,
-                    true,
-                    "Copy the string above (Ctrl+C)",
-                    false
-                )
+                NRSKNUI:CreateCopyDialog("Export Profile", exportString, "Copy the string above (Ctrl+C)")
                 NRSKNUI:Print("Export Success")
             else
                 NRSKNUI:Print("Export failed: " .. (err or "Unknown error"))
@@ -372,13 +347,12 @@ GUIFrame:RegisterContent("ProfileManager", function(scrollChild, yOffset)
     local row4c = GUIFrame:CreateRow(card4.content, 36)
     local importBtn = GUIFrame:CreateButton(row4c, "Import Profile from String", {
         callback = function()
-            NRSKNUI:CreatePrompt(
-                "Import Profile",
-                "Paste import string and press Enter",
-                true,
-                "",
-                false, nil, nil, nil, nil,
-                function(importString)
+            NRSKNUI:CreatePrompt({
+                title = "Import Profile",
+                text = "",
+                editBox = true,
+                editBoxLabel = "Paste import string and press Enter",
+                onAccept = function(importString)
                     if importString and importString ~= "" then
                         local targetName = importNameInput:GetValue()
                         if targetName == "" then targetName = nil end
@@ -397,10 +371,9 @@ GUIFrame:RegisterContent("ProfileManager", function(scrollChild, yOffset)
                         end
                     end
                 end,
-                nil,
-                "Import",
-                "Cancel"
-            )
+                acceptText = "Import",
+                cancelText = "Cancel",
+            })
         end
     })
     row4c:AddWidget(importBtn, 1)

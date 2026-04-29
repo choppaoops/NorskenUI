@@ -1,20 +1,14 @@
--- NorskenUI namespace
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
-
--- Credit:
--- Built on original WA code created by Nnoggie
 
 if not NorskenUI then
     error("CopyAnything: Addon object not initialized. Check file load order!")
     return
 end
 
--- Create module
 ---@class CopyAnything: AceModule, AceEvent-3.0
 local CopyAnything = NorskenUI:NewModule("CopyAnything", "AceEvent-3.0")
 
--- Localization
 local IsControlKeyDown = IsControlKeyDown
 local IsShiftKeyDown = IsShiftKeyDown
 local IsAltKeyDown = IsAltKeyDown
@@ -31,63 +25,22 @@ local CreateFrame = CreateFrame
 local type = type
 local InCombatLockdown = InCombatLockdown
 local C_AddOns = C_AddOns
-local StaticPopupDialogs = StaticPopupDialogs
+local GetTime = GetTime
 
--- Update db, used for profile changes
+local lastCopyTime = 0
+
 function CopyAnything:UpdateDB()
     self.db = NRSKNUI.db.profile.Miscellaneous.CopyAnything
 end
 
--- Module init
 function CopyAnything:OnInitialize()
     self:UpdateDB()
     self:SetEnabledState(false)
 end
 
--- Static Popup
--- TODO: Make this use my own custom dialog instead
-local DIALOG_NAME = "NRSKNUI_COPY_ANY_ID_DIALOG"
-local popopInitialized = false
-local function createPopup()
-    if not popopInitialized then
-        StaticPopupDialogs[DIALOG_NAME] = StaticPopupDialogs[DIALOG_NAME] or {
-            text = "CTRL-C to copy %s",
-            button1 = CLOSE,
-
-            OnShow = function(dialog, data)
-                local function HidePopup()
-                    dialog:Hide()
-                end
-
-                dialog.EditBox:SetScript("OnEscapePressed", HidePopup)
-                dialog.EditBox:SetScript("OnEnterPressed", HidePopup)
-                dialog.EditBox:SetScript("OnKeyUp", function(_, key)
-                    -- Copy on the popup frame, this is always CTRL + C
-                    if IsControlKeyDown() and key == "C" then
-                        HidePopup()
-                    end
-                end)
-                dialog.EditBox:SetMaxLetters(0)
-                dialog.EditBox:SetText(data)
-                dialog.EditBox:HighlightText()
-            end,
-
-            hasEditBox = true,
-            EditBoxWidth = 240,
-            timeout = 0,
-            whileDead = true,
-            hideOnEscape = true,
-            preferredIndex = 3,
-        }
-        popopInitialized = true
-    end
-end
-
--- Get modifier key set in the GUI
 local function CheckModifiers(mod)
     if not mod then return true end
 
-    -- If mod is a string, convert it to a table
     if type(mod) == "string" then
         local t = {}
         mod = mod:lower()
@@ -111,13 +64,15 @@ local function GetNPCIDFromGUID(guid)
     return select(6, strsplit("-", guid))
 end
 
--- Copy Logic with secretvalue checks
 function CopyAnything:TryCopy(key)
-    if C_ChallengeMode.IsChallengeModeActive() or InCombatLockdown() then return end
+    if C_ChallengeMode.IsChallengeModeActive() or InCombatLockdown() then return false end
     local db = self.db
-    if not db or not db.key or not db.mod then return end
-    if key ~= strupper(db.key) then return end
-    if not CheckModifiers(db.mod) then return end
+    if not db or not db.key or not db.mod then return false end
+    if key ~= strupper(db.key) then return false end
+    if not CheckModifiers(db.mod) then return false end
+
+    local now = GetTime()
+    if now - lastCopyTime < 0.1 then return true end
 
     local copyId, copyName
 
@@ -200,7 +155,6 @@ function CopyAnything:TryCopy(key)
 
                 if macroName then
                     local macroSlot = GetMacroIndexByName(macroName)
-
                     local spellId = GetMacroSpell(macroSlot)
                     local _, itemLink = GetMacroItem(macroSlot)
 
@@ -225,29 +179,29 @@ function CopyAnything:TryCopy(key)
         end
     end
     if copyId then
-        StaticPopup_Show(DIALOG_NAME, copyName, nil, tostring(copyId))
+        lastCopyTime = GetTime()
+        NRSKNUI:CreateCopyDialog(copyName, tostring(copyId))
+        return true
     end
+    return false
 end
 
 function CopyAnything:ApplySettings()
     CopyAnything:UpdateDB()
 end
 
--- Module OnEnable
 function CopyAnything:OnEnable()
     if not self.db.Enabled then return end
-    createPopup()
     if not self.frame then
         self.frame = CreateFrame("Frame", "NRSKNUI_CopyFrame")
-        self.frame:SetPropagateKeyboardInput(true)
-        self.frame:SetScript("OnKeyDown", function(_, key)
-            self:TryCopy(key)
+        self.frame:SetScript("OnKeyDown", function(frame, key)
+            local handled = self:TryCopy(key)
+            frame:SetPropagateKeyboardInput(not handled)
         end)
     end
     self.frame:EnableKeyboard(true)
 end
 
--- Module OnDisable
 function CopyAnything:OnDisable()
     if self.frame then
         self.frame:EnableKeyboard(false)

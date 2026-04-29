@@ -131,8 +131,7 @@ GUIFrame:RegisterContent("DT_General", function(scrollChild, yOffset)
             if not DT then return end
             local exportString, err = DT:ExportAllDungeonTimers()
             if exportString then
-                NRSKNUI:CreatePrompt("Export All Timers", exportString, true,
-                    "Copy this string to share", false, nil, nil, nil, nil, nil, nil, "Close", nil)
+                NRSKNUI:CreateCopyDialog("Export All Timers", exportString, "Copy this string to share")
             else
                 NRSKNUI:Print("Export failed: " .. (err or "Unknown error"))
             end
@@ -146,9 +145,12 @@ GUIFrame:RegisterContent("DT_General", function(scrollChild, yOffset)
         height = buttonHeight,
         tooltip = "Import timers for all dungeons",
         callback = function()
-            NRSKNUI:CreatePrompt("Import All Timers", "", true, "Paste import string",
-                false, nil, nil, nil, nil,
-                function(inputText)
+            NRSKNUI:CreatePrompt({
+                title = "Import All Timers",
+                text = "",
+                editBox = true,
+                editBoxLabel = "Paste import string",
+                onAccept = function(inputText)
                     if not DT then return end
                     local success, result = DT:ImportAllDungeonTimers(inputText)
                     if success then
@@ -158,7 +160,9 @@ GUIFrame:RegisterContent("DT_General", function(scrollChild, yOffset)
                         NRSKNUI:Print("Import failed: " .. (result or "Unknown error"))
                     end
                 end,
-                nil, "Import", "Cancel")
+                acceptText = "Import",
+                cancelText = "Cancel",
+            })
         end
     })
     importAllBtn:SetPoint("RIGHT", rowAll, "RIGHT", -padding - (buttonWidth + buttonSpacing) * 2, 0)
@@ -187,10 +191,10 @@ GUIFrame:RegisterContent("DT_General", function(scrollChild, yOffset)
         width = buttonWidth,
         height = buttonHeight,
         callback = function()
-            NRSKNUI:CreatePrompt("Reset All Timers",
-                "Are you sure you want to clear ALL timers from ALL dungeons?\n\nThis cannot be undone.",
-                false, nil, false, nil, nil, nil, nil,
-                function()
+            NRSKNUI:CreatePrompt({
+                title = "Reset All Timers",
+                text = "Are you sure you want to clear ALL timers from ALL dungeons?\n\nThis cannot be undone.",
+                onAccept = function()
                     if not DT then return end
                     local success, result = DT:ResetAllDungeonTimers()
                     if success then
@@ -200,7 +204,9 @@ GUIFrame:RegisterContent("DT_General", function(scrollChild, yOffset)
                         NRSKNUI:Print("Reset failed: " .. (result or "Unknown error"))
                     end
                 end,
-                nil, "Reset All", "Cancel")
+                acceptText = "Reset All",
+                cancelText = "Cancel",
+            })
         end
     })
     resetAllBtn:SetPoint("RIGHT", rowAll, "RIGHT", 0, 0)
@@ -239,8 +245,7 @@ GUIFrame:RegisterContent("DT_General", function(scrollChild, yOffset)
                 if not DT then return end
                 local exportString, err = DT:ExportDungeonTimers(dungeonKey)
                 if exportString then
-                    NRSKNUI:CreatePrompt("Export: " .. dungeonName, exportString, true,
-                        "Copy this string to share", false, nil, nil, nil, nil, nil, nil, "Close", nil)
+                    NRSKNUI:CreateCopyDialog("Export: " .. dungeonName, exportString, "Copy this string to share")
                 else
                     NRSKNUI:Print("Export failed: " .. (err or "Unknown error"))
                 end
@@ -254,9 +259,12 @@ GUIFrame:RegisterContent("DT_General", function(scrollChild, yOffset)
             height = buttonHeight - 2,
             tooltip = "Import timers for " .. dungeonName,
             callback = function()
-                NRSKNUI:CreatePrompt("Import: " .. dungeonName, "", true, "Paste import string",
-                    false, nil, nil, nil, nil,
-                    function(inputText)
+                NRSKNUI:CreatePrompt({
+                    title = "Import: " .. dungeonName,
+                    text = "",
+                    editBox = true,
+                    editBoxLabel = "Paste import string",
+                    onAccept = function(inputText)
                         if not DT then return end
                         local success, result = DT:ImportDungeonTimers(inputText, dungeonKey)
                         if success then
@@ -266,7 +274,9 @@ GUIFrame:RegisterContent("DT_General", function(scrollChild, yOffset)
                             NRSKNUI:Print("Import failed: " .. (result or "Unknown error"))
                         end
                     end,
-                    nil, "Import", "Cancel")
+                    acceptText = "Import",
+                    cancelText = "Cancel",
+                })
             end
         })
         importBtn:SetPoint("RIGHT", dungeonRow, "RIGHT", -padding - (buttonWidth + buttonSpacing) * 2, 0)
@@ -295,10 +305,10 @@ GUIFrame:RegisterContent("DT_General", function(scrollChild, yOffset)
             width = buttonWidth,
             height = buttonHeight - 2,
             callback = function()
-                NRSKNUI:CreatePrompt("Reset: " .. dungeonName,
-                    "Are you sure you want to clear all timers for " .. dungeonName .. "?\n\nThis cannot be undone.",
-                    false, nil, false, nil, nil, nil, nil,
-                    function()
+                NRSKNUI:CreatePrompt({
+                    title = "Reset: " .. dungeonName,
+                    text = "Are you sure you want to clear all timers for " .. dungeonName .. "?\n\nThis cannot be undone.",
+                    onAccept = function()
                         if not DT then return end
                         local success, result = DT:ResetDungeonTimers(dungeonKey)
                         if success then
@@ -308,7 +318,9 @@ GUIFrame:RegisterContent("DT_General", function(scrollChild, yOffset)
                             NRSKNUI:Print("Reset failed: " .. (result or "Unknown error"))
                         end
                     end,
-                    nil, "Reset", "Cancel")
+                    acceptText = "Reset",
+                    cancelText = "Cancel",
+                })
             end
         })
         resetBtn:SetPoint("RIGHT", dungeonRow, "RIGHT", -padding, 0)

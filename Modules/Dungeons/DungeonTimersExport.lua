@@ -335,7 +335,7 @@ function DT:GeneratePresetsCode()
     end
 
     table_insert(output, "}")
-    NRSKNUI:CreatePrompt("Generated Presets Code", table.concat(output, "\n"), true,
-        "Copy this code into DungeonTimerPresets.lua", false, nil, nil, nil, nil, nil, nil, "Close", nil)
+    NRSKNUI:CreateCopyDialog("Generated Presets Code", table.concat(output, "\n"),
+        "Copy this code into DungeonTimerPresets.lua")
     print("NorskenUI: Presets code generated!")
 end

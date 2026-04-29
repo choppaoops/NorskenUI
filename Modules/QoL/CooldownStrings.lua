@@ -100,15 +100,13 @@ function CS.ApplyProfileToCDM(profileString, profileKey, callbacks)
             end
         end)
 
-        NRSKNUI:CreatePrompt(
-            "CDM Profile Imported",
-            "Successfully applied CDM profile: " .. profileKey .. "\n\nA UI reload is recommended to avoid taint issues.",
-            false, nil, false, nil, nil, nil, nil,
-            function() ReloadUI() end,
-            nil,
-            "Reload Now",
-            "Later"
-        )
+        NRSKNUI:CreatePrompt({
+            title = "CDM Profile Imported",
+            text = "Successfully applied CDM profile: " .. profileKey .. "\n\nA UI reload is recommended to avoid taint issues.",
+            onAccept = function() ReloadUI() end,
+            acceptText = "Reload Now",
+            cancelText = "Later",
+        })
         return true
     end
 
@@ -288,15 +286,13 @@ function CS:BuildUI()
 
             CS.ApplyProfileToCDM(profileData.String, self.selectedProfile, {
                 onConflict = function(proceed)
-                    NRSKNUI:CreatePrompt(
-                        "Replace CDM Profile",
-                        "A profile named '" .. self.selectedProfile .. "' already exists in CDM.\n\nReplace it?",
-                        false, nil, false, nil, nil, nil, nil,
-                        proceed,
-                        nil,
-                        "Replace",
-                        "Cancel"
-                    )
+                    NRSKNUI:CreatePrompt({
+                        title = "Replace CDM Profile",
+                        text = "A profile named '" .. self.selectedProfile .. "' already exists in CDM.\n\nReplace it?",
+                        onAccept = proceed,
+                        acceptText = "Replace",
+                        cancelText = "Cancel",
+                    })
                 end,
                 onLayoutsFull = function()
                     NRSKNUI:Print("CDM layout limit reached. Delete a layout in CDM settings first.")

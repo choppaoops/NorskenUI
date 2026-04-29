@@ -42,6 +42,7 @@ end
 ---config = {
 ---    value = string,          -- Initial text value
 ---    callback = function,     -- Called when text changes
+---    autoFocus = boolean,     -- Auto focus on creation
 ---}
 ---```
 ---@param parent Frame
@@ -52,6 +53,7 @@ function GUIFrame:CreateEditBox(parent, labelText, config)
     config = config or {}
     local value = tostring(config.value or "")
     local callback = config.callback
+    local autoFocus = config.autoFocus
 
     local rowHeight = 34
     local row = CreateFrame("Frame", nil, parent)
@@ -123,8 +125,9 @@ function GUIFrame:CreateEditBox(parent, labelText, config)
     editBox:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -6, 4)
     editBox:SetFontObject("GameFontNormal")
     editBox:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
-    editBox:SetAutoFocus(false)
+    editBox:SetAutoFocus(autoFocus or false)
     editBox:SetText(value or "")
+    if autoFocus then editBox:SetFocus() end
     row.editBox = editBox
 
     editBox:SetScript("OnEscapePressed", function(eb) eb:ClearFocus() end)

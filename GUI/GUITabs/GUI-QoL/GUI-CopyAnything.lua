@@ -1,110 +1,60 @@
--- NorskenUI namespace
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
 local GUIFrame = NRSKNUI.GUIFrame
 local Theme = NRSKNUI.Theme
 
---TODO: Update
-
--- Localization Setup
-local table_insert = table.insert
-local ipairs = ipairs
-
--- Helper to get Blizzard Mouseover module
-local function GetCopyAnythingModule()
-    if NorskenUI then
-        return NorskenUI:GetModule("CopyAnything", true)
-    end
-    return nil
-end
-
--- Combat Message Tab Content
 GUIFrame:RegisterContent("CopyAnything", function(scrollChild, yOffset)
     local db = NRSKNUI.db and NRSKNUI.db.profile.Miscellaneous.CopyAnything
-    if not db then
-        local errorCard = GUIFrame:CreateCard(scrollChild, "Error", yOffset)
-        errorCard:AddLabel("Database not available")
-        return yOffset + errorCard:GetContentHeight() + Theme.paddingMedium
-    end
+    if not db then return GUIFrame:ShowDBError(scrollChild, yOffset) end
 
-    -- Get Combat Message module
-    local CopyAnything = GetCopyAnythingModule()
+    ---@type CopyAnything?
+    local CopyAnything = NorskenUI and NorskenUI:GetModule("CopyAnything", true)
+    local manager = GUIFrame:CreateWidgetStateManager()
 
-    -- Track widgets for enable/disable logic
-    local allWidgets = {} -- All widgets (except main toggle)
+    local function UpdateAllWidgetStates() manager:UpdateAll(db.Enabled) end
 
-    -- Helper to apply new state
-    local function ApplyCopyAnythingState(enabled)
-        if not CopyAnything then return end
-        CopyAnything.db.Enabled = enabled
-        if enabled then
-            NorskenUI:EnableModule("CopyAnything")
-        else
-            NorskenUI:DisableModule("CopyAnything")
-        end
-    end
-
-    -- Comprehensive widget state update
-    local function UpdateAllWidgetStates()
-        local mainEnabled = db.Enabled ~= false
-
-        -- First: Apply main enable state to ALL widgets
-        for _, widget in ipairs(allWidgets) do
-            if widget.SetEnabled then
-                widget:SetEnabled(mainEnabled)
-            end
-        end
-    end
-
-    ----------------------------------------------------------------
-    -- Card 1: Copy Anything Enable/Disable
-    ----------------------------------------------------------------
+    -- Card 1
     local card1 = GUIFrame:CreateCard(scrollChild, "Copy Anything", yOffset)
 
-    -- Enable Checkbox
-    local row1 = GUIFrame:CreateRow(card1.content, 40)
+    local row1 = GUIFrame:CreateRow(card1.content, Theme.rowHeight)
     local enableCheck = GUIFrame:CreateCheckbox(row1, "Enable Copy Anything", {
-        value = db.Enabled ~= false,
+        value = db.Enabled,
         callback = function(checked)
             db.Enabled = checked
-            ApplyCopyAnythingState(checked)
+            if CopyAnything then
+                if checked then NorskenUI:EnableModule("CopyAnything") else NorskenUI:DisableModule("CopyAnything") end
+            end
             UpdateAllWidgetStates()
         end,
-        msgPopup = true, msgText = "Copy Anything", msgOn = "On", msgOff = "Off"
+        msgPopup = true,
+        msgText = "Copy Anything",
     })
     row1:AddWidget(enableCheck, 1)
-    card1:AddRow(row1, 40)
+    card1:AddRow(row1, Theme.rowHeight)
 
-    -- Separator
-    local row1sep = GUIFrame:CreateRow(card1.content, 8)
-    local sepCBCard = GUIFrame:CreateSeparator(row1sep)
-    row1sep:AddWidget(sepCBCard, 1)
-    table_insert(allWidgets, sepCBCard)
-    card1:AddRow(row1sep, 8)
+    local sep1 = GUIFrame:CreateSeparator(card1.content)
+    card1:AddRow(sep1, Theme.rowHeightSeparator)
 
-    -- Quick TLDR
-    local textRow5abSize = 50
-    local row1b = GUIFrame:CreateRow(card1.content, textRow5abSize)
-    local chatBubblText = GUIFrame:CreateText(row1b, NRSKNUI:ColorTextByTheme("Functionality Info"), {
-        text = (NRSKNUI:ColorTextByTheme("• ") .. "Copies SpellID, ItemID, AuraID, MacroID and Unitnames on mouseover\n" ..
-            NRSKNUI:ColorTextByTheme("• ") .. "Limited functionality in certain environments because of secret values."),
-        height = textRow5abSize,
+    local textRowSize = 50
+    local infoRow = GUIFrame:CreateRow(card1.content, textRowSize)
+    local infoText = GUIFrame:CreateText(infoRow, NRSKNUI:ColorTextByTheme("Functionality Info"), {
+        text = NRSKNUI:ColorTextByTheme("• ") ..
+            "Copies SpellID, ItemID, AuraID, MacroID and Unitnames on mouseover\n" ..
+            NRSKNUI:ColorTextByTheme("• ") .. "Limited functionality in certain environments because of secret values.",
+        height = textRowSize,
         bgMode = "hide"
     })
-    row1b:AddWidget(chatBubblText, 1)
-    table_insert(allWidgets, chatBubblText)
-    card1:AddRow(row1b, textRow5abSize)
+    infoRow:AddWidget(infoText, 1)
+    manager:Register(infoText, "all")
+    card1:AddRow(infoRow, textRowSize)
 
-    yOffset = yOffset + card1:GetContentHeight() + Theme.paddingSmall
+    yOffset = card1:GetNextOffset()
 
-    ----------------------------------------------------------------
-    -- Card 2: Copy Anything Keybinding
-    ----------------------------------------------------------------
+    -- Card 2
     local card2 = GUIFrame:CreateCard(scrollChild, "Keybinding", yOffset)
-    table_insert(allWidgets, card2)
+    manager:Register(card2, "all")
 
-    -- Modkey
-    local row2 = GUIFrame:CreateRow(card2.content, 38)
+    local row2 = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast)
     local modList = {
         ["ctrl"] = "Ctrl",
         ["shift"] = "Shift",
@@ -121,23 +71,21 @@ GUIFrame:RegisterContent("CopyAnything", function(scrollChild, yOffset)
         end
     })
     row2:AddWidget(modDropdown, 0.5)
-    table_insert(allWidgets, modDropdown)
+    manager:Register(modDropdown, "all")
 
-    -- keybind text
-    local key = GUIFrame:CreateEditBox(row2, "Copy Keybind, Supports Single Letter Only", {
+    local keyEditBox = GUIFrame:CreateEditBox(row2, "Copy Keybind, Single Letter Only", {
         value = db.key,
         callback = function(val)
             db.key = val
         end
     })
-    row2:AddWidget(key, 0.1)
-    table_insert(allWidgets, key)
-    card2:AddRow(row2, 38)
+    row2:AddWidget(keyEditBox, 0.1)
+    manager:Register(keyEditBox, "all")
+    card2:AddRow(row2, Theme.rowHeightLast, 0)
 
-    yOffset = yOffset + card2:GetContentHeight() + Theme.paddingSmall
+    yOffset = card2:GetNextOffset()
 
-    -- Apply initial widget states
     UpdateAllWidgetStates()
-    yOffset = yOffset - (Theme.paddingSmall)
+
     return yOffset
 end)

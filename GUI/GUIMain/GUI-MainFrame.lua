@@ -262,7 +262,7 @@ function GUIFrame:ApplyThemeColors()
     if self.shortcutBtn then
         local tex = self.shortcutBtn:GetNormalTexture()
         if tex then
-            tex:SetVertexColor(Theme.textSecondary[1], Theme.textSecondary[2], Theme.textSecondary[3], 1)
+            tex:SetVertexColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 0.7)
         end
     end
     if self.shortcutItemButtons then
@@ -782,16 +782,18 @@ local function CreateSocialButton(parent, config)
 
     btn:RegisterForClicks("LeftButtonUp")
     btn:SetScript("OnClick", function()
-        NRSKNUI:CreatePrompt(
-            config.promptTitle,
-            config.link,
-            true,
-            "Copy to clipboard by pressing CTRL + C",
-            true,
-            config.texturePath,
-            21, 21,
-            { r = Theme.accent[1], g = Theme.accent[2], b = Theme.accent[3] }
-        )
+        NRSKNUI:CreatePrompt({
+            title = config.promptTitle,
+            text = config.link,
+            editBox = true,
+            editBoxLabel = "CTRL-C to copy",
+            texture = {
+                path = config.texturePath,
+                width = 21,
+                height = 21,
+                color = { r = Theme.accent[1], g = Theme.accent[2], b = Theme.accent[3] },
+            },
+        })
     end)
 
     btn:SetScript("OnEnter", function()

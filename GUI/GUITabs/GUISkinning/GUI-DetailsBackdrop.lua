@@ -215,21 +215,20 @@ GUIFrame:RegisterContent("DetailsBackdrop", function(scrollChild, yOffset)
             end
 
             -- If not enabled, show promt so user knows wassup
-            NRSKNUI:CreatePrompt(
-                "Details Override",
-                "This will override your current details sizing, are you sure you want to use this feature?",
-                false, nil, false, nil, nil, nil, nil,
-                function()
+            NRSKNUI:CreatePrompt({
+                title = "Details Override",
+                text = "This will override your current details sizing, are you sure you want to use this feature?",
+                onAccept = function()
                     GetCurrentBackdropDB().autoSize = checked
                     ApplySettings()
                     UpdateAllWidgetStates()
                 end,
-                function()
+                onCancel = function()
                     revert(true)
                 end,
-                "Yes",
-                "Cancel"
-            )
+                acceptText = "Yes",
+                cancelText = "Cancel",
+            })
         end
     })
     row2:AddWidget(autoSizeCheck, 1)

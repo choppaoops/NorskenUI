@@ -1,37 +1,154 @@
--- NorskenUI namespace
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
 local Theme = NRSKNUI.Theme
 
--- Custom dialog frame and message popup frame
-
--- Localization
 local CreateFrame = CreateFrame
 local IsControlKeyDown = IsControlKeyDown
 local IsMetaKeyDown = IsMetaKeyDown
-local StaticPopup_Show = StaticPopup_Show
 local UIFrameFadeIn = UIFrameFadeIn
 local UIFrameFadeOut = UIFrameFadeOut
-local type = type
 local ReloadUI = ReloadUI
 local UIParent = UIParent
 local C_Timer = C_Timer
 
--- Module locals
-local ACCEPT = ACCEPT
-local CANCEL = CANCEL
-
--- UI Constants
-local POPUP_WIDTH = 360
-local POPUP_HEIGHT = 120
 local BUTTON_WIDTH = 100
 local BUTTON_HEIGHT = 26
+local HEADER_HEIGHT = 28
+local EDITBOX_HEIGHT = 38
 local MESSAGE_POPUP_SIZE = 64
+local PADDING = 12
 
--- Validate theme colors
-local function ValidateThemeColor(color, default)
-    if not color or type(color) ~= "table" then return default end
-    return color
+local function CalculateDialogSize(opts, textHeight)
+    local width = opts.width or 300
+    local height = HEADER_HEIGHT + PADDING
+
+    if opts.editBox then
+        height = height + EDITBOX_HEIGHT + 4
+        if opts.editBoxLabel then
+            height = height + 16
+        end
+    else
+        height = height + (textHeight or 30) + PADDING
+    end
+
+    local hasButtons = opts.onAccept or opts.onCancel
+    if hasButtons then
+        height = height + BUTTON_HEIGHT + PADDING
+    else
+        height = height + 4
+    end
+
+    return width, height
+end
+
+local function ApplyBackdrop(frame, bgKey)
+    frame:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Buttons\\WHITE8X8",
+        edgeSize = 1,
+    })
+    local bg = Theme[bgKey]
+    frame:SetBackdropColor(bg[1], bg[2], bg[3], bg[4] or 1)
+    frame:SetBackdropBorderColor(Theme.border[1], Theme.border[2], Theme.border[3], 1)
+end
+
+local function CreateDialogBase(opts, textHeight)
+    local width, height = CalculateDialogSize(opts, textHeight)
+    local dialog = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+    dialog:SetSize(width, height)
+    dialog:SetPoint("CENTER", UIParent, "CENTER", 0, 350)
+    dialog:SetFrameStrata("TOOLTIP")
+    dialog:SetFrameLevel(100)
+    dialog:EnableMouse(true)
+    dialog:SetMovable(true)
+    dialog:RegisterForDrag("LeftButton")
+    dialog:SetScript("OnDragStart", dialog.StartMoving)
+    dialog:SetScript("OnDragStop", dialog.StopMovingOrSizing)
+    ApplyBackdrop(dialog, "bgLight")
+    return dialog
+end
+
+local function CreateDialogHeader(dialog, title)
+    local header = CreateFrame("Frame", nil, dialog, "BackdropTemplate")
+    header:SetHeight(HEADER_HEIGHT)
+    header:SetPoint("TOPLEFT", dialog, "TOPLEFT", 1, -1)
+    header:SetPoint("TOPRIGHT", dialog, "TOPRIGHT", -1, -1)
+    header:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8" })
+    header:SetBackdropColor(Theme.bgMedium[1], Theme.bgMedium[2], Theme.bgMedium[3], 1)
+
+    local bottomBorder = header:CreateTexture(nil, "BORDER")
+    bottomBorder:SetHeight(Theme.borderSize or 1)
+    bottomBorder:SetPoint("BOTTOMLEFT", header, "BOTTOMLEFT", 0, 0)
+    bottomBorder:SetPoint("BOTTOMRIGHT", header, "BOTTOMRIGHT", 0, 0)
+    bottomBorder:SetColorTexture(Theme.border[1], Theme.border[2], Theme.border[3], Theme.border[4] or 1)
+
+    local titleLabel = header:CreateFontString(nil, "OVERLAY")
+    titleLabel:SetPoint("CENTER", header, "CENTER", 0, 0)
+    if NRSKNUI.ApplyThemeFont then
+        NRSKNUI:ApplyThemeFont(titleLabel, "large")
+    else
+        titleLabel:SetFontObject("GameFontNormalLarge")
+    end
+    titleLabel:SetText(title or "Confirm")
+    titleLabel:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
+
+    return header
+end
+
+local function CreateCloseButton(header, onClose)
+    local closeBtn = CreateFrame("Button", nil, header)
+    closeBtn:SetSize(17, 17)
+    closeBtn:SetPoint("RIGHT", header, "RIGHT", -6, 0)
+
+    local closeTex = closeBtn:CreateTexture(nil, "ARTWORK")
+    closeTex:SetAllPoints()
+    closeTex:SetTexture("Interface\\AddOns\\NorskenUI\\Media\\GUITextures\\NorskenCustomCross.png")
+    closeTex:SetVertexColor(Theme.textSecondary[1], Theme.textSecondary[2], Theme.textSecondary[3], 1)
+    closeBtn:SetNormalTexture(closeTex)
+    closeTex:SetTexelSnappingBias(0)
+    closeTex:SetSnapToPixelGrid(false)
+
+    closeBtn:SetScript("OnEnter", function()
+        closeTex:SetVertexColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
+    end)
+    closeBtn:SetScript("OnLeave", function()
+        closeTex:SetVertexColor(Theme.textSecondary[1], Theme.textSecondary[2], Theme.textSecondary[3], 1)
+    end)
+    closeBtn:SetScript("OnClick", onClose)
+
+    return closeBtn
+end
+
+local function CreateHeaderTexture(header, opts)
+    if not opts.texture then return end
+    local tex = opts.texture
+
+    local frame = CreateFrame("Button", nil, header)
+    frame:SetSize(tex.width or 20, tex.height or 20)
+    frame:SetPoint("LEFT", header, "LEFT", 6, 0)
+
+    local texture = frame:CreateTexture(nil, "ARTWORK")
+    texture:SetAllPoints()
+    texture:SetTexture(tex.path)
+    if tex.color then
+        texture:SetVertexColor(tex.color.r or 1, tex.color.g or 1, tex.color.b or 1, 1)
+    end
+    texture:SetTexelSnappingBias(0)
+    texture:SetSnapToPixelGrid(false)
+end
+
+local function SetupEscapeHandler(dialog, onCancel)
+    dialog:SetScript("OnKeyDown", function(self, key)
+        if key == "ESCAPE" then
+            self:SetPropagateKeyboardInput(false)
+            if onCancel then onCancel() end
+            self:Hide()
+            NRSKNUI.activePrompt = nil
+        else
+            self:SetPropagateKeyboardInput(true)
+        end
+    end)
+    dialog:EnableKeyboard(true)
 end
 
 ---@param timer number
@@ -45,29 +162,22 @@ function NRSKNUI:CreateMessagePopup(timer, text, fontSize, parentFrame, xOffset,
         NRSKNUI.msgContainer:Hide()
     end
 
-    local parent = parentFrame or UIParent
-    local x = xOffset or 0
-    local y = yOffset or 250
-
     if not Theme then return end
 
+    local parent = parentFrame or UIParent
     local msgContainer = CreateFrame("Frame", nil, parent)
     msgContainer:SetToplevel(true)
     msgContainer:SetFrameStrata("TOOLTIP")
     msgContainer:SetFrameLevel(150)
     msgContainer:SetSize(MESSAGE_POPUP_SIZE, MESSAGE_POPUP_SIZE)
-    msgContainer:SetPoint("CENTER", parent, "CENTER", x, y)
+    msgContainer:SetPoint("CENTER", parent, "CENTER", xOffset or 0, yOffset or 250)
 
     local msgText = msgContainer:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     msgText:SetPoint("CENTER")
     msgText:SetText(text)
     msgText:SetFont(NRSKNUI.FONT, fontSize, "")
-
-    local shadow = {}
-    NRSKNUI:ApplyFontToText(msgText, "Expressway", fontSize, "SOFTOUTLINE", shadow)
-
-    local accent = ValidateThemeColor(Theme.accent, { 1, 0.82, 0, 1 })
-    msgText:SetTextColor(accent[1], accent[2], accent[3], 1)
+    NRSKNUI:ApplyFontToText(msgText, "Expressway", fontSize, "SOFTOUTLINE", {})
+    msgText:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
     msgText:SetShadowColor(0, 0, 0, 0)
 
     UIFrameFadeIn(msgText, 0.2, 0, 1)
@@ -84,178 +194,109 @@ function NRSKNUI:CreateMessagePopup(timer, text, fontSize, parentFrame, xOffset,
     return msgContainer
 end
 
--- Create themed button for prompts
-local function CreateThemedButton(parent, Theme, labelText, isPrimary)
-    local btn = CreateFrame("Button", nil, parent, "BackdropTemplate")
-    btn:SetSize(BUTTON_WIDTH, BUTTON_HEIGHT)
-    btn:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8X8",
-        edgeFile = "Interface\\Buttons\\WHITE8X8",
-        edgeSize = 1,
-    })
-    local textColor = isPrimary and Theme.accent or Theme.textPrimary
-    local bgMedium = ValidateThemeColor(Theme.bgMedium, { 0.1, 0.1, 0.1, 1 })
-    local bgLight = ValidateThemeColor(Theme.bgLight, { 0.15, 0.15, 0.15, 1 })
-    local border = ValidateThemeColor(Theme.border, { 0.3, 0.3, 0.3, 1 })
-    local accent = ValidateThemeColor(Theme.accent, { 1, 0.82, 0, 1 })
+---@class PromptOptions
+---@field title? string
+---@field text? string
+---@field width? number
+---@field editBox? boolean
+---@field editBoxLabel? string
+---@field texture? {path: string, width?: number, height?: number, color?: {r: number, g: number, b: number}}
+---@field onAccept? function
+---@field onCancel? function
+---@field acceptText? string
+---@field cancelText? string
 
-    btn:SetBackdropColor(bgMedium[1], bgMedium[2], bgMedium[3], 1)
-    btn:SetBackdropBorderColor(border[1], border[2], border[3], 1)
+local function MeasureTextHeight(text, width, fontStyle)
+    local measureFrame = CreateFrame("Frame", nil, UIParent)
+    measureFrame:SetSize(width, 200)
 
-    local label = btn:CreateFontString(nil, "OVERLAY")
-    label:SetPoint("CENTER")
+    local measureLabel = measureFrame:CreateFontString(nil, "OVERLAY")
+    measureLabel:SetWidth(width)
+    measureLabel:SetPoint("TOPLEFT", measureFrame, "TOPLEFT", 0, 0)
+    measureLabel:SetJustifyH("CENTER")
+    measureLabel:SetJustifyV("TOP")
+    measureLabel:SetWordWrap(true)
     if NRSKNUI.ApplyThemeFont then
-        NRSKNUI:ApplyThemeFont(label, "normal")
+        NRSKNUI:ApplyThemeFont(measureLabel, fontStyle or "normal")
     else
-        label:SetFontObject("GameFontNormal")
+        measureLabel:SetFontObject("GameFontNormal")
     end
-    label:SetText(labelText)
-    label:SetTextColor(textColor[1], textColor[2], textColor[3], 1)
-    label:SetShadowColor(0, 0, 0, 0)
-    btn.label = label
+    measureLabel:SetText(text or "")
 
-    btn:SetScript("OnEnter", function(self)
-        self:SetBackdropColor(bgLight[1], bgLight[2], bgLight[3], 1)
-        self:SetBackdropBorderColor(accent[1], accent[2], accent[3], 1)
-    end)
+    local height = measureLabel:GetStringHeight()
+    measureFrame:Hide()
+    measureFrame:SetParent(nil)
 
-    btn:SetScript("OnLeave", function(self)
-        self:SetBackdropColor(bgMedium[1], bgMedium[2], bgMedium[3], 1)
-        self:SetBackdropBorderColor(border[1], border[2], border[3], 1)
-    end)
-
-    return btn
+    return math.max(height + 4, 20)
 end
 
--- TODO: Cleanup, very messy
--- CreatePrompt: Create a themed prompt dialog
--- Could have just made a table for texture stuff but im noob
---[[ Usage:
-NRSKNUI:CreatePrompt(
-    "Title text, shown on header",
-    "Text shown in the dialog frame itself, if showEditBox is set to true, this is the text that gets placed in the editbox",
-    showEditBox (true/false, this controls if it's a Editbox dialogframe or normal 2 button + text frame),
-    "Editbox label text",
-    useTexture (true/false, sets use of texture in the topleft),
-    "Interface\\AddOns\\NorskenUI\\Media\\SupportLogos\\Twitchv2W.png" (texture path),
-    textureSizeX (texture width),
-    textureSizeY (texture height),
-    textureColor (texture color),
-    onAccept (callback when you click accept button),
-    onCancel (callback when you click cancel button),
-    acceptText (text on the accept button),
-    cancelText (text on the cancel button),
-    )
---]]
-function NRSKNUI:CreatePrompt(title, text, showEditBox, editBoxLabelText, useTexture, texturePath, textureSizeX,
-                              textureSizeY, textureColor, onAccept, onCancel, acceptText, cancelText)
-    if not Theme then
-        StaticPopupDialogs["NRSKNUI_PROMPT_DIALOG"] = {
-            text = text or "",
-            button1 = acceptText or ACCEPT,
-            button2 = cancelText or CANCEL,
-            OnAccept = onAccept,
-            OnCancel = onCancel,
-            timeout = 0,
-            whileDead = true,
-            hideOnEscape = true,
-            preferredIndex = 3,
-        }
-        return StaticPopup_Show("NRSKNUI_PROMPT_DIALOG")
-    end
-
+---@param opts PromptOptions
+function NRSKNUI:CreatePrompt(opts)
     if NRSKNUI.activePrompt then
         NRSKNUI.activePrompt:Hide()
     end
 
-    -- Validate theme colors
-    local bgLight = ValidateThemeColor(Theme.bgLight, { 0.15, 0.15, 0.15, 1 })
-    local bgMedium = ValidateThemeColor(Theme.bgMedium, { 0.1, 0.1, 0.1, 1 })
-    local border = ValidateThemeColor(Theme.border, { 0.3, 0.3, 0.3, 1 })
-    local accent = ValidateThemeColor(Theme.accent, { 1, 0.82, 0, 1 })
-    local textPrimary = ValidateThemeColor(Theme.textPrimary, { 1, 1, 1, 1 })
-    local textSecondary = ValidateThemeColor(Theme.textSecondary, { 0.7, 0.7, 0.7, 1 })
+    if not Theme then return end
 
-    local dialog = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
-    dialog:SetSize(POPUP_WIDTH, POPUP_HEIGHT)
-    dialog:SetPoint("CENTER", UIParent, "CENTER", 0, 100)
-    dialog:SetFrameStrata("TOOLTIP")
-    dialog:SetFrameLevel(100)
-    dialog:EnableMouse(true)
-    dialog:SetMovable(true)
-    dialog:RegisterForDrag("LeftButton")
-    dialog:SetScript("OnDragStart", dialog.StartMoving)
-    dialog:SetScript("OnDragStop", dialog.StopMovingOrSizing)
+    local GUIFrame = NRSKNUI.GUIFrame
+    local dialogWidth = opts.width or 280
+    local textWidth = dialogWidth - (PADDING * 2)
 
-    dialog:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8X8",
-        edgeFile = "Interface\\Buttons\\WHITE8X8",
-        edgeSize = 1,
-    })
-    dialog:SetBackdropColor(bgLight[1], bgLight[2], bgLight[3], bgLight[4] or 1)
-    dialog:SetBackdropBorderColor(border[1], border[2], border[3], 1)
-
-    local header = CreateFrame("Frame", nil, dialog, "BackdropTemplate")
-    header:SetHeight(28)
-    header:SetPoint("TOPLEFT", dialog, "TOPLEFT", 1, -1)
-    header:SetPoint("TOPRIGHT", dialog, "TOPRIGHT", -1, -1)
-    header:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8" })
-    header:SetBackdropColor(bgMedium[1], bgMedium[2], bgMedium[3], 1)
-
-    local headerbottomBorder = header:CreateTexture(nil, "BORDER")
-    headerbottomBorder:SetHeight(Theme.borderSize or 1)
-    headerbottomBorder:SetPoint("BOTTOMLEFT", header, "BOTTOMLEFT", 0, 0)
-    headerbottomBorder:SetPoint("BOTTOMRIGHT", header, "BOTTOMRIGHT", 0, 0)
-    headerbottomBorder:SetColorTexture(border[1], border[2], border[3], border[4] or 1)
-
-    local titleLabel = header:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    titleLabel:SetPoint("CENTER", header, "CENTER", 0, 0)
-    titleLabel:SetText(title or "Confirm")
-    titleLabel:SetTextColor(accent[1], accent[2], accent[3], accent[4] or 1)
-    titleLabel:SetShadowColor(0, 0, 0, 0)
-
-    local closeBtn = CreateFrame("Button", nil, header)
-    closeBtn:SetSize(17, 17)
-    closeBtn:SetPoint("RIGHT", header, "RIGHT", -6, 0)
-
-    local closeTex = closeBtn:CreateTexture(nil, "ARTWORK")
-    closeTex:SetAllPoints()
-    closeTex:SetTexture("Interface\\AddOns\\NorskenUI\\Media\\GUITextures\\NorskenCustomCross.png")
-    closeTex:SetVertexColor(textSecondary[1], textSecondary[2], textSecondary[3], 1)
-    closeBtn:SetNormalTexture(closeTex)
-    closeTex:SetTexelSnappingBias(0)
-    closeTex:SetSnapToPixelGrid(false)
-
-    closeBtn:SetScript("OnEnter", function()
-        closeTex:SetVertexColor(accent[1], accent[2], accent[3], accent[4] or 1)
-    end)
-    closeBtn:SetScript("OnLeave", function()
-        closeTex:SetVertexColor(textSecondary[1], textSecondary[2], textSecondary[3], 1)
-    end)
-    closeBtn:SetScript("OnClick", function()
-        if onCancel then onCancel() end
-        dialog:Hide()
-        NRSKNUI.activePrompt = nil
-    end)
-
-    if useTexture and texturePath then
-        local logoN = CreateFrame("Button", nil, header)
-        logoN:SetSize(textureSizeX, textureSizeY)
-        logoN:SetPoint("LEFT", header, "LEFT", 6, 0)
-        local logoTexture = logoN:CreateTexture(nil, "ARTWORK")
-        logoTexture:SetAllPoints()
-        logoTexture:SetTexture(texturePath)
-        if textureColor then
-            logoTexture:SetVertexColor(textureColor.r, textureColor.g, textureColor.b, 1)
-        end
-        logoTexture:SetTexelSnappingBias(0)
-        logoTexture:SetSnapToPixelGrid(false)
+    local textHeight
+    if not opts.editBox and opts.text then
+        textHeight = MeasureTextHeight(opts.text, textWidth, "normal")
     end
 
-    if not showEditBox or onAccept and not dialog.messageLabel then
+    local dialog = CreateDialogBase(opts, textHeight)
+    local header = CreateDialogHeader(dialog, opts.title)
+
+    local function CloseDialog()
+        dialog:Hide()
+        NRSKNUI.activePrompt = nil
+    end
+
+    CreateCloseButton(header, function()
+        if opts.onCancel then opts.onCancel() end
+        CloseDialog()
+    end)
+
+    CreateHeaderTexture(header, opts)
+
+    local isCopyMode = opts.editBox and not opts.onAccept
+
+    if opts.editBox then
+        local editBoxWidget = GUIFrame:CreateEditBox(dialog, opts.editBoxLabel or "", {
+            value = opts.text or "",
+            autoFocus = true,
+        })
+        editBoxWidget:SetPoint("TOPLEFT", header, "BOTTOMLEFT", PADDING, -8)
+        editBoxWidget:SetPoint("TOPRIGHT", header, "BOTTOMRIGHT", -PADDING, -8)
+
+        local editBox = editBoxWidget.editBox
+        editBox:HighlightText()
+        editBox:SetJustifyH("CENTER")
+
+        if isCopyMode then
+            editBox:SetScript("OnKeyDown", function(_, key)
+                if key == "C" and (IsControlKeyDown() or IsMetaKeyDown()) then
+                    NRSKNUI:CreateMessagePopup(2, "Copied to clipboard", 18, UIParent, 0, 350)
+                    CloseDialog()
+                end
+            end)
+        else
+            editBox:SetScript("OnEnterPressed", function(eb)
+                if opts.onAccept then
+                    opts.onAccept(eb:GetText())
+                end
+                CloseDialog()
+            end)
+        end
+
+        dialog.editBox = editBox
+    else
         local messageLabel = dialog:CreateFontString(nil, "OVERLAY")
-        messageLabel:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 12, -12)
-        messageLabel:SetPoint("TOPRIGHT", header, "BOTTOMRIGHT", -12, -12)
+        messageLabel:SetPoint("TOPLEFT", header, "BOTTOMLEFT", PADDING, -PADDING)
+        messageLabel:SetPoint("TOPRIGHT", header, "BOTTOMRIGHT", -PADDING, -PADDING)
         messageLabel:SetJustifyH("CENTER")
         messageLabel:SetJustifyV("TOP")
         if NRSKNUI.ApplyThemeFont then
@@ -263,123 +304,45 @@ function NRSKNUI:CreatePrompt(title, text, showEditBox, editBoxLabelText, useTex
         else
             messageLabel:SetFontObject("GameFontNormal")
         end
-        messageLabel:SetText(text or "")
-        messageLabel:SetTextColor(textPrimary[1], textPrimary[2], textPrimary[3], 1)
-        messageLabel:SetShadowColor(0, 0, 0, 0)
+        messageLabel:SetText(opts.text or "")
+        messageLabel:SetTextColor(Theme.textPrimary[1], Theme.textPrimary[2], Theme.textPrimary[3], 1)
     end
 
-    if showEditBox and not dialog.editBox then
-        local editBox = CreateFrame("EditBox", nil, dialog, "BackdropTemplate")
-        editBox:SetSize(dialog:GetWidth() - 24, 24)
-        editBox:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 12, -12)
-        editBox:SetAutoFocus(true)
-        editBox:SetText("")
-        editBox:SetJustifyH("CENTER")
-
-        editBox:SetBackdrop({
-            bgFile = "Interface\\Buttons\\WHITE8X8",
-            edgeFile = "Interface\\Buttons\\WHITE8X8",
-            edgeSize = 1,
-        })
-        editBox:SetBackdropColor(bgMedium[1], bgMedium[2], bgMedium[3], 1)
-        editBox:SetBackdropBorderColor(border[1], border[2], border[3], 1)
-        if NRSKNUI.ApplyThemeFont then
-            NRSKNUI:ApplyThemeFont(editBox, "normal")
-        else
-            editBox:SetFont(STANDARD_TEXT_FONT, 12, "OUTLINE")
-        end
-        editBox:SetTextColor(textPrimary[1], textPrimary[2], textPrimary[3], 1)
-        editBox:SetShadowColor(0, 0, 0, 0)
-
-        if not onAccept then
-            editBox:SetScript("OnKeyDown", function(self, key)
-                if key == "C" and (IsControlKeyDown() or IsMetaKeyDown()) then
-                    NRSKNUI:CreateMessagePopup(2, "Copied to clipboard", 18, UIParent, 0, 350)
-                    if onCancel then onCancel() end
-                    dialog:Hide()
-                    NRSKNUI.activePrompt = nil
-                end
-            end)
-        else
-            editBox:SetScript("OnEnterPressed", function(self)
-                if onAccept then
-                    onAccept(self:GetText())
-                    dialog:Hide()
-                    NRSKNUI.activePrompt = nil
-                end
-            end)
-        end
-
-        editBox:SetScript("OnEnter", function(self)
-            self:SetBackdropBorderColor(accent[1], accent[2], accent[3], 1)
-        end)
-        editBox:SetScript("OnLeave", function(self)
-            self:SetBackdropBorderColor(border[1], border[2], border[3], 1)
-        end)
-
-        local editBoxLabel = dialog:CreateFontString(nil, "OVERLAY")
-        editBoxLabel:SetPoint("TOPLEFT", editBox, "BOTTOMLEFT", 12, -12)
-        editBoxLabel:SetPoint("TOPRIGHT", editBox, "BOTTOMRIGHT", -12, -12)
-        editBoxLabel:SetJustifyH("CENTER")
-        editBoxLabel:SetJustifyV("TOP")
-        if NRSKNUI.ApplyThemeFont then
-            NRSKNUI:ApplyThemeFont(editBoxLabel, "normal")
-        else
-            editBoxLabel:SetFontObject("GameFontNormal")
-        end
-        editBoxLabel:SetText(editBoxLabelText or "")
-        editBoxLabel:SetTextColor(textSecondary[1], textSecondary[2], textSecondary[3], 1)
-        editBoxLabel:SetShadowColor(0, 0, 0, 0)
-
-        dialog.editBox = editBox
-    end
-
-    if dialog.editBox then
-        dialog.editBox:SetText(text or "")
-        dialog.editBox:HighlightText()
-        dialog.editBox:SetAutoFocus(true)
-    end
-
-    if not showEditBox or onAccept then
+    if not isCopyMode then
         local buttonContainer = CreateFrame("Frame", nil, dialog)
-        buttonContainer:SetHeight(30)
-        buttonContainer:SetPoint("BOTTOMLEFT", dialog, "BOTTOMLEFT", 12, 12)
-        buttonContainer:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -12, 12)
+        buttonContainer:SetHeight(BUTTON_HEIGHT)
+        buttonContainer:SetPoint("BOTTOMLEFT", dialog, "BOTTOMLEFT", PADDING, PADDING)
+        buttonContainer:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -PADDING, PADDING)
 
-        local acceptBtn = CreateThemedButton(buttonContainer, Theme, acceptText or "Accept", true)
-        acceptBtn:SetPoint("RIGHT", buttonContainer, "CENTER", -4, 0)
-        acceptBtn:SetScript("OnClick", function()
-            if onAccept then
-                if showEditBox and dialog.editBox then
-                    onAccept(dialog.editBox:GetText())
-                else
-                    onAccept()
+        local acceptBtn = GUIFrame:CreateButton(buttonContainer, opts.acceptText or "Accept", {
+            width = BUTTON_WIDTH,
+            height = BUTTON_HEIGHT,
+            callback = function()
+                if opts.onAccept then
+                    if dialog.editBox then
+                        opts.onAccept(dialog.editBox:GetText())
+                    else
+                        opts.onAccept()
+                    end
                 end
+                CloseDialog()
             end
-            dialog:Hide()
-            NRSKNUI.activePrompt = nil
-        end)
+        })
+        acceptBtn:SetPoint("RIGHT", buttonContainer, "CENTER", -4, 0)
 
-        local cancelBtn = CreateThemedButton(buttonContainer, Theme, cancelText or "Cancel", false)
+        local cancelBtn = GUIFrame:CreateButton(buttonContainer, opts.cancelText or "Cancel", {
+            width = BUTTON_WIDTH,
+            height = BUTTON_HEIGHT,
+            callback = function()
+                if opts.onCancel then opts.onCancel() end
+                CloseDialog()
+            end
+        })
         cancelBtn:SetPoint("LEFT", buttonContainer, "CENTER", 4, 0)
-        cancelBtn:SetScript("OnClick", function()
-            if onCancel then onCancel() end
-            dialog:Hide()
-            NRSKNUI.activePrompt = nil
-        end)
+        cancelBtn.text:SetTextColor(Theme.textPrimary[1], Theme.textPrimary[2], Theme.textPrimary[3], 1)
     end
 
-    dialog:SetScript("OnKeyDown", function(self, key)
-        if key == "ESCAPE" then
-            self:SetPropagateKeyboardInput(false)
-            if onCancel then onCancel() end
-            self:Hide()
-            NRSKNUI.activePrompt = nil
-        else
-            self:SetPropagateKeyboardInput(true)
-        end
-    end)
-    dialog:EnableKeyboard(true)
+    SetupEscapeHandler(dialog, opts.onCancel)
 
     dialog:Show()
     NRSKNUI.activePrompt = dialog
@@ -387,23 +350,26 @@ function NRSKNUI:CreatePrompt(title, text, showEditBox, editBoxLabelText, useTex
     return dialog
 end
 
--- CreateReloadPrompt: Create a themed reload prompt dialog
--- Usage very simple: NRSKNUI:CreateReloadPrompt("Text that explains why user needs to reload for example")
+---@param title string
+---@param text string
+---@param label? string
+function NRSKNUI:CreateCopyDialog(title, text, label)
+    return self:CreatePrompt({
+        title = title,
+        text = text,
+        editBox = true,
+        editBoxLabel = label or "CTRL-C to copy",
+    })
+end
+
+---@param reason? string
 function NRSKNUI:CreateReloadPrompt(reason)
-    local text = reason or "Would you like to reload your UI now?"
-    return self:CreatePrompt(
-        "Reload Required",
-        text,
-        false,
-        nil,
-        false,
-        nil,
-        nil,
-        nil,
-        nil,
-        function() ReloadUI() end,
-        nil,
-        "Reload Now",
-        "Later"
-    )
+    return self:CreatePrompt({
+        title = "Reload Required",
+        text = reason or "Would you like to reload your UI now?",
+        width = 340,
+        onAccept = function() ReloadUI() end,
+        acceptText = "Reload Now",
+        cancelText = "Later",
+    })
 end

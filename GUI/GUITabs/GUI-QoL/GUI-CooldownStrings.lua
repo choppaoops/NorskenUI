@@ -167,11 +167,12 @@ GUIFrame:RegisterPanel("CooldownStrings", function(container)
                 {
                     text = "New Profile",
                     onClick = function()
-                        NRSKNUI:CreatePrompt(
-                            "New CDM Profile",
-                            "Enter a name for this profile:",
-                            true, nil, false, nil, nil, nil, nil,
-                            function(inputText)
+                        NRSKNUI:CreatePrompt({
+                            title = "New CDM Profile",
+                            text = "",
+                            editBox = true,
+                            editBoxLabel = "Enter a name for this profile",
+                            onAccept = function(inputText)
                                 if inputText and inputText ~= "" then
                                     if db.Profiles[inputText] then
                                         NRSKNUI:Print("Profile '" .. inputText .. "' already exists.")
@@ -187,8 +188,9 @@ GUIFrame:RegisterPanel("CooldownStrings", function(container)
                                     RefreshContent()
                                 end
                             end,
-                            nil, "Create", "Cancel"
-                        )
+                            acceptText = "Create",
+                            cancelText = "Cancel",
+                        })
                     end,
                 },
             },
@@ -293,12 +295,13 @@ GUIFrame:RegisterPanel("CooldownStrings", function(container)
                 if not mod then return end
                 mod.ApplyProfileToCDM(selectedProfile.String or "", selectedProfileName, {
                     onConflict = function(proceed)
-                        NRSKNUI:CreatePrompt(
-                            "Replace CDM Profile",
-                            "'" .. selectedProfileName .. "' exists in CDM. Replace?",
-                            false, nil, false, nil, nil, nil, nil,
-                            proceed, nil, "Replace", "Cancel"
-                        )
+                        NRSKNUI:CreatePrompt({
+                            title = "Replace CDM Profile",
+                            text = "'" .. selectedProfileName .. "' exists in CDM. Replace?",
+                            onAccept = proceed,
+                            acceptText = "Replace",
+                            cancelText = "Cancel",
+                        })
                     end,
                     onLayoutsFull = function()
                         NRSKNUI:Print("CDM layout limit reached.")
@@ -312,11 +315,10 @@ GUIFrame:RegisterPanel("CooldownStrings", function(container)
         local deleteBtn = GUIFrame:CreateButton(btnRow, "Delete", {
             height = 38,
             callback = function()
-                NRSKNUI:CreatePrompt(
-                    "Delete Profile",
-                    "Delete '" .. selectedProfileName .. "'?",
-                    false, nil, false, nil, nil, nil, nil,
-                    function()
+                NRSKNUI:CreatePrompt({
+                    title = "Delete Profile",
+                    text = "Delete '" .. selectedProfileName .. "'?",
+                    onAccept = function()
                         db.Profiles[selectedProfileName] = nil
                         selectedProfileName = nil
                         for n in pairs(db.Profiles) do
@@ -326,8 +328,9 @@ GUIFrame:RegisterPanel("CooldownStrings", function(container)
                         SyncWithModule()
                         RefreshContent()
                     end,
-                    nil, "Delete", "Cancel"
-                )
+                    acceptText = "Delete",
+                    cancelText = "Cancel",
+                })
             end,
         })
         btnRow:AddWidget(deleteBtn, 0.5)
