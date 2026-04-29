@@ -66,7 +66,7 @@ GUIFrame.SidebarConfig = {
                 { id = "DragonRiding",       text = "Dragon Riding UI" },
                 { id = "XPBar",              text = "XP Bar" },
                 { id = "Durability",         text = "Durability Util" },
-                { id = "AuctionHouseFilter", text = "AH Filter" },
+                { id = "AuctionHouseFilter", text = "AH Current Expansion Filter" },
                 { id = "Recuperate",         text = "Recuperate Button" },
             }
         },
