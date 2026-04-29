@@ -451,19 +451,23 @@ local Defaults = {
             HuntersMark = {
                 Enabled = true,
                 Color = { 1, 0.290, 0.301, 1 },
-                -- Font settings
-                FontFace = "Expressway",      -- Font face
-                FontSize = 22,                -- Font size
-                FontOutline = "SOFTOUTLINE",  -- Font outline (NONE, OUTLINE, THICKOUTLINE)
-                -- Position settings
-                Strata = "HIGH",              -- Frame strata
-                anchorFrameType = "UIPARENT", -- Anchor frame type
-                ParentFrame = "UIParent",     -- Parent frame name
-                Position = {                  -- Position settings
-                    AnchorFrom = "CENTER",    -- Anchor point from
-                    AnchorTo = "CENTER",      -- Anchor point to
-                    XOffset = 0,              -- X offset
-                    YOffset = 320,            -- Y offset
+                FontFace = "Expressway",
+                FontSize = 22,
+                FontOutline = "SOFTOUTLINE",
+                FontShadow = {
+                    Enabled = false,
+                    Color = { 0, 0, 0, 1 },
+                    OffsetX = 1,
+                    OffsetY = -1,
+                },
+                Strata = "HIGH",
+                anchorFrameType = "UIPARENT",
+                ParentFrame = "UIParent",
+                Position = {
+                    AnchorFrom = "CENTER",
+                    AnchorTo = "CENTER",
+                    XOffset = 0,
+                    YOffset = 320,
                 },
             },
 

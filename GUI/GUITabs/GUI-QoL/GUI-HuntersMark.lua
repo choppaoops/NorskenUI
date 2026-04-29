@@ -1,190 +1,104 @@
--- NorskenUI namespace
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
 local GUIFrame = NRSKNUI.GUIFrame
 local Theme = NRSKNUI.Theme
-local LSM = NRSKNUI.LSM
 
---TODO: Update
-
--- Localization
-local table_insert = table.insert
-local pairs, ipairs = pairs, ipairs
-
--- Helper to get HuntersMark module
-local function GetHuntersMarkModule()
-    if NorskenUI then
-        return NorskenUI:GetModule("HuntersMark", true)
-    end
-    return nil
-end
-
--- Register HuntersMark tab content
 GUIFrame:RegisterContent("HuntersMark", function(scrollChild, yOffset)
     local db = NRSKNUI.db and NRSKNUI.db.profile.Miscellaneous.HuntersMark
-    if not db then
-        local errorCard = GUIFrame:CreateCard(scrollChild, "Error", yOffset)
-        errorCard:AddLabel("Database not available")
-        return yOffset + errorCard:GetContentHeight() + Theme.paddingMedium
-    end
+    if not db then return GUIFrame:ShowDBError(scrollChild, yOffset) end
 
-    local HUNTMARK = GetHuntersMarkModule()
-    local allWidgets = {}
+    ---@type HuntersMark?
+    local HUNTMARK = NorskenUI and NorskenUI:GetModule("HuntersMark", true)
+    local manager = GUIFrame:CreateWidgetStateManager()
 
     local function ApplySettings()
-        if HUNTMARK then
-            HUNTMARK:ApplySettings()
-        end
-    end
-
-    local function ApplyModuleState(enabled)
-        if not HUNTMARK then return end
-        db.Enabled = enabled
-        if enabled then
-            NorskenUI:EnableModule("HuntersMark")
-        else
-            NorskenUI:DisableModule("HuntersMark")
-        end
+        if HUNTMARK and HUNTMARK.ApplySettings then HUNTMARK:ApplySettings() end
     end
 
     local function UpdateAllWidgetStates()
-        local mainEnabled = db.Enabled ~= false
-
-        for _, widget in ipairs(allWidgets) do
-            if widget.SetEnabled then
-                widget:SetEnabled(mainEnabled)
-            end
-        end
+        manager:UpdateAll(db.Enabled)
     end
 
-    ----------------------------------------------------------------
-    -- Card 1: Hunters Mark Tracking (Enable)
-    ----------------------------------------------------------------
+    -- Card 1: Enable
     local card1 = GUIFrame:CreateCard(scrollChild, "Hunters Mark Tracking", yOffset)
 
-    local row1 = GUIFrame:CreateRow(card1.content, 36)
+    local row1 = GUIFrame:CreateRow(card1.content, Theme.rowHeight)
     local enableCheck = GUIFrame:CreateCheckbox(row1, "Enable Hunters Mark Tracking", {
-        value = db.Enabled ~= false,
+        value = db.Enabled,
         callback = function(checked)
             db.Enabled = checked
-            ApplyModuleState(checked)
+            if HUNTMARK then
+                if checked then NorskenUI:EnableModule("HuntersMark") else NorskenUI:DisableModule("HuntersMark") end
+            end
             UpdateAllWidgetStates()
         end,
-        msgPopup = true, msgText = "Hunters Mark Tracking", msgOn = "On", msgOff = "Off"
+        msgPopup = true,
+        msgText = "Hunters Mark Tracking",
     })
     row1:AddWidget(enableCheck, 1)
-    card1:AddRow(row1, 36)
+    card1:AddRow(row1, Theme.rowHeight)
 
-    yOffset = yOffset + card1:GetContentHeight() + Theme.paddingSmall
+    local sep1 = GUIFrame:CreateSeparator(card1.content)
+    card1:AddRow(sep1, Theme.rowHeightSeparator)
 
-    ----------------------------------------------------------------
-    -- Card 2: Text Settings
-    ----------------------------------------------------------------
+    local textRowSize = 55
+    local infoRow = GUIFrame:CreateRow(card1.content, textRowSize)
+    local infoText = GUIFrame:CreateText(infoRow, NRSKNUI:ColorTextByTheme("Functionality Info"), {
+        text = NRSKNUI:ColorTextByTheme("• ") ..
+            "Loads in raid instances when out of combat.\n" ..
+            NRSKNUI:ColorTextByTheme("• ") ..
+            "Scans for nameplates that belong to bosses and checks if they have a mark on them or not from the player",
+        height = textRowSize,
+        bgMode = "hide"
+    })
+    infoRow:AddWidget(infoText, 1)
+    manager:Register(infoText, "all")
+    card1:AddRow(infoRow, textRowSize, 0)
+
+    yOffset = card1:GetNextOffset()
+
+    -- Card 2: Text Color
     local card2 = GUIFrame:CreateCard(scrollChild, "Text Settings", yOffset)
-    table_insert(allWidgets, card2)
+    manager:Register(card2, "all")
 
-    -- Color picker
-    local row2a = GUIFrame:CreateRow(card2.content, 40)
+    local row2a = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast)
     local colorPicker = GUIFrame:CreateColorPicker(row2a, "Alert Color", {
-        color = db.Color or { 0, 1, 0, 1 },
+        color = db.Color,
         callback = function(r, g, b, a)
             db.Color = { r, g, b, a }
             ApplySettings()
         end
     })
     row2a:AddWidget(colorPicker, 1)
-    table_insert(allWidgets, colorPicker)
-    card2:AddRow(row2a, 40)
+    manager:Register(colorPicker, "all")
+    card2:AddRow(row2a, Theme.rowHeightLast, 0)
 
-    yOffset = yOffset + card2:GetContentHeight() + Theme.paddingSmall
+    yOffset = card2:GetNextOffset()
 
-    ----------------------------------------------------------------
     -- Card 3: Font Settings
-    ----------------------------------------------------------------
-    local card3 = GUIFrame:CreateCard(scrollChild, "Font Settings", yOffset)
-    table_insert(allWidgets, card3)
-
-    -- Font lookup
-    local fontList = {}
-    if LSM then
-        for name in pairs(LSM:HashTable("font")) do fontList[name] = name end
-    else
-        fontList["Friz Quadrata TT"] = "Friz Quadrata TT"
-    end
-
-    -- Font Face and Size
-    local row3a = GUIFrame:CreateRow(card3.content, 40)
-    local fontDropdown = GUIFrame:CreateDropdown(row3a, "Font", {
-        options = fontList,
-        value = db.FontFace or "Friz Quadrata TT",
-        callback = function(key)
-            db.FontFace = key
-            ApplySettings()
-        end,
-        searchable = true,
-        isFontPreview = true
+    local fontCard, fontOffset, fontWidgets = GUIFrame:CreateFontSettingsCard(scrollChild, yOffset, {
+        db = db,
+        includeSoftOutline = true,
+        onChangeCallback = ApplySettings,
     })
-    row3a:AddWidget(fontDropdown, 0.5)
-    table_insert(allWidgets, fontDropdown)
+    manager:Register(fontCard, "all")
+    manager:RegisterGroup(fontWidgets, "all")
 
-    local fontSizeSlider = GUIFrame:CreateSlider(card3.content, "Font Size", {
-        min = 8,
-        max = 72,
-        step = 1,
-        value = db.FontSize or 24,
-        labelWidth = 60,
-        callback = function(val)
-            db.FontSize = val
-            ApplySettings()
-        end
-    })
-    row3a:AddWidget(fontSizeSlider, 0.5)
-    table_insert(allWidgets, fontSizeSlider)
-    card3:AddRow(row3a, 40)
+    yOffset = fontOffset
 
-    -- Font Outline Dropdown
-    local row3b = GUIFrame:CreateRow(card3.content, 37)
-    local outlineList = {
-        { key = "NONE", text = "None" },
-        { key = "OUTLINE", text = "Outline" },
-        { key = "THICKOUTLINE", text = "Thick" },
-        { key = "SOFTOUTLINE", text = "Soft" },
-    }
-    local outlineDropdown = GUIFrame:CreateDropdown(row3b, "Outline", {
-        options = outlineList,
-        value = db.FontOutline or "SOFTOUTLINE",
-        callback = function(key)
-            db.FontOutline = key
-            ApplySettings()
-        end
-    })
-    row3b:AddWidget(outlineDropdown, 1)
-    table_insert(allWidgets, outlineDropdown)
-    card3:AddRow(row3b, 37)
-
-    yOffset = yOffset + card3:GetContentHeight() + Theme.paddingSmall
-
-    ----------------------------------------------------------------
-    -- Card 4: Position Settings
-    ----------------------------------------------------------------
-    local card4, newOffset = GUIFrame:CreatePositionCard(scrollChild, yOffset, {
+    -- Card 4: Position
+    local card4, posOffset = GUIFrame:CreatePositionCard(scrollChild, yOffset, {
         db = db,
         showAnchorFrameType = false,
         showStrata = true,
         onChangeCallback = ApplySettings,
     })
+    manager:Register(card4, "all")
+    if card4.positionWidgets then manager:RegisterGroup(card4.positionWidgets, "all") end
 
-    if card4.positionWidgets then
-        for _, widget in ipairs(card4.positionWidgets) do
-            table_insert(allWidgets, widget)
-        end
-    end
-    table_insert(allWidgets, card4)
+    yOffset = posOffset
 
-    yOffset = newOffset
-
-    -- Apply initial widget states
     UpdateAllWidgetStates()
-    yOffset = yOffset - (Theme.paddingSmall * 2)
+
     return yOffset
 end)
