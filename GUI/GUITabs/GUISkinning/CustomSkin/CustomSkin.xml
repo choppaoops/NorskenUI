@@ -3,6 +3,5 @@
 
     <Script file="GUI-Buffs.lua" />
     <Script file="GUI-Debuffs.lua" />
-    <Script file="GUI-ExternalBuffs.lua" />
 
 </Ui>
