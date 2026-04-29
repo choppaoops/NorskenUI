@@ -12,8 +12,6 @@ NRSKNUI.GUIOpen = false
 local pcall = pcall
 local select = select
 local ShowUIPanel = ShowUIPanel
-local table_insert = table.insert
-local IsMouseButtonDown = IsMouseButtonDown
 local tostring = tostring
 local CreateFrame = CreateFrame
 local pairs = pairs
@@ -82,7 +80,6 @@ function GUIFrame:CreateMainFrame()
     self:CreateFooter(frame)
     self:CreateContentArea(frame)
     self:CreateSidebar(frame)
-    self:CreateShortcutFrame(frame)
 
     local borderFrame = CreateFrame("Frame", nil, frame)
     borderFrame:SetAllPoints(frame)
@@ -287,429 +284,13 @@ function GUIFrame:ApplyThemeColors()
     end
 end
 
-function GUIFrame:CreateShortcutFrame(parent)
-    local ITEM_HEIGHT = 24
-    local MAX_DROPDOWN_HEIGHT = 400
-    local ANIMATION_DURATION = 0.18
-
-    local shortcutBtn = CreateFrame("Button", nil, parent)
-    shortcutBtn:SetSize(18, 22)
-    shortcutBtn:SetPoint("TOPLEFT", parent, "TOPRIGHT", -50, -6)
-    shortcutBtn:SetFrameStrata("TOOLTIP")
-
-    local shortcutBtnTex = shortcutBtn:CreateTexture(nil, "ARTWORK")
-    shortcutBtnTex:SetAllPoints()
-    shortcutBtnTex:SetTexture("Interface\\AddOns\\NorskenUI\\Media\\GUITextures\\NorskenCustomBurger.png")
-    shortcutBtnTex:SetVertexColor(Theme.textSecondary[1], Theme.textSecondary[2], Theme.textSecondary[3], 1)
-    shortcutBtn:SetNormalTexture(shortcutBtnTex)
-    shortcutBtnTex:SetTexelSnappingBias(0)
-    shortcutBtnTex:SetSnapToPixelGrid(true)
-
-    local dropdownList = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-    dropdownList:SetHeight(1)
-    dropdownList:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8X8",
-        edgeFile = "Interface\\Buttons\\WHITE8X8",
-        edgeSize = 1,
-    })
-    dropdownList:SetBackdropColor(Theme.bgMedium[1], Theme.bgMedium[2], Theme.bgMedium[3], 1)
-    dropdownList:SetBackdropBorderColor(Theme.border[1], Theme.border[2], Theme.border[3], 1)
-    dropdownList:SetFrameStrata("TOOLTIP")
-    dropdownList:SetClipsChildren(true)
-    dropdownList:Hide()
-
-    local scrollFrame = CreateFrame("ScrollFrame", nil, dropdownList)
-    scrollFrame:SetPoint("TOPLEFT", dropdownList, "TOPLEFT", 0, 0)
-    scrollFrame:SetPoint("BOTTOMRIGHT", dropdownList, "BOTTOMRIGHT", -12, 0)
-
-    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
-    scrollFrame:SetScrollChild(scrollChild)
-
-    local scrollbar = NRSKNUI.GUI.CreateScrollbar(scrollFrame, {
-        anchorToScrollFrame = false,
-    })
-    scrollbar:SetParent(dropdownList)
-    scrollbar:ClearAllPoints()
-    scrollbar:SetPoint("TOPRIGHT", dropdownList, "TOPRIGHT", 0, 0)
-    scrollbar:SetPoint("BOTTOMRIGHT", dropdownList, "BOTTOMRIGHT", 0, 0)
-
-    local scrollHold = false
-    scrollbar:HookScript("OnMouseDown", function(_, button)
-        if button == "LeftButton" then
-            scrollHold = true
-        end
-    end)
-    scrollbar:HookScript("OnMouseUp", function(_, button)
-        if button == "LeftButton" then
-            C_Timer.After(0.1, function()
-                scrollHold = false
-            end)
-        end
-    end)
-
-    local isOpen = false
-    local itemButtons = {}
-    local startHeight = 0
-    local targetHeight = 0
-    local btnTextR, btnTextG, btnTextB = Theme.accent[1], Theme.accent[2], Theme.accent[3]
-
-    local mouseChecker = CreateFrame("Frame", nil, UIParent)
-    mouseChecker:Hide()
-
-    local animGroup = dropdownList:CreateAnimationGroup()
-    animGroup:CreateAnimation("Animation"):SetDuration(ANIMATION_DURATION)
-
-    local hoverAnimGroup = shortcutBtn:CreateAnimationGroup()
-    local hoverAnim = hoverAnimGroup:CreateAnimation("Animation")
-    hoverAnim:SetDuration(0.15)
-
-    local borderColorFrom = {}
-    local borderColorTo = {}
-
-    hoverAnimGroup:SetScript("OnUpdate", function(self)
-        local progress = self:GetProgress() or 0
-        local r = borderColorFrom.btnTextR + (borderColorTo.btnTextR - borderColorFrom.btnTextR) * progress
-        local g = borderColorFrom.btnTextG + (borderColorTo.btnTextG - borderColorFrom.btnTextG) * progress
-        local b = borderColorFrom.btnTextB + (borderColorTo.btnTextB - borderColorFrom.btnTextB) * progress
-
-        shortcutBtnTex:SetVertexColor(r, g, b, 1)
-        btnTextR, btnTextG, btnTextB = r, g, b
-    end)
-
-    hoverAnimGroup:SetScript("OnFinished", function()
-        shortcutBtnTex:SetVertexColor(borderColorTo.btnTextR, borderColorTo.btnTextG, borderColorTo.btnTextB, 1)
-        btnTextR, btnTextG, btnTextB = borderColorTo.btnTextR, borderColorTo.btnTextG, borderColorTo.btnTextB
-    end)
-
-    local function AnimateBorderColor(toAccent)
-        hoverAnimGroup:Stop()
-
-        btnTextR, btnTextG, btnTextB = shortcutBtnTex:GetVertexColor()
-        borderColorFrom.btnTextR = btnTextR
-        borderColorFrom.btnTextG = btnTextG
-        borderColorFrom.btnTextB = btnTextB
-
-        if toAccent then
-            borderColorTo.btnTextR = Theme.accent[1]
-            borderColorTo.btnTextG = Theme.accent[2]
-            borderColorTo.btnTextB = Theme.accent[3]
-        else
-            borderColorTo.btnTextR = Theme.textSecondary[1]
-            borderColorTo.btnTextG = Theme.textSecondary[2]
-            borderColorTo.btnTextB = Theme.textSecondary[3]
-        end
-
-        hoverAnimGroup:Play()
-    end
-
-    local function CloseDropdown(instant)
-        if scrollHold then return end
-        if not isOpen then return end
-
-        isOpen = false
-
-        if instant then
-            dropdownList:SetHeight(1)
-            dropdownList:Hide()
-            animGroup:Stop()
-        else
-            startHeight = dropdownList:GetHeight()
-            targetHeight = 1
-            animGroup:Stop()
-            animGroup:Play()
-        end
-
-        mouseChecker:SetScript("OnUpdate", nil)
-        mouseChecker:Hide()
-    end
-
-    local function UpdateScroll()
-        local contentHeight = scrollChild:GetHeight()
-        local scrollFrameHeight = scrollFrame:GetHeight()
-        local needsScrollbar = scrollbar:UpdateVisibility(contentHeight, scrollFrameHeight)
-
-        if needsScrollbar then
-            scrollbar:SetValue(0)
-            scrollFrame:SetPoint("BOTTOMRIGHT", dropdownList, "BOTTOMRIGHT", -12, 0)
-        else
-            scrollFrame:SetPoint("BOTTOMRIGHT", dropdownList, "BOTTOMRIGHT", 0, 0)
-        end
-
-        scrollChild:SetWidth(scrollFrame:GetWidth())
-
-        for i, btn in ipairs(itemButtons) do
-            btn:ClearAllPoints()
-            btn:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -(i - 1) * ITEM_HEIGHT)
-            btn:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0)
-        end
-    end
-
-    animGroup:SetScript("OnUpdate", function(self)
-        local progress = self:GetProgress() or 0
-        local smoothProgress = progress * progress * (3 - 2 * progress)
-        local newHeight = startHeight + (targetHeight - startHeight) * smoothProgress
-        dropdownList:SetHeight(newHeight)
-
-        if isOpen and newHeight < targetHeight then
-            dropdownList:SetClipsChildren(false)
-        end
-    end)
-
-    animGroup:SetScript("OnFinished", function()
-        dropdownList:SetHeight(targetHeight)
-
-        if not isOpen then
-            dropdownList:Hide()
-        else
-            dropdownList:SetClipsChildren(true)
-        end
-    end)
-
-    local function CreateItemButtons()
-        for _, btn in ipairs(itemButtons) do
-            btn:Hide()
-            btn:SetParent(nil)
-        end
-        itemButtons     = {}
-        local BCDMLogo  = "|TInterface\\AddOns\\NorskenUI\\Media\\AddonLogos\\Logo.png:16:16|t"
-        local UUFLogo   = "|TInterface\\AddOns\\NorskenUI\\Media\\AddonLogos\\Logo:11:12|t"
-        local MSLogo    = "|TInterface\\AddOns\\NorskenUI\\Media\\AddonLogos\\MinimapStats.png:16:16|t"
-
-        local shortcuts = {
-            { text = "Reload UI", onClick = function() ReloadUI() end },
-            {
-                text = "Edit Mode",
-                onClick = function()
-                    if EditModeManagerFrame and EditModeManagerFrame:IsShown() then
-                        return
-                    end
-                    ShowUIPanel(EditModeManagerFrame)
-                end
-            },
-            {
-                text = "Cooldown Manager",
-                onClick = function()
-                    local frame = _G["CooldownViewerSettings"]
-                    if frame then
-                        frame:Show()
-                        frame:Raise()
-                    else
-                        NRSKNUI:Print(
-                            "CooldownViewerSettings not found. Make sure Cooldown Manager is enabled in Edit Mode.")
-                    end
-                end
-            },
-            {
-                text = UUFLogo .. " " .. "|cFF8080FFUnhalted|r" .. "|cFFFFFFFFUnitFrames|r",
-                onClick = function()
-                    local addonName = "UnhaltedUnitFrames"
-                    if not C_AddOns.IsAddOnLoaded(addonName) then
-                        local loaded = C_AddOns.LoadAddOn(addonName)
-                        if not loaded then
-                            NRSKNUI:Print("UnhaltedUnitFrames is disabled/missing")
-                            return
-                        end
-                    end
-                    if SlashCmdList["UUF"] then
-                        SlashCmdList["UUF"]("")
-                    else
-                        NRSKNUI:Print("UUF command not available.")
-                    end
-                end
-            },
-            {
-                text = BCDMLogo .. " " .. "|cFF8080FFBetter|r" .. "|cFFFFFFFFCooldownManager|r",
-                onClick = function()
-                    local addonName = "BetterCooldownManager"
-                    if not C_AddOns.IsAddOnLoaded(addonName) then
-                        local loaded = C_AddOns.LoadAddOn(addonName)
-                        if not loaded then
-                            NRSKNUI:Print("BetterCooldownManager is disabled/missing")
-                            return
-                        end
-                    end
-                    if SlashCmdList["BCDM"] then
-                        SlashCmdList["BCDM"]("")
-                    else
-                        NRSKNUI:Print("BCDM command not available.")
-                    end
-                end
-            },
-            {
-                text = MSLogo .. " " .. "|cFF8080FFMinimap|r" .. "|cFFFFFFFFStats|r",
-                onClick = function()
-                    local addonName = "MinimapStats"
-                    if not C_AddOns.IsAddOnLoaded(addonName) then
-                        local loaded = C_AddOns.LoadAddOn(addonName)
-                        if not loaded then
-                            NRSKNUI:Print("MinimapStats is disabled/missing")
-                            return
-                        end
-                    end
-                    if SlashCmdList["MINIMAPSTATS"] then
-                        SlashCmdList["MINIMAPSTATS"]("")
-                    else
-                        NRSKNUI:Print("MS command not available.")
-                    end
-                end
-            },
-        }
-
-        for i, item in ipairs(shortcuts) do
-            local btn = CreateFrame("Button", nil, scrollChild, "BackdropTemplate")
-            btn:SetHeight(ITEM_HEIGHT)
-            btn:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -(i - 1) * ITEM_HEIGHT)
-            btn:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0)
-
-            local btnText = btn:CreateFontString(nil, "OVERLAY")
-            btnText:SetPoint("LEFT", btn, "LEFT", 8, 0)
-            btnText:SetPoint("RIGHT", btn, "RIGHT", -8, 0)
-            btnText:SetJustifyH("LEFT")
-            NRSKNUI:ApplyThemeFont(btnText, "normal")
-            btnText:SetText(item.text)
-            btnText:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3])
-
-            btn:SetScript("OnClick", function()
-                item.onClick()
-                CloseDropdown()
-            end)
-
-            btn:SetScript("OnEnter", function()
-                btn:SetBackdrop({
-                    bgFile = "Interface\\Buttons\\WHITE8X8",
-                    edgeFile = "Interface\\Buttons\\WHITE8X8",
-                    edgeSize = 1,
-                })
-                btn:SetBackdropBorderColor(Theme.border[1], Theme.border[2], Theme.border[3], 1)
-                btn:SetBackdropColor(Theme.accentHover[1], Theme.accentHover[2], Theme.accentHover[3],
-                    Theme.accentHover[4] or 0.25)
-                btnText:SetTextColor(Theme.textPrimary[1], Theme.textPrimary[2], Theme.textPrimary[3], 1)
-            end)
-
-            btn:SetScript("OnLeave", function()
-                btn:SetBackdrop(nil)
-                btnText:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3])
-            end)
-
-            table_insert(itemButtons, btn)
-        end
-
-        scrollChild:SetHeight(#shortcuts * ITEM_HEIGHT)
-
-        for _, btn in ipairs(itemButtons) do
-            btn:Show()
-        end
-    end
-
-    scrollFrame:EnableMouseWheel(true)
-    scrollFrame:SetScript("OnMouseWheel", function(_, delta)
-        if scrollbar:IsShown() then
-            local current = scrollbar:GetValue()
-            local minVal, maxVal = scrollbar:GetMinMaxValues()
-            local newValue = current - (delta * ITEM_HEIGHT)
-            newValue = math.max(minVal, math.min(maxVal, newValue))
-            scrollbar:SetValue(newValue)
-        end
-    end)
-
-    local function ToggleDropdown()
-        if isOpen then
-            CloseDropdown()
-        else
-            dropdownList:ClearAllPoints()
-            dropdownList:SetPoint("TOP", shortcutBtn, "BOTTOM", 132, 28)
-            dropdownList:SetWidth(180)
-
-            local contentHeight = #itemButtons * ITEM_HEIGHT
-            local maxHeight = math.min(contentHeight, MAX_DROPDOWN_HEIGHT)
-
-            startHeight = 1
-            targetHeight = maxHeight
-
-            dropdownList:SetHeight(targetHeight)
-            scrollChild:SetWidth(scrollFrame:GetWidth())
-            UpdateScroll()
-            dropdownList:Show()
-            dropdownList:SetHeight(startHeight)
-
-            isOpen = true
-
-            animGroup:Play()
-
-            shortcutBtnTex:SetVertexColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
-
-            local wasMouseDown = false
-            mouseChecker:SetScript("OnUpdate", function()
-                local isDown = IsMouseButtonDown("LeftButton")
-                if wasMouseDown and not isDown then
-                    if not dropdownList:IsMouseOver() and not shortcutBtn:IsMouseOver() then
-                        CloseDropdown()
-                    end
-                end
-                wasMouseDown = isDown
-            end)
-            mouseChecker:Show()
-        end
-    end
-
-    shortcutBtn:SetScript("OnEnter", function()
-        AnimateBorderColor(true)
-        if not isOpen then
-            ToggleDropdown()
-        end
-    end)
-
-    shortcutBtn:SetScript("OnLeave", function()
-        AnimateBorderColor(false)
-        C_Timer.After(0.1, function()
-            if not dropdownList:IsMouseOver() and not shortcutBtn:IsMouseOver() then
-                CloseDropdown()
-            end
-        end)
-    end)
-
-    dropdownList:SetScript("OnLeave", function()
-        C_Timer.After(0.1, function()
-            if not dropdownList:IsMouseOver() then
-                CloseDropdown()
-            end
-        end)
-    end)
-
-    dropdownList:SetScript("OnHide", function()
-        if isOpen then
-            isOpen = false
-        end
-    end)
-
-    shortcutBtn:SetScript("OnHide", function()
-        CloseDropdown(true)
-    end)
-
-    dropdownList:Show()
-    dropdownList:SetHeight(MAX_DROPDOWN_HEIGHT)
-    CreateItemButtons()
-    dropdownList:SetHeight(1)
-    dropdownList:Hide()
-
-    self.shortcutBtn = shortcutBtn
-    self.shortcutContent = dropdownList
-    self.shortcutItemButtons = itemButtons
-    self.shortcutScrollbarThumb = scrollbar.thumb
-    self.shortcutScrollbarBorder = scrollbar.thumbBorder
-
-    return shortcutBtn
-end
-
 function GUIFrame:CreateHeader(parent)
     local header = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     header:SetHeight(Theme.headerHeight)
     header:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
     header:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, 0)
 
-    header:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8X8",
-    })
+    header:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8" })
     header:SetBackdropColor(Theme.bgMedium[1], Theme.bgMedium[2], Theme.bgMedium[3], Theme.bgMedium[4])
 
     local bottomBorder = header:CreateTexture(nil, "BORDER")
@@ -756,29 +337,58 @@ function GUIFrame:CreateHeader(parent)
     header.logoN = logoN
     header.logoUI = logoUI
 
+    local function Lerp(a, b, t) return a + (b - a) * t end
+
     local function CreateHeaderButton(config)
         local btn = CreateFrame("Button", nil, header)
-        btn:SetSize(config.size, config.size)
+        btn:SetSize(config.width or config.size, config.height or config.size)
         btn:SetPoint("RIGHT", header, "RIGHT", config.xOffset, config.yOffset or 0)
+        btn:SetFrameStrata(config.strata or "DIALOG")
 
         local tex = btn:CreateTexture(nil, "ARTWORK")
         tex:SetAllPoints()
         tex:SetTexture(config.texture)
-        tex:SetVertexColor(Theme.textSecondary[1], Theme.textSecondary[2], Theme.textSecondary[3], 1)
+        tex:SetVertexColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 0.7)
+        tex:SetTexelSnappingBias(0)
+        tex:SetSnapToPixelGrid(true)
         btn:SetNormalTexture(tex)
+
         if config.rotation then
             tex:SetRotation(math.rad(config.rotation))
         end
-        tex:SetTexelSnappingBias(0)
-        tex:SetSnapToPixelGrid(true)
 
-        btn:SetScript("OnEnter", function()
-            tex:SetVertexColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], Theme.accent[4])
+        local state = { alpha = 0.7 }
+        local anim = btn:CreateAnimationGroup()
+        anim:CreateAnimation("Animation"):SetDuration(0.15)
+        local animFrom, animTo = 0.7, 0.7
+
+        anim:SetScript("OnUpdate", function(animGroup)
+            local a = Lerp(animFrom, animTo, animGroup:GetProgress() or 0)
+            tex:SetVertexColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], a)
+            state.alpha = a
         end)
-        btn:SetScript("OnLeave", function()
-            tex:SetVertexColor(Theme.textSecondary[1], Theme.textSecondary[2], Theme.textSecondary[3], 1)
+
+        anim:SetScript("OnFinished", function()
+            tex:SetVertexColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], animTo)
+            state.alpha = animTo
         end)
-        btn:SetScript("OnClick", config.onClick)
+
+        local function AnimateAlpha(toHover)
+            anim:Stop()
+            animFrom = state.alpha
+            animTo = toHover and 1 or 0.7
+            anim:Play()
+        end
+
+        btn.tex = tex
+        btn.AnimateAlpha = AnimateAlpha
+
+        if config.onClick then
+            btn:SetScript("OnEnter", function() AnimateAlpha(true) end)
+            btn:SetScript("OnLeave", function() AnimateAlpha(false) end)
+            btn:SetScript("OnClick", config.onClick)
+        end
+
         return btn
     end
 
@@ -804,11 +414,292 @@ function GUIFrame:CreateHeader(parent)
         onClick = function() GUIFrame:OpenPage("HomePage") end,
     })
 
+    -- Shortcut Menu Button
+    local ITEM_HEIGHT = 24
+    local MAX_HEIGHT = 400
+
+    local shortcutBtn = CreateHeaderButton({
+        width = 18,
+        height = 22,
+        xOffset = -32,
+        texture = "Interface\\AddOns\\NorskenUI\\Media\\GUITextures\\NorskenCustomBurger.png",
+        strata = "TOOLTIP",
+    })
+
+    local dropdown = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+    dropdown:SetSize(180, 1)
+    dropdown:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Buttons\\WHITE8X8",
+        edgeSize = 1,
+    })
+    dropdown:SetBackdropColor(Theme.bgMedium[1], Theme.bgMedium[2], Theme.bgMedium[3], 1)
+    dropdown:SetBackdropBorderColor(Theme.border[1], Theme.border[2], Theme.border[3], 1)
+    dropdown:SetFrameStrata("TOOLTIP")
+    dropdown:SetClipsChildren(true)
+    dropdown:SetPoint("TOP", shortcutBtn, "BOTTOM", 132, 28)
+    dropdown:Hide()
+
+    local scrollFrame = CreateFrame("ScrollFrame", nil, dropdown)
+    scrollFrame:SetPoint("TOPLEFT", 0, 0)
+    scrollFrame:SetPoint("BOTTOMRIGHT", -12, 0)
+
+    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
+    scrollFrame:SetScrollChild(scrollChild)
+
+    local scrollbar = NRSKNUI.GUI.CreateScrollbar(scrollFrame, { anchorToScrollFrame = false })
+    scrollbar:SetParent(dropdown)
+    scrollbar:ClearAllPoints()
+    scrollbar:SetPoint("TOPRIGHT", dropdown, "TOPRIGHT", 0, 0)
+    scrollbar:SetPoint("BOTTOMRIGHT", dropdown, "BOTTOMRIGHT", 0, 0)
+
+    local menuState = { isOpen = false, scrollHold = false, startHeight = 0, targetHeight = 0 }
+    local itemButtons = {}
+
+    scrollbar:HookScript("OnMouseDown", function(_, button)
+        if button == "LeftButton" then menuState.scrollHold = true end
+    end)
+    scrollbar:HookScript("OnMouseUp", function(_, button)
+        if button == "LeftButton" then
+            C_Timer.After(0.1, function() menuState.scrollHold = false end)
+        end
+    end)
+
+    local dropdownAnim = dropdown:CreateAnimationGroup()
+    dropdownAnim:CreateAnimation("Animation"):SetDuration(0.18)
+
+    dropdownAnim:SetScript("OnUpdate", function(anim)
+        local p = anim:GetProgress() or 0
+        local smooth = p * p * (3 - 2 * p)
+        local h = menuState.startHeight + (menuState.targetHeight - menuState.startHeight) * smooth
+        dropdown:SetHeight(h)
+        if menuState.isOpen and h < menuState.targetHeight then
+            dropdown:SetClipsChildren(false)
+        end
+    end)
+
+    dropdownAnim:SetScript("OnFinished", function()
+        dropdown:SetHeight(menuState.targetHeight)
+        if not menuState.isOpen then
+            dropdown:Hide()
+        else
+            dropdown:SetClipsChildren(true)
+        end
+    end)
+
+    local function UpdateScroll()
+        local contentH = scrollChild:GetHeight()
+        local frameH = scrollFrame:GetHeight()
+        local needsScroll = scrollbar:UpdateVisibility(contentH, frameH)
+        scrollFrame:SetPoint("BOTTOMRIGHT", dropdown, "BOTTOMRIGHT", needsScroll and -12 or 0, 0)
+        if needsScroll then scrollbar:SetValue(0) end
+        scrollChild:SetWidth(scrollFrame:GetWidth())
+        for i, b in ipairs(itemButtons) do
+            b:ClearAllPoints()
+            b:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -(i - 1) * ITEM_HEIGHT)
+            b:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0)
+        end
+    end
+
+    local function CloseDropdown(instant)
+        if menuState.scrollHold or not menuState.isOpen then return end
+        menuState.isOpen = false
+        if instant then
+            dropdown:SetHeight(1)
+            dropdown:Hide()
+            dropdownAnim:Stop()
+        else
+            menuState.startHeight = dropdown:GetHeight()
+            menuState.targetHeight = 1
+            dropdownAnim:Stop()
+            dropdownAnim:Play()
+        end
+    end
+
+    local function OpenDropdown()
+        if menuState.isOpen then return end
+        menuState.isOpen = true
+        menuState.startHeight = 1
+        menuState.targetHeight = math.min(#itemButtons * ITEM_HEIGHT, MAX_HEIGHT)
+
+        dropdown:SetHeight(menuState.targetHeight)
+        scrollChild:SetWidth(scrollFrame:GetWidth())
+        UpdateScroll()
+        dropdown:Show()
+        dropdown:SetHeight(menuState.startHeight)
+        dropdownAnim:Play()
+    end
+
+    local function CreateMenuItem(index, text, onClick)
+        local item = CreateFrame("Button", nil, scrollChild, "BackdropTemplate")
+        item:SetHeight(ITEM_HEIGHT)
+        item:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -(index - 1) * ITEM_HEIGHT)
+        item:SetPoint("RIGHT", scrollChild, "RIGHT", 0, 0)
+
+        local label = item:CreateFontString(nil, "OVERLAY")
+        label:SetPoint("LEFT", 8, 0)
+        label:SetPoint("RIGHT", -8, 0)
+        label:SetJustifyH("LEFT")
+        NRSKNUI:ApplyThemeFont(label, "normal")
+        label:SetText(text)
+        label:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3])
+
+        item:SetScript("OnClick", function()
+            onClick()
+            CloseDropdown()
+        end)
+
+        item:SetScript("OnEnter", function()
+            item:SetBackdrop({
+                bgFile = "Interface\\Buttons\\WHITE8X8",
+                edgeFile = "Interface\\Buttons\\WHITE8X8",
+                edgeSize = 1,
+            })
+            item:SetBackdropBorderColor(Theme.border[1], Theme.border[2], Theme.border[3], 1)
+            item:SetBackdropColor(Theme.accentHover[1], Theme.accentHover[2], Theme.accentHover[3],
+                Theme.accentHover[4] or 0.25)
+            label:SetTextColor(Theme.textPrimary[1], Theme.textPrimary[2], Theme.textPrimary[3], 1)
+        end)
+
+        item:SetScript("OnLeave", function()
+            item:SetBackdrop(nil)
+            label:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3])
+        end)
+
+        return item
+    end
+
+    local function TryOpenAddon(addonName, slashCmd, displayName)
+        if not C_AddOns.IsAddOnLoaded(addonName) then
+            if not C_AddOns.LoadAddOn(addonName) then
+                NRSKNUI:Print(displayName .. " is disabled/missing")
+                return
+            end
+        end
+        if SlashCmdList[slashCmd] then
+            SlashCmdList[slashCmd]("")
+        else
+            NRSKNUI:Print(slashCmd .. " command not available.")
+        end
+    end
+
+    local function BuildMenuItems()
+        for _, b in ipairs(itemButtons) do
+            b:Hide(); b:SetParent(nil)
+        end
+        itemButtons = {}
+
+        local function AddonLoaded(name)
+            return C_AddOns.IsAddOnLoaded(name)
+        end
+
+        local items = {
+            { text = "Reload UI", onClick = ReloadUI },
+            {
+                text = "|cff00AEFFBlizzard|r Edit Mode",
+                onClick = function()
+                    if not (EditModeManagerFrame and EditModeManagerFrame:IsShown()) then
+                        ShowUIPanel(EditModeManagerFrame)
+                    end
+                end
+            },
+            {
+                text = "|cff00AEFFBlizzard|r CDM",
+                onClick = function()
+                    local frame = _G["CooldownViewerSettings"]
+                    if frame then
+                        frame:Show(); frame:Raise()
+                    else
+                        NRSKNUI:Print(
+                            "CooldownViewerSettings not found. Make sure Cooldown Manager is enabled in Edit Mode.")
+                    end
+                end
+            },
+        }
+
+        if AddonLoaded("UnhaltedUnitFrames") then
+            items[#items + 1] = {
+                text = "|cFF8080FFUnhalted|r|cFFFFFFFFUnitFrames|r",
+                onClick = function() TryOpenAddon("UnhaltedUnitFrames", "UUF", "UnhaltedUnitFrames") end
+            }
+        end
+
+        if AddonLoaded("BetterCooldownManager") then
+            items[#items + 1] = {
+                text = "|cFF8080FFBetter|r|cFFFFFFFFCooldownManager|r",
+                onClick = function() TryOpenAddon("BetterCooldownManager", "BCDM", "BetterCooldownManager") end
+            }
+        end
+
+        if AddonLoaded("MinimapStats") then
+            items[#items + 1] = {
+                text = "|cFF8080FFMinimap|r|cFFFFFFFFStats|r",
+                onClick = function() TryOpenAddon("MinimapStats", "MINIMAPSTATS", "MinimapStats") end
+            }
+        end
+
+        if AddonLoaded("Ayije_CDM") then
+            items[#items + 1] = {
+                text = "|cff00FF7FAyije|r CDM",
+                onClick = function() TryOpenAddon("Ayije_CDM", "AYIJECDM", "Ayije_CDM") end
+            }
+        end
+
+        for i, data in ipairs(items) do
+            itemButtons[i] = CreateMenuItem(i, data.text, data.onClick)
+        end
+        scrollChild:SetHeight(#items * ITEM_HEIGHT)
+    end
+
+    scrollFrame:EnableMouseWheel(true)
+    scrollFrame:SetScript("OnMouseWheel", function(_, delta)
+        if scrollbar:IsShown() then
+            local cur = scrollbar:GetValue()
+            local minV, maxV = scrollbar:GetMinMaxValues()
+            scrollbar:SetValue(math.max(minV, math.min(maxV, cur - delta * ITEM_HEIGHT)))
+        end
+    end)
+
+    shortcutBtn:SetScript("OnEnter", function()
+        shortcutBtn.AnimateAlpha(true)
+        if not menuState.isOpen then OpenDropdown() end
+    end)
+
+    shortcutBtn:SetScript("OnLeave", function()
+        shortcutBtn.AnimateAlpha(false)
+        C_Timer.After(0.1, function()
+            if not dropdown:IsMouseOver() and not shortcutBtn:IsMouseOver() then
+                CloseDropdown()
+            end
+        end)
+    end)
+
+    dropdown:SetScript("OnLeave", function()
+        C_Timer.After(0.1, function()
+            if not dropdown:IsMouseOver() and not shortcutBtn:IsMouseOver() then
+                CloseDropdown()
+            end
+        end)
+    end)
+
+    dropdown:SetScript("OnHide", function() menuState.isOpen = false end)
+    shortcutBtn:SetScript("OnHide", function() CloseDropdown(true) end)
+
+    dropdown:Show()
+    dropdown:SetHeight(MAX_HEIGHT)
+    BuildMenuItems()
+    dropdown:SetHeight(1)
+    dropdown:Hide()
+
+    self.shortcutBtn = shortcutBtn
+    self.shortcutContent = dropdown
+    self.shortcutItemButtons = itemButtons
+    self.shortcutScrollbarThumb = scrollbar.thumb
+    self.shortcutScrollbarBorder = scrollbar.thumbBorder
+
     header:EnableMouse(true)
     header:RegisterForDrag("LeftButton")
-    header:SetScript("OnDragStart", function()
-        parent:StartMoving()
-    end)
+    header:SetScript("OnDragStart", function() parent:StartMoving() end)
     header:SetScript("OnDragStop", function()
         parent:StopMovingOrSizing()
         NRSKNUI:SnapFrameToPixels(parent)
