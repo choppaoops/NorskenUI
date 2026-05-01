@@ -35,6 +35,19 @@ function NorskenUI:OnInitialize()
     if LDS then
         LDS:EnhanceDatabase(NRSKNUI.db, "NorskenUI")
     end
+
+    -- Ensure global Theme table exists with defaults (AceDB doesn't always merge new global defaults)
+    if not NRSKNUI.db.global.Theme then
+        NRSKNUI.db.global.Theme = defaults.global.Theme
+    else
+        -- Merge missing keys from defaults
+        for key, value in pairs(defaults.global.Theme) do
+            if NRSKNUI.db.global.Theme[key] == nil then
+                NRSKNUI.db.global.Theme[key] = value
+            end
+        end
+    end
+
     if NRSKNUI.db.global and NRSKNUI.db.global.UseGlobalProfile then
         local profileName = NRSKNUI.db.global.GlobalProfile or DEFAULT_PROFILE
         NRSKNUI.db:SetProfile(profileName)
