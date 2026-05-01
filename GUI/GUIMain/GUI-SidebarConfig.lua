@@ -68,6 +68,7 @@ GUIFrame.SidebarConfig = {
                 { id = "Durability",         text = "Durability Util" },
                 { id = "AuctionHouseFilter", text = "AH Current Expansion Filter" },
                 { id = "Recuperate",         text = "Recuperate Button" },
+                { id = "CharacterPanel",     text = "Character Panel Improvements" },
             }
         },
         {

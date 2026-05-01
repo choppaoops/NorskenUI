@@ -11,4 +11,5 @@
     <Script file="MiscVars.lua"/>
     <Script file="AuctionHouseFilter.lua"/>
     <Script file="Recuperate.lua"/>
+    <Script file="CharacterPanel.lua"/>
 </Ui>
