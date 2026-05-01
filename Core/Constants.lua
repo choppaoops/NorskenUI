@@ -99,19 +99,19 @@ NRSKNUI.MOVEMENT_SPELLS = {
 }
 
 NRSKNUI.CLASS_INTERRUPTS = {
-    [1] = { 6552 },                         -- Warrior
-    [2] = { 31935, 96231 },                 -- Paladin
-    [3] = { 147362, 187707 },               -- Hunter
-    [4] = { 1766 },                         -- Rogue
-    [5] = { 15487 },                        -- Priest
-    [6] = { 47528 },                        -- Death Knight
-    [7] = { 57994 },                        -- Shaman
-    [8] = { 2139 },                         -- Mage
-    [9] = { 19647, 89766, 119910, 132409 }, -- Warlock
-    [10] = { 116705 },                      -- Monk
-    [11] = { 78675, 106839 },               -- Druid
-    [12] = { 183752 },                      -- Demon Hunter
-    [13] = { 351338 },                      -- Evoker
+    [1] = { 6552 },                                  -- Warrior
+    [2] = { 96231, 31935 },                          -- Paladin
+    [3] = { 147362, 187707 },                        -- Hunter
+    [4] = { 1766 },                                  -- Rogue
+    [5] = { 15487 },                                 -- Priest
+    [6] = { 47528 },                                 -- Death Knight
+    [7] = { 57994 },                                 -- Shaman
+    [8] = { 2139 },                                  -- Mage
+    [9] = { 19647, 89766, 119910, 1276467, 132409 }, -- Warlock
+    [10] = { 116705 },                               -- Monk
+    [11] = { 38675, 78675, 106839 },                 -- Druid
+    [12] = { 183752 },                               -- Demon Hunter
+    [13] = { 351338 },                               -- Evoker
 }
 
 NRSKNUI.BIGWIGS_EVENTS = {
@@ -137,3 +137,14 @@ NRSKNUI.DUNGEON_INFO = {
     SeatOfTriumvirate = { instanceId = 1753, name = "Seat of the Triumvirate" },
     Skyreach          = { instanceId = 1209, name = "Skyreach" },
 }
+
+NRSKNUI.GEM_SOCKET_TYPES = {
+    { name = "Prismatic",  locale = "EMPTY_SOCKET_PRISMATIC",  icon = 458977 },
+    { name = "Meta",       locale = "EMPTY_SOCKET_META",       icon = 136257 },
+    { name = "Tinker",     locale = "EMPTY_SOCKET_TINKER",     icon = 2958630 },
+    { name = "Cogwheel",   locale = "EMPTY_SOCKET_COGWHEEL",   icon = 407324 },
+    { name = "Primordial", locale = "EMPTY_SOCKET_PRIMORDIAL", icon = 4095404 },
+    { name = "Fiber",      locale = "EMPTY_SOCKET_FIBER",      icon = 136260 },
+}
+
+NRSKNUI.SOCKETABLE_SLOTS = { 1, 2, 5, 6, 9, 10, 11, 12, 13, 14, 15 }
