@@ -251,6 +251,7 @@ end
 
 function SoftOutline:_HookMain()
     local main = self.main
+    if not main then return end
     if main._nrsknSoftOutlineHooked then return end
     main._nrsknSoftOutlineHooked = true
     main._nrsknSoftOutline = self
