@@ -29,9 +29,7 @@ local GetTime = GetTime
 
 local lastCopyTime = 0
 
-function CopyAnything:UpdateDB()
-    self.db = NRSKNUI.db.profile.Miscellaneous.CopyAnything
-end
+function CopyAnything:UpdateDB() self.db = NRSKNUI.db.profile.Miscellaneous.CopyAnything end
 
 function CopyAnything:OnInitialize()
     self:UpdateDB()
@@ -151,7 +149,7 @@ function CopyAnything:TryCopy(key)
             local info = GameTooltip:GetPrimaryTooltipInfo()
             if info and info.getterArgs then
                 local actionSlot = info.getterArgs[1]
-                local macroName = GetActionText(actionSlot)
+                local macroName = C_ActionBar.GetActionText(actionSlot)
 
                 if macroName then
                     local macroSlot = GetMacroIndexByName(macroName)
@@ -186,9 +184,7 @@ function CopyAnything:TryCopy(key)
     return false
 end
 
-function CopyAnything:ApplySettings()
-    CopyAnything:UpdateDB()
-end
+function CopyAnything:ApplySettings() CopyAnything:UpdateDB() end
 
 function CopyAnything:OnEnable()
     if not self.db.Enabled then return end
@@ -196,16 +192,10 @@ function CopyAnything:OnEnable()
         self.frame = CreateFrame("Frame", "NRSKNUI_CopyFrame")
         self.frame:SetScript("OnKeyDown", function(frame, key)
             local handled = self:TryCopy(key)
-            if not InCombatLockdown() then
-                frame:SetPropagateKeyboardInput(not handled)
-            end
+            if not InCombatLockdown() then frame:SetPropagateKeyboardInput(not handled) end
         end)
     end
     self.frame:EnableKeyboard(true)
 end
 
-function CopyAnything:OnDisable()
-    if self.frame then
-        self.frame:EnableKeyboard(false)
-    end
-end
+function CopyAnything:OnDisable() if self.frame then self.frame:EnableKeyboard(false) end end

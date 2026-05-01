@@ -433,7 +433,7 @@ local function HasWeaponEnchant(slot)
     local itemLink = GetInventoryItemLink("player", slotID)
     if not itemLink then return nil, nil, false end
 
-    local _, _, _, _, _, _, _, _, equipLoc = GetItemInfo(itemLink)
+    local _, _, _, _, _, _, _, _, equipLoc = C_Item.GetItemInfo(itemLink)
     if not equipLoc then return nil, nil, false end
 
     if equipLoc == "INVTYPE_SHIELD" or equipLoc == "INVTYPE_HOLDABLE" then return nil, nil, false end
@@ -761,6 +761,7 @@ local function CreateStanceFrame()
     cooldown:SetHideCountdownNumbers(false)
 
     -- Style cooldown text
+    ---@type FontString
     local cdText = cooldown:GetRegions()
     if cdText and cdText.SetFont then
         cdText:SetFont(NRSKNUI.FONT or STANDARD_TEXT_FONT, stanceDb.IconSize * 0.5, "OUTLINE")
@@ -1463,8 +1464,6 @@ function MBUFFS:RegisterEditModeElements()
             end
         end,
         guiPath = "missingBuffs",
-        onEditModeEnter = function() self:SetEditModeActive(true) end,
-        onEditModeExit = function() self:SetEditModeActive(false) end,
     })
 
     -- Stance icon frame
@@ -1488,8 +1487,6 @@ function MBUFFS:RegisterEditModeElements()
             end
         end,
         guiPath = "missingBuffs",
-        onEditModeEnter = function() self:SetEditModeActive(true) end,
-        onEditModeExit = function() self:SetEditModeActive(false) end,
     })
 
     -- Stance text frame
@@ -1513,8 +1510,6 @@ function MBUFFS:RegisterEditModeElements()
             end
         end,
         guiPath = "missingBuffs",
-        onEditModeEnter = function() self:SetEditModeActive(true) end,
-        onEditModeExit = function() self:SetEditModeActive(false) end,
     })
 end
 

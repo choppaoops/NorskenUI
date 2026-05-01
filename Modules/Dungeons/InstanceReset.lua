@@ -45,7 +45,7 @@ local function OnInstanceReset()
     -- Only send if in a group
     if channel then
         local message = IR.db.Message or "Instance reset!"
-        SendChatMessage(message, channel)
+        C_ChatInfo.SendChatMessage(message, channel)
     end
 end
 

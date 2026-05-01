@@ -146,7 +146,7 @@ end
 function CT:StopTimer(isEncounterEvent)
     if not self.running then return end
 
-    local shouldStop = (self.isEncounter == isEncounterEvent) or (self.isEncounter and not IsEncounterInProgress())
+    local shouldStop = (self.isEncounter == isEncounterEvent) or (self.isEncounter and not C_InstanceEncounter.IsEncounterInProgress())
     if not shouldStop then return end
 
     NRSKNUI.lastCombatDuration = GetTime() - self.startTime

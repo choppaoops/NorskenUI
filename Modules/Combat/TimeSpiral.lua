@@ -36,7 +36,7 @@ function TSP:DetectPlayerSpell()
     if not specID then return nil end
 
     local spellData = NRSKNUI.MOVEMENT_SPELLS[specID]
-    if spellData and IsPlayerSpell(spellData.spellID) then
+    if spellData and C_SpellBook.IsSpellKnown(spellData.spellID) then
         self.playerSpellId = spellData.spellID
         self.playerIconId = spellData.iconID
         return spellData.spellID
@@ -100,7 +100,7 @@ function TSP:FilterSpell(spellId)
         [385899] = 385899, -- Soulburn
     }
     for talentId, filteredSpell in pairs(filterTalents) do
-        if spellId == filteredSpell and (IsPlayerSpell(talentId) or IsSpellKnown(talentId)) then
+        if spellId == filteredSpell and (C_SpellBook.IsSpellKnown(talentId) or C_SpellBook.IsSpellInSpellBook(talentId)) then
             return true
         end
     end
