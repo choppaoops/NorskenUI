@@ -16,6 +16,40 @@
 ---@field SetEnabledState fun(self: AceModule, state: boolean)
 ---@field GetName fun(self: AceModule): string
 
+---@class AceHook-3.0
+local AceHook = {}
+
+---@param objectOrFuncName table|string
+---@param methodOrHandler? string|function
+---@param handler? function
+function AceHook:SecureHook(objectOrFuncName, methodOrHandler, handler) end
+
+---@param frame Frame
+---@param script string
+---@param handler? function
+function AceHook:SecureHookScript(frame, script, handler) end
+
+---@param objectOrFuncName table|string
+---@param method? string
+function AceHook:Unhook(objectOrFuncName, method) end
+
+function AceHook:UnhookAll() end
+
+---@param objectOrFuncName table|string
+---@param method? string
+---@return boolean
+function AceHook:IsHooked(objectOrFuncName, method) end
+
+---@param objectOrFuncName table|string
+---@param methodOrHandler? string|function
+---@param handler? function
+function AceHook:RawHook(objectOrFuncName, methodOrHandler, handler) end
+
+---@param objectOrFuncName table|string
+---@param methodOrHandler? string|function
+---@param handler? function
+function AceHook:Hook(objectOrFuncName, methodOrHandler, handler) end
+
 ---@class AceAddon-3.0
 ---@field NewModule fun(self: AceAddon-3.0, name: string, ...: string): AceModule
 ---@field GetModule fun(self: AceAddon-3.0, name: string, silent?: boolean): AceModule?

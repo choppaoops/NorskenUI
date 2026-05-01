@@ -4,6 +4,10 @@
 ---@field GetSessionId fun(self: BugGrabber): number
 BugGrabber = BugGrabber
 
+---@class NorskenUI : AceAddon-3.0, AceEvent-3.0, AceHook-3.0
+---@type NorskenUI
+NorskenUI = {}
+
 ---@class ElvUI_SpellBookTooltip: GameTooltip
 ElvUI_SpellBookTooltip = ElvUI_SpellBookTooltip
 
