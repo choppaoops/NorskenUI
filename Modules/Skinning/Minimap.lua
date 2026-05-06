@@ -1,59 +1,46 @@
--- NorskenUI namespace
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
 local Theme = NRSKNUI.Theme
 
--- Check for addon object
 if not NorskenUI then
     error("Minimap: Addon object not initialized. Check file load order!")
     return
 end
 
--- Create module
 ---@class Minimap: AceModule, AceEvent-3.0
----@field RegisterEvent fun(self: any, event: string, callbackOrMethod?: string|function)
 local MAP = NorskenUI:NewModule("Minimap", "AceEvent-3.0")
 
--- Localization
 local hooksecurefunc = hooksecurefunc
 local ipairs = ipairs
 local CreateFrame = CreateFrame
 local unpack = unpack
 local LibStub = LibStub
 local InCombatLockdown = InCombatLockdown
+local IsMouseButtonDown = IsMouseButtonDown
 local _G = _G
 local mailBtn = MiniMapMailIcon
 local qBtn = QueueStatusButton
 
--- Flags to prevent hook stacking
 local hooked = {
     border = false,
     queuePosition = false,
-    queueOnShow = false,
     addonCompEnter = false,
-    bugSackDisplay = false,
     bugSackButton = nil,
 }
 
--- Debounce flags for updates
-local pendingSettingsUpdate = false
-local pendingApplySettings = false
 local lastAppliedSize = nil
 local pendingSizeRefresh = false
 local pendingCombatUpdate = false
 
--- Update db, used for profile changes
 function MAP:UpdateDB()
     self.db = NRSKNUI.db.profile.Skinning.Minimap
 end
 
--- Module init
 function MAP:OnInitialize()
     self:UpdateDB()
     self:SetEnabledState(false)
 end
 
--- Remove Minimap Edit Mode UI since we do position changes in our custom Edit mode
 local function DisableMinimapEditMode()
     if not MinimapCluster then return end
     MinimapCluster.SetIsInEditMode = nop
@@ -65,48 +52,25 @@ local function DisableMinimapEditMode()
     MinimapCluster.system = nil
 end
 
--- Module OnEnable
 function MAP:OnEnable()
-    if NRSKNUI:ShouldNotLoadModule() then return end -- Skip if ElvUI is loaded, to avoid conflicts
+    if NRSKNUI:ShouldNotLoadModule() then return end
     if not self.db.Enabled then return end
 
-    MAP:StripBlizzMap()
-    MAP:ApplyPosSize()
-    MAP:UpdateMinimapBorder()
-    MAP:UpdateSettings()
-    MAP:CreateBugSackButton()
+    self:StripBlizzMap()
+    self:CreateBugSackButton()
+    self:ApplySettings()
 
-    -- One-time hooks for refresh triggers (OnShow only, not OnEvent which fires constantly)
-    Minimap:HookScript("OnShow", function() C_Timer.After(0.5, function() MAP:ApplySettings() end) end)
-    MinimapCluster:HookScript("OnShow", function() C_Timer.After(0.5, function() MAP:ApplySettings() end) end)
     if not hooked.queuePosition then
         hooksecurefunc(QueueStatusButton, "UpdatePosition", function()
-            local queueBtnDB = self.db.QueueStatus
-            QueueStatusButton:SetParent(Minimap)
-            QueueStatusButton:ClearAllPoints()
-            QueueStatusButton:SetPoint(queueBtnDB.Anchor, Minimap, queueBtnDB.Anchor, queueBtnDB.X, queueBtnDB.Y)
-            QueueStatusButton:SetFrameLevel(10)
+            self:UpdateQueueBtn()
         end)
         hooked.queuePosition = true
     end
-    if qBtn and not hooked.queueOnShow then
-        qBtn:HookScript("OnShow", function()
-            local queueBtnDB = self.db.QueueStatus
-            qBtn:SetParent(Minimap)
-            qBtn:ClearAllPoints()
-            qBtn:SetPoint(queueBtnDB.Anchor, Minimap, queueBtnDB.Anchor, queueBtnDB.X, queueBtnDB.Y)
-            qBtn:SetScale(queueBtnDB.Scale)
-        end)
-        hooked.queueOnShow = true
-    end
-    C_Timer.After(0.5, DisableMinimapEditMode)
-    self:RegisterEvent("PLAYER_ENTERING_WORLD", function()
-        C_Timer.After(0.1, function()
-            self:ApplySettings()
-        end)
-    end)
 
-    -- Register with custom edit mode
+    C_Timer.After(0.5, DisableMinimapEditMode)
+
+    self:RegisterEvent("PLAYER_ENTERING_WORLD")
+
     NRSKNUI.EditMode:RegisterElement({
         key = "Minimap",
         displayName = "Minimap",
@@ -132,12 +96,22 @@ function MAP:OnEnable()
     })
 end
 
--- Strip minimap textures
+function MAP:PLAYER_REGEN_ENABLED()
+    self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+    pendingCombatUpdate = false
+    self:ApplySettings()
+end
+
+function MAP:PLAYER_ENTERING_WORLD()
+    C_Timer.After(0.1, function()
+        self:ApplySettings()
+    end)
+end
+
 function MAP:StripBlizzMap()
     Minimap:SetParent(UIParent)
     if not Minimap.Layout then Minimap.Layout = nop end
 
-    -- Reparent elements we still need before hiding the cluster
     MinimapCluster.Tracking:SetParent(Minimap)
     MinimapCluster.IndicatorFrame.MailFrame:SetParent(Minimap)
     MinimapCluster.InstanceDifficulty:SetParent(Minimap)
@@ -145,7 +119,6 @@ function MAP:StripBlizzMap()
     Minimap:SetMaskTexture("Interface\\BUTTONS\\WHITE8X8")
     MinimapCompassTexture:SetTexture(nil)
 
-    -- Hide the cluster and its unwanted children
     NRSKNUI:Hide("MinimapCluster")
     NRSKNUI:Hide("MinimapCompassTexture")
     NRSKNUI:Hide("MinimapCluster", "BorderTop")
@@ -155,15 +128,12 @@ function MAP:StripBlizzMap()
     NRSKNUI:Hide("Minimap", "ZoomHitArea")
     NRSKNUI:Hide("GameTimeFrame")
 
-    -- Reanchor tracking for direct menu access
     MinimapCluster.Tracking:ClearAllPoints()
     MinimapCluster.Tracking.Button:SetMenuAnchor(AnchorUtil.CreateAnchor("TOPRIGHT", Minimap, "BOTTOMLEFT"))
 
-    -- Addon compartment skinning
-    MAP:SkinAddonCompartment()
+    self:SkinAddonCompartment()
 end
 
--- Skin the AddonCompartmentFrame
 function MAP:SkinAddonCompartment()
     if not AddonCompartmentFrame then return end
 
@@ -173,7 +143,6 @@ function MAP:SkinAddonCompartment()
         return
     end
 
-    -- Hide original textures
     for _, region in ipairs({ AddonCompartmentFrame:GetRegions() }) do
         if region:GetObjectType() == "Texture" then
             local layer = region:GetDrawLayer()
@@ -193,7 +162,6 @@ function MAP:SkinAddonCompartment()
     )
     bg:SetAllPoints(AddonCompartmentFrame)
 
-    -- One-time hover hooks
     if not hooked.addonCompEnter then
         AddonCompartmentFrame:HookScript("OnEnter", function()
             bg:SetBorderColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
@@ -216,7 +184,6 @@ function MAP:SkinAddonCompartment()
     AddonCompartmentFrame.Text:SetShadowOffset(0, 0)
 end
 
--- Apply/Update border to the minimap
 function MAP:UpdateMinimapBorder()
     if not hooked.border then
         Minimap.Border = CreateFrame("Frame", nil, Minimap, "BackdropTemplate")
@@ -232,36 +199,28 @@ function MAP:UpdateMinimapBorder()
     Minimap.Border:SetBackdropBorderColor(unpack(self.db.Border.Color))
 end
 
--- Apply/Update Mail Button position
 function MAP:UpdateMailBtn()
     if not mailBtn then return end
-
-    local mailBtnDB = self.db.Mail
     local mailFrame = MinimapCluster.IndicatorFrame.MailFrame
     mailBtn:ClearAllPoints()
     mailBtn:SetPoint("CENTER", mailFrame, "CENTER", 0, 0)
-    mailFrame:SetScale(mailBtnDB.Scale)
+    mailFrame:SetScale(self.db.Mail.Scale)
     mailFrame:ClearAllPoints()
-    mailFrame:SetPoint(mailBtnDB.Anchor, Minimap, mailBtnDB.Anchor, mailBtnDB.X, mailBtnDB.Y)
+    mailFrame:SetPoint(self.db.Mail.Anchor, Minimap, self.db.Mail.Anchor, self.db.Mail.X, self.db.Mail.Y)
 end
 
--- Apply/Update Instance Difficulty Button position
 function MAP:UpdateInstanceBtn()
     local instanceBtnDB = self.db.InstanceDifficulty
     local instanceFrame = MinimapCluster.InstanceDifficulty
-
     instanceFrame:SetScale(instanceBtnDB.Scale)
     instanceFrame:ClearAllPoints()
     instanceFrame:SetPoint(instanceBtnDB.Anchor, Minimap, instanceBtnDB.Anchor, instanceBtnDB.X, instanceBtnDB.Y)
-
-    -- Center all difficulty sub-frames
     for _, child in ipairs({ instanceFrame.ChallengeMode, instanceFrame.Default, instanceFrame.Guild }) do
         child:ClearAllPoints()
         child:SetPoint("CENTER", instanceFrame, "CENTER", 0, 0)
     end
 end
 
--- Apply/Update Queue Status Button position
 function MAP:UpdateQueueBtn()
     if not qBtn then return end
 
@@ -270,10 +229,10 @@ function MAP:UpdateQueueBtn()
     qBtn:ClearAllPoints()
     qBtn:SetPoint(queueBtnDB.Anchor, Minimap, queueBtnDB.Anchor, queueBtnDB.X, queueBtnDB.Y)
     qBtn:SetScale(queueBtnDB.Scale)
+    qBtn:SetFrameLevel(10)
 end
 
--- Apply/Update position and size settings
--- skipZoom: set to true during live slider dragging to prevent mouse capture loss
+---@param skipZoom? boolean Set true during live slider dragging to prevent mouse capture loss
 function MAP:ApplyPosSize(skipZoom)
     Minimap:ClearAllPoints()
     Minimap:SetPoint(
@@ -284,7 +243,6 @@ function MAP:ApplyPosSize(skipZoom)
     local newSize = self.db.Size
     Minimap:SetSize(newSize, newSize)
 
-    -- Only force minimap redraw when size changed and not during live updates
     if not skipZoom and lastAppliedSize ~= newSize then
         lastAppliedSize = newSize
         Minimap:SetZoom(1)
@@ -292,22 +250,18 @@ function MAP:ApplyPosSize(skipZoom)
     end
 end
 
--- Live size update for slider dragging (debounced SetZoom to prevent mouse capture loss)
 function MAP:UpdateSize()
     local newSize = self.db.Size
     Minimap:SetSize(newSize, newSize)
 
-    -- Schedule refresh check (will keep rescheduling until mouse is released)
     if not pendingSizeRefresh then
         pendingSizeRefresh = true
         local function CheckAndRefresh()
             if IsMouseButtonDown("LeftButton") then
-                -- Still dragging, check again shortly
                 C_Timer.After(0.1, CheckAndRefresh)
                 return
             end
             pendingSizeRefresh = false
-            -- Refresh minimap texture if size changed
             if lastAppliedSize ~= self.db.Size then
                 lastAppliedSize = self.db.Size
                 Minimap:SetZoom(1)
@@ -318,7 +272,6 @@ function MAP:UpdateSize()
     end
 end
 
--- Create or update BugSack button on Minimap
 function MAP:CreateBugSackButton()
     if not self.db.BugSack.Enabled then
         if hooked.bugSackButton then
@@ -327,7 +280,6 @@ function MAP:CreateBugSackButton()
         return
     end
 
-    -- Check dependencies
     if not C_AddOns.IsAddOnLoaded("BugSack") then return end
     local ldb = LibStub("LibDataBroker-1.1", true)
     if not ldb then return end
@@ -336,12 +288,11 @@ function MAP:CreateBugSackButton()
     local bugAddon = _G["BugSack"]
     if not bugAddon or not bugAddon.UpdateDisplay or not bugAddon.GetErrors then return end
 
-    -- Create button once
     if not hooked.bugSackButton then
         local btn = CreateFrame("Button", "NRSKNABugSackButton", Minimap, "BackdropTemplate")
         btn.Text = btn:CreateFontString(nil, "OVERLAY")
         btn.Text:SetFont("Fonts\\FRIZQT__.TTF", 12, "OUTLINE")
-        btn.Text:SetPoint("CENTER", btn, "CENTER", 1, 0)
+        btn.Text:SetPoint("CENTER", btn, "CENTER", 0, 0)
         btn.Text:SetTextColor(1, 1, 1)
         btn.Text:SetText("|cFF40FF400|r")
 
@@ -377,7 +328,6 @@ function MAP:CreateBugSackButton()
             GameTooltip:Hide()
         end)
 
-        -- One-time hook for error count updates
         hooksecurefunc(bugAddon, "UpdateDisplay", function()
             local count = #bugAddon:GetErrors(BugGrabber:GetSessionId())
             if count == 0 then
@@ -390,11 +340,9 @@ function MAP:CreateBugSackButton()
         hooked.bugSackButton = btn
     end
 
-    -- Apply position and size
-    MAP:UpdateBugSackButton()
+    self:UpdateBugSackButton()
 end
 
--- Update BugSack button position/size (can be called directly)
 function MAP:UpdateBugSackButton()
     local btn = hooked.bugSackButton
     local db = self.db.BugSack
@@ -402,47 +350,27 @@ function MAP:UpdateBugSackButton()
         btn:SetSize(db.Size, db.Size)
         btn:ClearAllPoints()
         btn:SetPoint(db.Anchor, Minimap, db.Anchor, db.X, db.Y)
+        btn.Text:SetFont("Fonts\\FRIZQT__.TTF", db.Size-4, "OUTLINE")
         btn:Show()
     end
 end
 
--- Apply/Update all dynamic settings (debounced to prevent timer stacking)
-function MAP:UpdateSettings()
-    if pendingSettingsUpdate then return end
-    pendingSettingsUpdate = true
-    C_Timer.After(0.15, function()
-        pendingSettingsUpdate = false
-        if not self.db.Enabled then return end
-        MAP:UpdateMailBtn()
-        MAP:UpdateInstanceBtn()
-        MAP:UpdateQueueBtn()
-        MAP:CreateBugSackButton()
-    end)
-end
-
--- Complete refresh
 function MAP:ApplySettings()
     if NRSKNUI:ShouldNotLoadModule() then return end
     if not self.db.Enabled then return end
 
-    -- Protection for when you enter loading screen while in combat
     if InCombatLockdown() then
         if not pendingCombatUpdate then
             pendingCombatUpdate = true
-            self:RegisterEvent("PLAYER_REGEN_ENABLED", function()
-                self:UnregisterEvent("PLAYER_REGEN_ENABLED")
-                pendingCombatUpdate = false
-                MAP:ApplySettings()
-            end)
+            self:RegisterEvent("PLAYER_REGEN_ENABLED")
         end
         return
     end
 
-    MAP:ApplyPosSize()
-    MAP:UpdateMinimapBorder()
-    MAP:UpdateSettings()
-end
-
--- Module OnDisable
-function MAP:OnDisable()
+    self:ApplyPosSize()
+    self:UpdateMinimapBorder()
+    self:UpdateMailBtn()
+    self:UpdateInstanceBtn()
+    self:UpdateQueueBtn()
+    self:UpdateBugSackButton()
 end
