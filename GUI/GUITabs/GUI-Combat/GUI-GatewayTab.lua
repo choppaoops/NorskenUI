@@ -54,6 +54,16 @@ GUIFrame:RegisterContent("gateway", function(scrollChild, yOffset)
     manager:Register(card2, "all")
 
     local row2a = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast)
+    local TextInput = GUIFrame:CreateEditBox(row2a, "Alert Text", {
+        value = db.Text,
+        callback = function(val)
+            db.Text = val
+            ApplySettings()
+        end
+    })
+    row2a:AddWidget(TextInput, 0.5)
+    manager:Register(TextInput, "all")
+
     local colorPicker = GUIFrame:CreateColorPicker(row2a, "Alert Color", {
         color = db.Color,
         callback = function(r, g, b, a)
@@ -61,7 +71,7 @@ GUIFrame:RegisterContent("gateway", function(scrollChild, yOffset)
             ApplySettings()
         end
     })
-    row2a:AddWidget(colorPicker, 1)
+    row2a:AddWidget(colorPicker, 0.5)
     manager:Register(colorPicker, "all")
     card2:AddRow(row2a, Theme.rowHeightLast, 0)
 

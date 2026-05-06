@@ -28,6 +28,13 @@ function GUIFrame:ReleaseSectionHeaders()
         if header.hoverBg then
             header.hoverBg:SetAlpha(0)
         end
+        if header.label then
+            header.label:SetText("")
+            header.label:SetAlpha(1)
+            header.label:Show()
+        end
+        header:SetAlpha(1)
+        header:EnableMouse(true)
         header:Hide()
         header:ClearAllPoints()
     end
@@ -171,9 +178,16 @@ function GUIFrame:ConfigureSectionHeader(header, config, yOffset, isExpanded)
     local horizontalPadding = Theme.paddingSmall
 
     header:SetParent(scrollChild)
+    header:SetFrameLevel(scrollChild:GetFrameLevel() + 2)
+    header:SetHeight(headerHeight)
+    header:SetAlpha(1)
+    header:ClearAllPoints()
     header:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", horizontalPadding, -yOffset)
     header:SetPoint("TOPRIGHT", scrollChild, "TOPRIGHT", -horizontalPadding, -yOffset)
     header.sectionId = config.id
+    header.label:Show()
+    header.label:SetAlpha(1)
+    NRSKNUI:ApplyThemeFont(header.label, "large")
     header.label:SetText(config.text or "")
 
     if config.elvUIDisabled and NRSKNUI:ShouldNotLoadModule() then
@@ -259,6 +273,13 @@ function GUIFrame:ReleaseStaticSidebarItems()
         if item.selectedBg then
             item.selectedBg:Hide()
         end
+        if item.label then
+            item.label:SetText("")
+            item.label:SetAlpha(1)
+            item.label:Show()
+        end
+        item:EnableMouse(true)
+        item:SetAlpha(1)
         item:Hide()
         item:ClearAllPoints()
         item.id = nil
@@ -457,6 +478,22 @@ function GUIFrame:IsItemParentExpanded(itemId)
     return false
 end
 
+function GUIFrame:EnsureParentSectionExpanded(itemId)
+    if not itemId then return end
+    local config = self.SidebarConfig[self.selectedTab]
+    if not config then return end
+    for _, section in ipairs(config) do
+        if section.type == "header" and section.items then
+            for _, item in ipairs(section.items) do
+                if item.id == itemId then
+                    self.sidebarExpanded[section.id] = true
+                    return
+                end
+            end
+        end
+    end
+end
+
 function GUIFrame:RefreshSidebarImmediate()
     if not self.sidebar then return end
     self:ReleaseStaticSidebarItems()
@@ -495,10 +532,17 @@ function GUIFrame:RefreshSidebarImmediate()
                 for _, itemConfig in ipairs(sectionConfig.items) do
                     local item = self:GetStaticSidebarItem()
                     item:SetParent(scrollChild)
+                    item:SetFrameLevel(scrollChild:GetFrameLevel() + 2)
+                    item:SetHeight(itemHeight)
+                    item:SetAlpha(1)
                     local horizontalPadding = Theme.paddingSmall
+                    item:ClearAllPoints()
                     item:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", horizontalPadding + itemIndent, -yOffset)
                     item:SetPoint("TOPRIGHT", scrollChild, "TOPRIGHT", -horizontalPadding, -yOffset)
                     item.id = itemConfig.id
+                    item.label:Show()
+                    item.label:SetAlpha(1)
+                    NRSKNUI:ApplyThemeFont(item.label, "normal")
                     item.label:SetText(itemConfig.text or "")
 
                     if sectionDisabled then

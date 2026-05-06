@@ -1,18 +1,14 @@
--- NorskenUI namespace
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
 
--- Safety check
 if not NorskenUI then
     error("PetTexts: Addon object not initialized. Check file load order!")
     return
 end
 
--- Create module
 ---@class PetTexts: AceModule, AceEvent-3.0
 local PET = NorskenUI:NewModule("PetTexts", "AceEvent-3.0")
 
--- Localization
 local UnitClass = UnitClass
 local IsMounted = IsMounted
 local UnitOnTaxi = UnitOnTaxi
@@ -25,113 +21,80 @@ local CreateFrame = CreateFrame
 local GetPetActionInfo = GetPetActionInfo
 local PetHasActionBar = PetHasActionBar
 local UnitIsDeadOrGhost = UnitIsDeadOrGhost
-local IsPlayerSpell = IsPlayerSpell
 local C_Timer = C_Timer
 local C_SpellBook = C_SpellBook
 
--- Tracked pet classes
 local PET_CLASSES = {
-    ["HUNTER"] = { summonSpellId = 883, reviveSpellId = 982, specId = nil },
-    ["WARLOCK"] = { summonSpellId = 688, reviveSpellId = nil, specId = nil },
-    ["DEATHKNIGHT"] = { summonSpellId = 46584, reviveSpellId = nil, specId = 252 },
-    ["MAGE"] = { summonSpellId = 31687, reviveSpellId = nil, specId = 64 },
+    HUNTER = { summonSpellId = 883, specId = nil },
+    WARLOCK = { summonSpellId = 688, specId = nil },
+    DEATHKNIGHT = { summonSpellId = 46584, specId = 252 },
+    MAGE = { summonSpellId = 31687, specId = 64 },
 }
 
--- Module State
 local petInfo = nil
-local petDeathTracked = false -- Track if we know the pet is dead
+local petDeathTracked = false
 
--- Pet status enum for internal tracking
-local PET_STATUS = {
-    NONE = 0,
-    MISSING = 1,
-    DEAD = 2,
-    PASSIVE = 3,
-}
-
--- Helper Functions
 local function IsPlayerMounted()
     return IsMounted() or UnitOnTaxi("player") or UnitInVehicle("player") or UnitHasVehicleUI("player")
 end
 
--- Check if pet is on passive stance
 local function IsPetOnPassive()
     if not UnitExists("pet") or not PetHasActionBar() then return false end
     for slot = 1, 10 do
         local name, _, isToken, isActive = GetPetActionInfo(slot)
-        -- Identify passive stance via token name and check if it's currently active
         if isToken and name == "PET_MODE_PASSIVE" and isActive then return true end
     end
     return false
 end
 
--- Check if pet is dead and update tracking state
--- Uses both API check and tracked state to persist through player death/respawn for consistency
 local function CheckAndUpdatePetDeathState()
-    -- If pet exists and is alive, clear the death tracking
-    if UnitExists("pet") and not UnitIsDeadOrGhost("pet") then
-        petDeathTracked = false
-        return false
+    if UnitExists("pet") then
+        petDeathTracked = UnitIsDeadOrGhost("pet")
+        return petDeathTracked
     end
-
-    -- If pet exists and is dead, set death tracking
-    if UnitExists("pet") and UnitIsDeadOrGhost("pet") then
-        petDeathTracked = true
-        return true
-    end
-
-    if petDeathTracked then return true end
-
-    -- Pet doesn't exist and wasn't tracked as dead = missing/dismissed
-    return false
+    return petDeathTracked
 end
 
--- Reset death tracking, called when pet is summoned/revived
 local function ResetPetDeathTracking()
     petDeathTracked = false
 end
 
--- Check pet status and return status code + text + color
 local function CheckPetStatus()
-    if not petInfo then return PET_STATUS.NONE, nil, nil end
-    if IsPlayerMounted() then return PET_STATUS.NONE, nil, nil end
+    if not petInfo or IsPlayerMounted() then return nil, nil end
 
     local specIndex = GetSpecialization()
-    local specID = GetSpecializationInfo(specIndex)
+    local specID = specIndex and GetSpecializationInfo(specIndex)
 
-    -- Check if current spec is MM Hunter (254) and if they are talented into Unbreakable Bond
+    -- MM Hunter with Unbreakable Bond talent doesn't need a pet
     if specID == 254 and C_SpellBook.IsSpellKnown(466867) then
-        return PET_STATUS.NONE, nil, nil
+        return nil, nil
     end
 
-    -- Improved Spec Check
-    if petInfo.specId then
-        if specIndex then
-            if specID ~= petInfo.specId then return PET_STATUS.NONE, nil, nil end
-        end
+    if petInfo.specId and specID ~= petInfo.specId then
+        return nil, nil
     end
 
-    if not C_SpellBook.IsSpellKnown(petInfo.summonSpellId) then return PET_STATUS.NONE, nil, nil end
+    if not C_SpellBook.IsSpellKnown(petInfo.summonSpellId) then
+        return nil, nil
+    end
 
-    -- Priority here is Dead > Passive > Missing
-    -- Check dead first using tracked state
     if CheckAndUpdatePetDeathState() then
-        return PET_STATUS.DEAD, PET.db.PetDead, PET.db.DeadColor
+        return PET.db.PetDead, PET.db.DeadColor
     end
 
     if UnitExists("pet") then
         if IsPetOnPassive() then
-            return PET_STATUS.PASSIVE, PET.db.PetPassive, PET.db.PassiveColor -- Check if pet is on passive
+            return PET.db.PetPassive, PET.db.PassiveColor
         end
-        return PET_STATUS.NONE, nil, nil                                      -- Pet exists and is alive and not passive
-    else
-        return PET_STATUS.MISSING, PET.db.PetMissing, PET.db.MissingColor     -- Pet is missing
+        return nil, nil
     end
+
+    return PET.db.PetMissing, PET.db.MissingColor
 end
 
--- Create the Display
 function PET:CreatePetTexts()
     if self.frame then return end
+
     local frame = CreateFrame("Frame", "NRSKNUI_PetTextsFrame", UIParent)
     frame:SetSize(200, 50)
 
@@ -139,38 +102,34 @@ function PET:CreatePetTexts()
     local fontPath = NRSKNUI:GetFontPath(self.db.FontFace)
     text:SetFont(fontPath, self.db.FontSize, "")
     text:SetTextColor(1, 0.82, 0, 1)
-    text:ClearAllPoints()
     text:SetPoint("CENTER", frame, "CENTER", 0, 0)
 
     self.frame = frame
     self.frame.text = text
     self.text = text
 
-    local width, height = math.max(text:GetWidth(), 170), math.max(text:GetHeight(), 18)
+    local width = math.max(text:GetWidth(), 170)
+    local height = math.max(text:GetHeight(), 18)
     frame:SetSize(width + 5, height + 5)
-
-    self.frame:Hide()
+    frame:Hide()
 end
 
--- Update Display
 function PET:UpdatePetText()
-    local status, message, color = CheckPetStatus()
+    local message, color = CheckPetStatus()
 
     if message and color then
         self.text:SetText(message)
         self.text:SetTextColor(color[1], color[2], color[3], color[4] or 1)
         self.frame:Show()
-    else
-        if self.frame then self.frame:Hide() end
+    elseif self.frame then
+        self.frame:Hide()
     end
 end
 
--- Update db, used for profile changes
 function PET:UpdateDB()
     self.db = NRSKNUI.db.profile.PetTexts
 end
 
--- Module init
 function PET:OnInitialize()
     self:UpdateDB()
 
@@ -181,17 +140,14 @@ function PET:OnInitialize()
 end
 
 function PET:RegWithEditMode()
-    -- Define the registration config
     if NRSKNUI.EditMode and not self.editModeRegistered then
-        local config = {
+        NRSKNUI.EditMode:RegisterElement({
             key = "PetTexts",
             displayName = "Pet Texts",
             frame = self.frame,
-            -- getPosition must be a function that returns the table
             getPosition = function()
                 return self.db.Position
             end,
-            -- setPosition must be a function that saves the data and moves the frame
             setPosition = function(pos)
                 self.db.Position.AnchorFrom = pos.AnchorFrom
                 self.db.Position.AnchorTo = pos.AnchorTo
@@ -202,16 +158,13 @@ function PET:RegWithEditMode()
                 self.frame:SetPoint(pos.AnchorFrom, UIParent, pos.AnchorTo, pos.XOffset, pos.YOffset)
             end,
             guiPath = "PetTexts",
-        }
-        NRSKNUI.EditMode:RegisterElement(config)
+        })
         self.editModeRegistered = true
     end
 end
 
--- Module OnEnable
 function PET:OnEnable()
-    if not self.db.Enabled then return end
-    if not petInfo then return end
+    if not self.db.Enabled or not petInfo then return end
 
     self:CreatePetTexts()
     self:RegWithEditMode()
@@ -219,7 +172,6 @@ function PET:OnEnable()
     self:RegisterEvent("UNIT_PET", function(_, unit)
         if unit == "player" then
             C_Timer.After(0.2, function()
-                -- Reset death tracking if pet is now alive
                 if UnitExists("pet") and not UnitIsDeadOrGhost("pet") then
                     ResetPetDeathTracking()
                 end
@@ -229,20 +181,18 @@ function PET:OnEnable()
     end)
 
     self:RegisterEvent("PLAYER_REGEN_ENABLED", "UpdatePetText")
-    self:RegisterEvent("PLAYER_ENTERING_WORLD", function() C_Timer.After(1, function() self:UpdatePetText() end) end)
+    self:RegisterEvent("PLAYER_ENTERING_WORLD", function()
+        C_Timer.After(1, function() self:UpdatePetText() end)
+    end)
     self:RegisterEvent("SPELLS_CHANGED", "UpdatePetText")
     self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED", "UpdatePetText")
     self:RegisterEvent("UNIT_DIED", "UpdatePetText")
-
-    -- Register for pet bar updates
     self:RegisterEvent("PET_BAR_UPDATE", function()
         C_Timer.After(0.1, function() self:UpdatePetText() end)
     end)
 
-    -- Run initial check
     self:UpdatePetText()
 
-    -- Delayed update, just to make sure object exists
     C_Timer.After(1, function()
         self:ApplySettings()
     end)
@@ -253,27 +203,19 @@ function PET:OnDisable()
     self:UnregisterAllEvents()
 end
 
--- Preview mode support for GUI and Edit Mode
--- state: "missing", "dead", "passive" (default: "missing")
+---@param state "missing"|"dead"|"passive"|nil
 function PET:ShowPreview(state)
-    local frameJustCreated = false
-    if not self.frame then
+    local frameJustCreated = not self.frame
+    if frameJustCreated then
         self:CreatePetTexts()
         self:RegWithEditMode()
-        frameJustCreated = true
-    end
-
-    -- Apply position and font settings (especially important when frame was just created)
-    if frameJustCreated then
         NRSKNUI:ApplyFramePosition(self.frame, self.db.Position, self.db)
-        NRSKNUI:ApplyFontToText(self.text, self.db.FontFace, self.db.FontSize, self.db.FontOutline, {})
+        NRSKNUI:ApplyFontToText(self.text, self.db.FontFace, self.db.FontSize, self.db.FontOutline, self.db.FontShadow)
     end
 
-    -- Store preview state
     self.isPreview = true
     self.previewState = state or "missing"
 
-    -- Get text and color based on preview state
     local previewText, previewColor
     if self.previewState == "dead" then
         previewText = self.db.PetDead or "PET DEAD"
@@ -293,30 +235,23 @@ end
 
 function PET:HidePreview()
     self.isPreview = false
-    -- If module is enabled, update to real state; otherwise hide
     if self.db.Enabled then
         self:UpdatePetText()
-    else
-        if self.frame then self.frame:Hide() end
+    elseif self.frame then
+        self.frame:Hide()
     end
 end
 
--- Module update func
 function PET:ApplySettings()
-    -- If preview should be active but frame doesn't exist, create it via ShowPreview
-    -- This handles non-pet classes where OnEnable returns early
     if not self.frame and NRSKNUI.PreviewManager and NRSKNUI.PreviewManager:IsPreviewActive() and self.db.Enabled then
         self:ShowPreview()
     end
 
     if not self.frame then return end
 
-    -- Update position settings
     NRSKNUI:ApplyFramePosition(self.frame, self.db.Position, self.db)
-    -- Update font settings
-    NRSKNUI:ApplyFontToText(self.text, self.db.FontFace, self.db.FontSize, self.db.FontOutline, {})
+    NRSKNUI:ApplyFontToText(self.text, self.db.FontFace, self.db.FontSize, self.db.FontOutline, self.db.FontShadow)
 
-    -- If in preview mode, update the preview text
     if self.isPreview then
         self:ShowPreview(self.previewState)
     end

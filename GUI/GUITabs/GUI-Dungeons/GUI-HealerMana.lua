@@ -41,7 +41,13 @@ GUIFrame:RegisterContent("HealerMana", function(scrollChild, yOffset)
         callback = function(checked)
             db.Enabled = checked
             if HM then
-                if checked then NorskenUI:EnableModule("HealerMana") else NorskenUI:DisableModule("HealerMana") end
+                if checked then
+                    NorskenUI:EnableModule("HealerMana")
+                    HM:ShowPreview()
+                else
+                    NorskenUI:DisableModule("HealerMana")
+                    HM:HidePreview()
+                end
             end
             UpdateAllWidgetStates()
         end,

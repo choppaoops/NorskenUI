@@ -227,52 +227,53 @@ NRSKNUI.ThemeModeOptions = {
 -- Used as fallback when no theme is selected or for non-color values
 local ThemeDefaults = {
     -- Default to Dark theme colors
-    bgDark         = { 0.0235, 0.0235, 0.0235, 0.6 },
-    bgMedium       = { 0.0431, 0.0431, 0.0431, 1 },
-    bgLight        = { 0.1176, 0.1176, 0.1176, 1 },
-    bgHover        = { 0.22, 0.22, 0.24, 1 },
-    border         = { 0, 0, 0, 1 },
-    accent         = { 0.8980, 0.0627, 0.2235, 1 },
-    accentHover    = { 0.8980, 0.0627, 0.2235, 0.25 },
-    accentDim      = { 0.8980, 0.0627, 0.2235, 1 },
-    textPrimary    = { 0.95, 0.95, 0.95, 1 },
-    textSecondary  = { 0.70, 0.70, 0.70, 1 },
-    textMuted      = { 0.50, 0.50, 0.50, 1 },
-    selectedBg     = { 0.8980, 0.0627, 0.2235, 0.25 },
-    selectedText   = { 0.8980, 0.0627, 0.2235, 1 },
-    error          = { 0.90, 0.30, 0.30, 1 },
-    success        = { 0.30, 0.80, 0.40, 1 },
-    warning        = { 0.90, 0.75, 0.30, 1 },
+    bgDark                  = { 0.0235, 0.0235, 0.0235, 0.6 },
+    bgMedium                = { 0.0431, 0.0431, 0.0431, 1 },
+    bgLight                 = { 0.1176, 0.1176, 0.1176, 1 },
+    bgHover                 = { 0.22, 0.22, 0.24, 1 },
+    border                  = { 0, 0, 0, 1 },
+    accent                  = { 0.8980, 0.0627, 0.2235, 1 },
+    accentHover             = { 0.8980, 0.0627, 0.2235, 0.25 },
+    accentDim               = { 0.8980, 0.0627, 0.2235, 1 },
+    textPrimary             = { 0.95, 0.95, 0.95, 1 },
+    textSecondary           = { 0.70, 0.70, 0.70, 1 },
+    textMuted               = { 0.50, 0.50, 0.50, 1 },
+    selectedBg              = { 0.8980, 0.0627, 0.2235, 0.25 },
+    selectedText            = { 0.8980, 0.0627, 0.2235, 1 },
+    error                   = { 0.90, 0.30, 0.30, 1 },
+    success                 = { 0.30, 0.80, 0.40, 1 },
+    warning                 = { 0.90, 0.75, 0.30, 1 },
 
     -- Dimensions
-    headerHeight   = 35,
-    footerHeight   = 28,
-    sidebarWidth   = 242,
-    contentWidth   = 679.1,
-    borderSize     = 1,
+    headerHeight            = 35,
+    footerHeight            = 28,
+    sidebarWidth            = 242,
+    contentWidth            = 679.1,
+    borderSize              = 1,
 
     -- Spacing
-    paddingSmall   = 4,
-    paddingMedium  = 8,
-    paddingLarge   = 16,
-    scrollbarWidth = 17,
+    paddingSmall            = 4,
+    paddingMedium           = 8,
+    paddingLarge            = 16,
+    scrollbarWidth          = 17,
 
     -- Row Heights
-    rowHeight          = 40,   -- Standard row height
-    rowHeightLast      = 44,   -- Last row in a card (use 0 spacing in AddRow)
-    rowHeightTall      = 80,   -- Anchor point selector rows
-    rowHeightSeparator = 8,    -- Separator-only rows
+    rowHeight               = 40, -- Standard row height
+    rowHeightLast           = 44, -- Last row in a card (use 0 spacing in AddRow)
+    rowHeightTall           = 80, -- Anchor point selector rows
+    rowHeightSeparator      = 8,  -- Separator-only rows
+    rowHeightLabelSeparator = 22, -- LabelSeparator-only rows
 
     -- Font settings
-    fontFace       = NRSKNUI.FONT,
-    fontSizeSmall  = 12,
-    fontSizeNormal = 12,
-    fontSizeLarge  = 16,
-    fontOutline    = "OUTLINE",
-    fontShadow     = false,
+    fontFace                = NRSKNUI.FONT,
+    fontSizeSmall           = 12,
+    fontSizeNormal          = 12,
+    fontSizeLarge           = 16,
+    fontOutline             = "OUTLINE",
+    fontShadow              = false,
 
     -- Animation
-    animDuration   = 0.18, -- Standard hover animation duration
+    animDuration            = 0.18, -- Standard hover animation duration
 }
 
 -- Export ThemeDefaults for reference
@@ -394,57 +395,58 @@ end
 -- This table holds the currently active theme values
 NRSKNUI.Theme = {
     -- Colors (will be populated by RefreshTheme)
-    bgDark         = CopyColor(ThemeDefaults.bgDark),
-    bgMedium       = CopyColor(ThemeDefaults.bgMedium),
-    bgLight        = CopyColor(ThemeDefaults.bgLight),
-    bgHover        = CopyColor(ThemeDefaults.bgHover),
+    bgDark                  = CopyColor(ThemeDefaults.bgDark),
+    bgMedium                = CopyColor(ThemeDefaults.bgMedium),
+    bgLight                 = CopyColor(ThemeDefaults.bgLight),
+    bgHover                 = CopyColor(ThemeDefaults.bgHover),
 
-    border         = CopyColor(ThemeDefaults.border),
+    border                  = CopyColor(ThemeDefaults.border),
 
-    accent         = CopyColor(ThemeDefaults.accent),
-    accentHover    = CopyColor(ThemeDefaults.accentHover),
-    accentDim      = CopyColor(ThemeDefaults.accentDim),
+    accent                  = CopyColor(ThemeDefaults.accent),
+    accentHover             = CopyColor(ThemeDefaults.accentHover),
+    accentDim               = CopyColor(ThemeDefaults.accentDim),
 
-    textPrimary    = CopyColor(ThemeDefaults.textPrimary),
-    textSecondary  = CopyColor(ThemeDefaults.textSecondary),
-    textMuted      = CopyColor(ThemeDefaults.textMuted),
+    textPrimary             = CopyColor(ThemeDefaults.textPrimary),
+    textSecondary           = CopyColor(ThemeDefaults.textSecondary),
+    textMuted               = CopyColor(ThemeDefaults.textMuted),
 
-    selectedBg     = CopyColor(ThemeDefaults.selectedBg),
-    selectedText   = CopyColor(ThemeDefaults.selectedText),
+    selectedBg              = CopyColor(ThemeDefaults.selectedBg),
+    selectedText            = CopyColor(ThemeDefaults.selectedText),
 
-    error          = CopyColor(ThemeDefaults.error),
-    success        = CopyColor(ThemeDefaults.success),
-    warning        = CopyColor(ThemeDefaults.warning),
+    error                   = CopyColor(ThemeDefaults.error),
+    success                 = CopyColor(ThemeDefaults.success),
+    warning                 = CopyColor(ThemeDefaults.warning),
 
     -- Dimensions
-    headerHeight   = ThemeDefaults.headerHeight,
-    footerHeight   = ThemeDefaults.footerHeight,
-    sidebarWidth   = ThemeDefaults.sidebarWidth,
-    contentWidth   = ThemeDefaults.contentWidth,
-    borderSize     = ThemeDefaults.borderSize,
+    headerHeight            = ThemeDefaults.headerHeight,
+    footerHeight            = ThemeDefaults.footerHeight,
+    sidebarWidth            = ThemeDefaults.sidebarWidth,
+    contentWidth            = ThemeDefaults.contentWidth,
+    borderSize              = ThemeDefaults.borderSize,
 
     -- Spacing
-    paddingSmall   = ThemeDefaults.paddingSmall,
-    paddingMedium  = ThemeDefaults.paddingMedium,
-    paddingLarge   = ThemeDefaults.paddingLarge,
-    scrollbarWidth = ThemeDefaults.scrollbarWidth,
+    paddingSmall            = ThemeDefaults.paddingSmall,
+    paddingMedium           = ThemeDefaults.paddingMedium,
+    paddingLarge            = ThemeDefaults.paddingLarge,
+    scrollbarWidth          = ThemeDefaults.scrollbarWidth,
 
     -- Row Heights
-    rowHeight          = ThemeDefaults.rowHeight,
-    rowHeightLast      = ThemeDefaults.rowHeightLast,
-    rowHeightTall      = ThemeDefaults.rowHeightTall,
-    rowHeightSeparator = ThemeDefaults.rowHeightSeparator,
+    rowHeight               = ThemeDefaults.rowHeight,
+    rowHeightLast           = ThemeDefaults.rowHeightLast,
+    rowHeightTall           = ThemeDefaults.rowHeightTall,
+    rowHeightSeparator      = ThemeDefaults.rowHeightSeparator,
+    rowHeightLabelSeparator = ThemeDefaults.rowHeightLabelSeparator,
 
     -- Font settings
-    fontFace       = NRSKNUI.FONT or "Fonts\\FRIZQT__.TTF",
-    fontSizeNormal = ThemeDefaults.fontSizeNormal,
-    fontSizeSmall  = ThemeDefaults.fontSizeSmall,
-    fontSizeLarge  = ThemeDefaults.fontSizeLarge,
-    fontOutline    = ThemeDefaults.fontOutline,
-    fontShadow     = ThemeDefaults.fontShadow,
+    fontFace                = NRSKNUI.FONT or "Fonts\\FRIZQT__.TTF",
+    fontSizeNormal          = ThemeDefaults.fontSizeNormal,
+    fontSizeSmall           = ThemeDefaults.fontSizeSmall,
+    fontSizeLarge           = ThemeDefaults.fontSizeLarge,
+    fontOutline             = ThemeDefaults.fontOutline,
+    fontShadow              = ThemeDefaults.fontShadow,
 
     -- Animation
-    animDuration   = ThemeDefaults.animDuration,
+    animDuration            = ThemeDefaults.animDuration,
 }
 
 -- Theme color keys, for iteration in settings UI

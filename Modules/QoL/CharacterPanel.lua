@@ -740,6 +740,7 @@ function CHAR:CreateGemButton(index)
                 HideUIPanel(ItemSocketingFrame)
             end
             CHAR:HideGemPopup()
+            CHAR:HideSlotHighlight()
             C_Timer.After(0.1, function()
                 if InCombatLockdown() then return end
                 CHAR:RefreshSocketButtons()

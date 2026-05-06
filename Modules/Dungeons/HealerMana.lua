@@ -28,13 +28,7 @@ local issecretvalue = issecretvalue
 HM.healerFrames = {}
 HM.libSpecCache = {}
 
-local HEALER_ICONS = {
-    DRUID = 136041,
-    MONK = 608952,
-    PALADIN = 135920,
-    SHAMAN = 136052,
-    EVOKER = 4622476,
-}
+local HEALER_ICONS = { DRUID = 136041, MONK = 608952, PALADIN = 135920, SHAMAN = 136052, EVOKER = 4622476, }
 
 local PREVIEW_HEALER_SPECS = {
     { class = "DRUID",   icon = 136041 },
@@ -193,7 +187,6 @@ function HM:FindHealer()
         return
     end
 
-    -- UnitName can return secret in M+
     local healerName = UnitName(healerUnit)
     if issecretvalue and issecretvalue(healerName) then
         healerName = "Healer"

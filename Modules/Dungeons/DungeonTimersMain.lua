@@ -45,7 +45,7 @@ local function CheckLoadConditions(trigger, isPreview)
     for _, filter in ipairs(LOAD_FILTERS) do
         if trigger[filter.enabled] then
             local value = NRSKNUI.MySpec[filter.key]
-            if not value or not trigger[filter.fields[value]] then return false end
+            if value and not trigger[filter.fields[value]] then return false end
         end
     end
     return true

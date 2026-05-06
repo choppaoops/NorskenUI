@@ -20,9 +20,8 @@ end
 
 -- Combat Message Tab Content
 GUIFrame:RegisterContent("BlizzardMouseover", function(scrollChild, yOffset)
-    if NRSKNUI:ShouldNotLoadModule() then return end
     local db = NRSKNUI.db and NRSKNUI.db.profile.Skinning.BlizzardMouseover
-    if not db then
+    if not db or not NRSKNUI:ShouldNotLoadModule() then
         local errorCard = GUIFrame:CreateCard(scrollChild, "Error", yOffset)
         errorCard:AddLabel("Database not available")
         return yOffset + errorCard:GetContentHeight() + Theme.paddingMedium

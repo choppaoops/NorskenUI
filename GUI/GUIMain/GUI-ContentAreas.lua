@@ -241,11 +241,13 @@ function NRSKNUI.GUI.CreateMiniSidebar(container, options)
         local rowSpacing = buttonAreaConfig.rowSpacing or 2
         local bgColor = Theme.bgLight
 
-        local borderBottom = buttonArea:CreateTexture(nil, "ARTWORK")
-        borderBottom:SetHeight(1)
-        borderBottom:SetPoint("BOTTOMLEFT", buttonArea, "BOTTOMLEFT", 0, -Theme.paddingSmall)
-        borderBottom:SetPoint("BOTTOMRIGHT", buttonArea, "BOTTOMRIGHT", 0, 0)
-        borderBottom:SetColorTexture(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
+        if not buttonAreaConfig.hideSeparator then
+            local borderBottom = buttonArea:CreateTexture(nil, "ARTWORK")
+            borderBottom:SetHeight(1)
+            borderBottom:SetPoint("BOTTOMLEFT", buttonArea, "BOTTOMLEFT", 0, -Theme.paddingSmall)
+            borderBottom:SetPoint("BOTTOMRIGHT", buttonArea, "BOTTOMRIGHT", 0, 0)
+            borderBottom:SetColorTexture(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
+        end
 
         if layout == "horizontal" then
             local rows = buttonAreaConfig.rows or { buttonAreaConfig.buttons }
@@ -299,9 +301,11 @@ function NRSKNUI.GUI.CreateMiniSidebar(container, options)
                         local currentR, currentG, currentB = btn:GetBackdropBorderColor()
                         borderColorFrom.r, borderColorFrom.g, borderColorFrom.b = currentR, currentG, currentB
                         if toAccent then
-                            borderColorTo.r, borderColorTo.g, borderColorTo.b = Theme.accent[1], Theme.accent[2], Theme.accent[3]
+                            borderColorTo.r, borderColorTo.g, borderColorTo.b = Theme.accent[1], Theme.accent[2],
+                                Theme.accent[3]
                         else
-                            borderColorTo.r, borderColorTo.g, borderColorTo.b = Theme.border[1], Theme.border[2], Theme.border[3]
+                            borderColorTo.r, borderColorTo.g, borderColorTo.b = Theme.border[1], Theme.border[2],
+                                Theme.border[3]
                         end
                         hoverAnimGroup:Play()
                     end
@@ -342,7 +346,8 @@ function NRSKNUI.GUI.CreateMiniSidebar(container, options)
                     end)
 
                     btn:SetScript("OnMouseDown", function(self)
-                        self:SetBackdropColor(Theme.selectedBg[1], Theme.selectedBg[2], Theme.selectedBg[3], Theme.selectedBg[4] or 1)
+                        self:SetBackdropColor(Theme.selectedBg[1], Theme.selectedBg[2], Theme.selectedBg[3],
+                            Theme.selectedBg[4] or 1)
                     end)
 
                     btn:SetScript("OnMouseUp", function(self)
@@ -373,7 +378,8 @@ function NRSKNUI.GUI.CreateMiniSidebar(container, options)
 
     local listFrame = CreateFrame("ScrollFrame", nil, sidebar)
     if buttonAreaHeight > 0 then
-        listFrame:SetPoint("TOPLEFT", buttonArea, "BOTTOMLEFT", 0, -listPadding - Theme.paddingMedium)
+        local listSpacing = buttonAreaConfig.listSpacing or (listPadding + Theme.paddingMedium)
+        listFrame:SetPoint("TOPLEFT", buttonArea, "BOTTOMLEFT", 0, -listSpacing)
     else
         listFrame:SetPoint("TOPLEFT", sidebar, "TOPLEFT", listPadding, -listPadding)
     end
@@ -399,8 +405,10 @@ function NRSKNUI.GUI.CreateMiniSidebar(container, options)
         listScrollbarVisible = listScrollbar:UpdateVisibility(contentHeight, frameHeight)
         if listScrollbarVisible then
             listChild:SetWidth(sidebarWidth - listPadding * 2 - 10)
+            buttonArea:SetPoint("TOPRIGHT", sidebar, "TOPRIGHT", -listPadding - 10, -listPadding)
         else
             listChild:SetWidth(sidebarWidth - listPadding * 2)
+            buttonArea:SetPoint("TOPRIGHT", sidebar, "TOPRIGHT", -listPadding, -listPadding)
         end
     end
 
@@ -512,6 +520,56 @@ function NRSKNUI.GUI.CreateMiniSidebar(container, options)
         end
     end
 
+    local separatorPool = {}
+    local activeSeparators = {}
+    local SEPARATOR_HEIGHT = 24
+
+    local function GetPooledSeparator()
+        for _, sep in ipairs(separatorPool) do
+            if not sep._inUse then
+                sep._inUse = true
+                sep:SetParent(listChild)
+                sep:Show()
+                return sep
+            end
+        end
+
+        local sep = CreateFrame("Frame", nil, listChild, "BackdropTemplate")
+        sep:SetHeight(SEPARATOR_HEIGHT)
+        sep:SetPoint("TOPLEFT", listChild, "TOPLEFT", 0, 0)
+        sep:SetPoint("TOPRIGHT", listChild, "TOPRIGHT", 0, 0)
+
+        local r, g, b = Theme.accent[1], Theme.accent[2], Theme.accent[3]
+
+        local line = sep:CreateTexture(nil, "ARTWORK")
+        line:SetHeight(1)
+        line:SetPoint("LEFT", sep, "LEFT", 0, -8)
+        line:SetPoint("RIGHT", sep, "RIGHT", 0, -8)
+        line:SetColorTexture(1, 1, 1, 1)
+        line:SetGradient("HORIZONTAL", CreateColor(r, g, b, 1), CreateColor(r, g, b, 1))
+        line:SetTexelSnappingBias(0)
+        line:SetSnapToPixelGrid(false)
+        sep._line = line
+
+        local label = sep:CreateFontString(nil, "OVERLAY")
+        label:SetPoint("LEFT", sep, "LEFT", 0, 3)
+        NRSKNUI:ApplyThemeFont(label, "normal")
+        label:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
+        sep._label = label
+
+        sep._inUse = true
+        separatorPool[#separatorPool + 1] = sep
+        return sep
+    end
+
+    local function ReleaseAllSeparators()
+        for _, sep in ipairs(separatorPool) do
+            sep._inUse = false
+            sep:Hide()
+        end
+        wipe(activeSeparators)
+    end
+
     local function RefreshList()
         if customListRendering then
             C_Timer.After(0, UpdateListScrollbar)
@@ -519,39 +577,51 @@ function NRSKNUI.GUI.CreateMiniSidebar(container, options)
         end
 
         ReleaseAllButtons()
+        ReleaseAllSeparators()
 
         if not getItems then return end
         local items = getItems()
         if not items then return end
 
-        for i, item in ipairs(items) do
-            local btn = GetPooledButton()
-            local key = getItemKey(item)
-            btn._itemKey = key
-            btn._itemData = item
-
-            btn:SetPoint("TOPLEFT", listChild, "TOPLEFT", 0, -(i - 1) * (itemHeight + itemSpacing))
-            btn:SetPoint("TOPRIGHT", listChild, "TOPRIGHT", 0, -(i - 1) * (itemHeight + itemSpacing))
-
-            if renderItem then
-                renderItem(btn, item, key == selectedKey)
+        local yOffset = 0
+        for _, item in ipairs(items) do
+            if item.type == "separator" then
+                local sep = GetPooledSeparator()
+                sep._label:SetText(("Active: " .. item.name) or "")
+                sep:SetPoint("TOPLEFT", listChild, "TOPLEFT", 0, -yOffset)
+                sep:SetPoint("TOPRIGHT", listChild, "TOPRIGHT", 0, -yOffset)
+                activeSeparators[#activeSeparators + 1] = sep
+                yOffset = yOffset + SEPARATOR_HEIGHT + itemSpacing
             else
-                btn._label:SetText(item.text or item.name or tostring(key))
-                btn._icon:SetTexture(item.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
-            end
+                local btn = GetPooledButton()
+                local key = getItemKey(item)
+                btn._itemKey = key
+                btn._itemData = item
 
-            btn:SetScript("OnClick", function()
-                selectedKey = key
-                UpdateSelectionVisuals()
-                if onItemSelected then
-                    onItemSelected(item, key)
+                btn:SetPoint("TOPLEFT", listChild, "TOPLEFT", 0, -yOffset)
+                btn:SetPoint("TOPRIGHT", listChild, "TOPRIGHT", 0, -yOffset)
+
+                if renderItem then
+                    renderItem(btn, item, key == selectedKey)
+                else
+                    btn._label:SetText(item.text or item.name or tostring(key))
+                    btn._icon:SetTexture(item.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
                 end
-            end)
 
-            activeButtons[#activeButtons + 1] = btn
+                btn:SetScript("OnClick", function()
+                    selectedKey = key
+                    UpdateSelectionVisuals()
+                    if onItemSelected then
+                        onItemSelected(item, key)
+                    end
+                end)
+
+                activeButtons[#activeButtons + 1] = btn
+                yOffset = yOffset + itemHeight + itemSpacing
+            end
         end
 
-        listChild:SetHeight(#items * (itemHeight + itemSpacing))
+        listChild:SetHeight(yOffset)
         UpdateSelectionVisuals()
         C_Timer.After(0, UpdateListScrollbar)
     end

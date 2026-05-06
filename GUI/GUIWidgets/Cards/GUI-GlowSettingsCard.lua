@@ -15,6 +15,11 @@ local GLOW_TYPES = {
     { key = "proc",     text = "Proc" },
 }
 
+local GLOW_MODES = {
+    { key = "always",     text = "Always Glow" },
+    { key = "expiration", text = "Expiration Glow" },
+}
+
 ---@class NUIGlowSettingsCard : NUICard
 ---@field glowWidgets table
 ---@field typeOnlyRows table
@@ -62,7 +67,10 @@ function GUIFrame:CreateGlowSettingsCard(scrollChild, yOffset, config)
         scale = dbKeys.scale or "GlowScale",
         startAnim = dbKeys.startAnim or "GlowStartAnim",
         duration = dbKeys.duration or "GlowDuration",
+        glowMode = dbKeys.glowMode or "GlowMode",
     }
+
+    local showGlowMode = config.showGlowMode
 
     local widgets = {}
     local typeOnlyRows = {
@@ -79,6 +87,7 @@ function GUIFrame:CreateGlowSettingsCard(scrollChild, yOffset, config)
 
     local card = GUIFrame:CreateCard(scrollChild, title, yOffset)
 
+    -- Row 1: Enable Glow + When to Glow (if showGlowMode) or Enable Glow + Type
     local row1 = GUIFrame:CreateRow(card.content, Theme.rowHeight)
     local enableCheck = GUIFrame:CreateCheckbox(row1, "Enable Glow", {
         value = db[keys.enabled],
@@ -90,22 +99,63 @@ function GUIFrame:CreateGlowSettingsCard(scrollChild, yOffset, config)
     row1:AddWidget(enableCheck, 0.5)
     table_insert(widgets, enableCheck)
 
-    local typeDropdown = GUIFrame:CreateDropdown(row1, "Type", {
-        options = glowTypeOptions,
-        value = db[keys.type],
-        callback = function(val)
-            setValue(keys.type, val)
-            card.updateTypeVisibility()
-        end
-    })
-    row1:AddWidget(typeDropdown, 0.5)
-    table_insert(widgets, typeDropdown)
+    if showGlowMode then
+        local storedGlowMode = db[keys.glowMode]
+        local validGlowMode = (storedGlowMode == "always" or storedGlowMode == "expiration") and storedGlowMode or
+        "always"
+
+        local glowModeDropdown = GUIFrame:CreateDropdown(row1, "When to Glow", {
+            options = GLOW_MODES,
+            value = validGlowMode,
+            labelWidth = 100,
+            callback = function(key)
+                setValue(keys.glowMode, key)
+            end
+        })
+        row1:AddWidget(glowModeDropdown, 0.5)
+        table_insert(widgets, glowModeDropdown)
+    else
+        local typeDropdown = GUIFrame:CreateDropdown(row1, "Type", {
+            options = glowTypeOptions,
+            value = db[keys.type],
+            callback = function(val)
+                setValue(keys.type, val)
+                card.updateTypeVisibility()
+            end
+        })
+        row1:AddWidget(typeDropdown, 0.5)
+        table_insert(widgets, typeDropdown)
+    end
     card:AddRow(row1, Theme.rowHeight)
 
     local separator = GUIFrame:CreateSeparator(card.content)
     card:AddRow(separator, Theme.rowHeightSeparator)
 
+    -- Row 2: Type + Color (if showGlowMode) or Speed + Color
     local row2 = GUIFrame:CreateRow(card.content, Theme.rowHeight)
+    if showGlowMode then
+        local typeDropdown = GUIFrame:CreateDropdown(row2, "Type", {
+            options = glowTypeOptions,
+            value = db[keys.type],
+            callback = function(val)
+                setValue(keys.type, val)
+                card.updateTypeVisibility()
+            end
+        })
+        row2:AddWidget(typeDropdown, 0.5)
+        table_insert(widgets, typeDropdown)
+    else
+        local freqSlider = GUIFrame:CreateSlider(row2, "Speed", {
+            min = 0.05,
+            max = 1,
+            step = 0.05,
+            value = db[keys.frequency],
+            callback = function(val) setValue(keys.frequency, val) end
+        })
+        row2:AddWidget(freqSlider, 0.5)
+        table_insert(widgets, freqSlider)
+    end
+
     local colorPicker = GUIFrame:CreateColorPicker(row2, "Color", {
         color = db[keys.color],
         callback = function(r, g, b, a)
@@ -113,22 +163,27 @@ function GUIFrame:CreateGlowSettingsCard(scrollChild, yOffset, config)
             if onChange then onChange() end
         end
     })
-    row2:AddWidget(colorPicker, 1)
+    row2:AddWidget(colorPicker, 0.5)
     table_insert(widgets, colorPicker)
     card:AddRow(row2, Theme.rowHeight)
 
-    local rowFreq = GUIFrame:CreateRow(card.content, Theme.rowHeight)
-    local freqSlider = GUIFrame:CreateSlider(rowFreq, "Speed", {
-        min = 0.05,
-        max = 1,
-        step = 0.05,
-        value = db[keys.frequency],
-        callback = function(val) setValue(keys.frequency, val) end
-    })
-    rowFreq:AddWidget(freqSlider, 1)
-    table_insert(widgets, freqSlider)
-    card:AddRow(rowFreq, Theme.rowHeight)
-    frequencyRow = rowFreq
+    -- Row 3: Speed (full width) - only if showGlowMode
+    if showGlowMode then
+        local rowFreq = GUIFrame:CreateRow(card.content, Theme.rowHeight)
+        local freqSlider = GUIFrame:CreateSlider(rowFreq, "Speed", {
+            min = 0.05,
+            max = 1,
+            step = 0.05,
+            value = db[keys.frequency],
+            callback = function(val) setValue(keys.frequency, val) end
+        })
+        rowFreq:AddWidget(freqSlider, 1)
+        table_insert(widgets, freqSlider)
+        card:AddRow(rowFreq, Theme.rowHeight)
+        frequencyRow = rowFreq
+    else
+        frequencyRow = row2
+    end
 
     local rowPixel1 = GUIFrame:CreateRow(card.content, Theme.rowHeight)
     local linesSlider = GUIFrame:CreateSlider(rowPixel1, "Lines", {
@@ -228,13 +283,15 @@ function GUIFrame:CreateGlowSettingsCard(scrollChild, yOffset, config)
         local baseHeight = card.headerHeight + Theme.paddingSmall * 2
         local currentY = (Theme.rowHeight + Theme.paddingSmall) * 2 + Theme.rowHeightSeparator + Theme.paddingSmall
 
-        local showFrequency = (glowType == "pixel" or glowType == "autocast" or glowType == "button")
-        frequencyRow:SetShown(showFrequency)
-        if showFrequency then
-            frequencyRow:ClearAllPoints()
-            frequencyRow:SetPoint("TOPLEFT", card.content, "TOPLEFT", 0, -currentY)
-            frequencyRow:SetPoint("TOPRIGHT", card.content, "TOPRIGHT", 0, -currentY)
-            currentY = currentY + Theme.rowHeight + Theme.paddingSmall
+        if showGlowMode then
+            local showFrequency = (glowType == "pixel" or glowType == "autocast" or glowType == "button")
+            frequencyRow:SetShown(showFrequency)
+            if showFrequency then
+                frequencyRow:ClearAllPoints()
+                frequencyRow:SetPoint("TOPLEFT", card.content, "TOPLEFT", 0, -currentY)
+                frequencyRow:SetPoint("TOPRIGHT", card.content, "TOPRIGHT", 0, -currentY)
+                currentY = currentY + Theme.rowHeight + Theme.paddingSmall
+            end
         end
 
         for typeName, rows in pairs(typeOnlyRows) do

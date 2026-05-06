@@ -8,6 +8,10 @@
 ---@alias OnCheckedChanged fun(checked: boolean)
 ---@alias OnKeySelected fun(key: string)
 
+---@class NUISeparatorConfig
+---@field useLabel? boolean Use separator with label
+---@field height? number Custom height
+
 ---@class NUIButtonConfig
 ---@field tooltip? string Tooltip shown on hover
 ---@field callback? OnClickCallback Called on click

@@ -1059,7 +1059,8 @@ function GUIFrame:Show()
                     self.sidebar.scrollChild:SetWidth(newWidth)
                 end
             end
-            self:RefreshSidebar()
+            self.sidebarRefreshPending = false
+            self:RefreshSidebarImmediate()
             self:RefreshContent()
             if self.contentArea and self.contentArea.scrollChild then
                 RefreshAllFontStrings(self.contentArea.scrollChild)
@@ -1098,6 +1099,7 @@ GUIFrame.sessionState = GUIFrame.sessionState or {
     scrollPositions = {},
     selectedTab = "systems",
     selectedSidebarItem = nil,
+    sidebarExpanded = nil,
 }
 
 function GUIFrame:SaveSessionState()
@@ -1110,6 +1112,13 @@ function GUIFrame:SaveSessionState()
 
     self.sessionState.selectedTab = self.selectedTab
     self.sessionState.selectedSidebarItem = self.selectedSidebarItem
+
+    if self.sidebarExpanded then
+        self.sessionState.sidebarExpanded = {}
+        for sectionId, expanded in pairs(self.sidebarExpanded) do
+            self.sessionState.sidebarExpanded[sectionId] = expanded
+        end
+    end
 end
 
 function GUIFrame:RestoreSessionState()
@@ -1119,8 +1128,15 @@ function GUIFrame:RestoreSessionState()
         self.selectedTab = self.sessionState.selectedTab
     end
 
+    if self.sessionState.sidebarExpanded then
+        for sectionId, expanded in pairs(self.sessionState.sidebarExpanded) do
+            self.sidebarExpanded[sectionId] = expanded
+        end
+    end
+
     if self.sessionState.selectedSidebarItem then
         self.selectedSidebarItem = self.sessionState.selectedSidebarItem
+        self:EnsureParentSectionExpanded(self.selectedSidebarItem)
     end
 
     C_Timer.After(0.01, function()

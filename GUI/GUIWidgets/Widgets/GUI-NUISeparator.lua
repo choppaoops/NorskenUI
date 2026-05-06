@@ -6,34 +6,41 @@ local Theme = NRSKNUI.Theme
 
 local CreateFrame = CreateFrame
 local CreateColor = CreateColor
+local type = type
 
 ---@param parent Frame
+---@param labelText? string Separator label text
+---@param config? NUISeparatorConfig
 ---@return NUISeparator
-function GUIFrame:CreateSeparator(parent)
+function GUIFrame:CreateSeparator(parent, labelText, config)
+    if type(config) ~= "table" then config = {} end
+    local useLabel = config.useLabel or false
+    local height = config.height or 6
+    local offset = useLabel and 5 or 0
+
     local separator = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-    separator:SetHeight(6)
+    separator:SetHeight(height)
     separator:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
     separator:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, 0)
 
     local r, g, b = Theme.bgMedium[1], Theme.bgMedium[2], Theme.bgMedium[3]
 
-    local left = separator:CreateTexture(nil, "ARTWORK")
-    left:SetHeight(2)
-    left:SetPoint("LEFT", separator, "LEFT", 0, 0)
-    left:SetPoint("RIGHT", separator, "CENTER", 0, 0)
-    left:SetColorTexture(1, 1, 1, 1)
-    left:SetGradient("HORIZONTAL", CreateColor(r, g, b, 1), CreateColor(r, g, b, 1))
-    left:SetTexelSnappingBias(0)
-    left:SetSnapToPixelGrid(false)
+    local separatorTexture = separator:CreateTexture(nil, "ARTWORK")
+    separatorTexture:SetHeight(2)
+    separatorTexture:SetPoint("LEFT", separator, "LEFT", 0, -offset)
+    separatorTexture:SetPoint("RIGHT", separator, "RIGHT", 0, -offset)
+    separatorTexture:SetColorTexture(1, 1, 1, 1)
+    separatorTexture:SetGradient("HORIZONTAL", CreateColor(r, g, b, 1), CreateColor(r, g, b, 1))
+    separatorTexture:SetTexelSnappingBias(0)
+    separatorTexture:SetSnapToPixelGrid(false)
 
-    local right = separator:CreateTexture(nil, "ARTWORK")
-    right:SetHeight(2)
-    right:SetPoint("LEFT", separator, "CENTER", 0, 0)
-    right:SetPoint("RIGHT", separator, "RIGHT", 0, 0)
-    right:SetColorTexture(1, 1, 1, 1)
-    right:SetGradient("HORIZONTAL", CreateColor(r, g, b, 1), CreateColor(r, g, b, 1))
-    right:SetTexelSnappingBias(0)
-    right:SetSnapToPixelGrid(false)
+    if useLabel then
+        local headerLabel = separator:CreateFontString(nil, "OVERLAY")
+        headerLabel:SetPoint("LEFT", separator, "LEFT", 0, offset)
+        NRSKNUI:ApplyThemeFont(headerLabel, "normal")
+        headerLabel:SetText(labelText)
+        headerLabel:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
+    end
 
     function separator:SetEnabled(enabled)
         if enabled then

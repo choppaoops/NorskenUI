@@ -143,7 +143,7 @@ function GATE:UpdateState(isUsable)
     self.wasUsable = isUsable
 
     if isUsable then
-        self.alertFrame.text:SetText("GATE USABLE")
+        self.alertFrame.text:SetText(self.db.Text)
         self.alertFrame:SetAlpha(1)
         self.alertFrame:Show()
     else
@@ -166,6 +166,7 @@ end
 function GATE:ApplySettings()
     if not self.alertFrame then return end
     NRSKNUI:ApplyFramePosition(self.alertFrame, self.db.Position, self.db)
+    self.alertFrame.text:SetText(self.db.Text)
     self.alertFrame.text:SetTextColor(unpack(self.db.Color))
     NRSKNUI:ApplyFontToText(self.alertFrame.text, self.db.FontFace, self.db.FontSize, self.db.FontOutline,
         self.db.FontShadow)
@@ -195,7 +196,7 @@ function GATE:ShowPreview()
     end
 
     self.isPreview = true
-    self.alertFrame.text:SetText("GATE USABLE")
+    self.alertFrame.text:SetText(self.db.Text)
     self.alertFrame:SetAlpha(1)
     self.alertFrame:Show()
     self:ApplySettings()

@@ -103,6 +103,7 @@ end
 function NUIDropdownMixin:UpdateOptions(newOptions)
     self._normalizedOptions = {}
     self._optionColors = {}
+    self._optionTooltips = {}
     self._orderedKeys = nil
     if type(newOptions) == "table" then
         if newOptions[1] and type(newOptions[1]) == "table" and (newOptions[1].key or newOptions[1].value) then
@@ -112,6 +113,9 @@ function NUIDropdownMixin:UpdateOptions(newOptions)
                 self._normalizedOptions[optKey] = opt.text
                 if opt.color then
                     self._optionColors[optKey] = opt.color
+                end
+                if opt.tooltip then
+                    self._optionTooltips[optKey] = opt.tooltip
                 end
                 table_insert(self._orderedKeys, optKey)
             end
@@ -290,9 +294,11 @@ function GUIFrame:CreateDropdown(parent, labelText, config)
     local callback = config.callback
     local searchable = config.searchable == true
     local isFontPreview = config.isFontPreview
+    local theme = config.theme or Theme.bgMedium
 
     local row = CreateFrame("Frame", nil, parent)
     row:SetHeight(34)
+    row._optionTooltips = {}
 
     local label = row:CreateFontString(nil, "OVERLAY")
     label:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 1)
@@ -307,7 +313,7 @@ function GUIFrame:CreateDropdown(parent, labelText, config)
     dropdownButton:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -14)
     dropdownButton:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, -14)
     dropdownButton:SetBackdrop(STANDARD_BACKDROP)
-    dropdownButton:SetBackdropColor(Theme.bgMedium[1], Theme.bgMedium[2], Theme.bgMedium[3], 1)
+    dropdownButton:SetBackdropColor(theme[1], theme[2], theme[3], 1)
     dropdownButton:SetBackdropBorderColor(Theme.border[1], Theme.border[2], Theme.border[3], 1)
 
     local selectedText = dropdownButton:CreateFontString(nil, "OVERLAY")
@@ -340,6 +346,9 @@ function GUIFrame:CreateDropdown(parent, labelText, config)
                 if opt.color then
                     row._optionColors[optKey] = opt.color
                 end
+                if opt.tooltip then
+                    row._optionTooltips[optKey] = opt.tooltip
+                end
                 table_insert(row._orderedKeys, optKey)
             end
         else
@@ -369,7 +378,7 @@ function GUIFrame:CreateDropdown(parent, labelText, config)
     local dropdownList = CreateFrame("Frame", nil, row, "BackdropTemplate")
     dropdownList:SetHeight(1)
     dropdownList:SetBackdrop(STANDARD_BACKDROP)
-    dropdownList:SetBackdropColor(Theme.bgMedium[1], Theme.bgMedium[2], Theme.bgMedium[3], 1)
+    dropdownList:SetBackdropColor(theme[1], theme[2], theme[3], 1)
     dropdownList:SetBackdropBorderColor(Theme.border[1], Theme.border[2], Theme.border[3], 1)
     dropdownList:SetFrameStrata("TOOLTIP")
     dropdownList:SetClipsChildren(true)
@@ -667,14 +676,25 @@ function GUIFrame:CreateDropdown(parent, labelText, config)
 
             btn:SetScript("OnClick", function() SelectValue(btn._itemValue) end)
 
-            btn:SetScript("OnEnter", function()
-                btn._hoverTarget = 1
-                btn._text:SetTextColor(Theme.textPrimary[1], Theme.textPrimary[2], Theme.textPrimary[3], 1)
+            btn:SetScript("OnEnter", function(self)
+                self._hoverTarget = 1
+                self._text:SetTextColor(Theme.textPrimary[1], Theme.textPrimary[2], Theme.textPrimary[3], 1)
+                local tooltip = row._optionTooltips[self._itemValue]
+                if tooltip then
+                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                    GameTooltip:ClearLines()
+                    GameTooltip:AddLine(self._itemText or self._itemValue, Theme.accent[1], Theme.accent[2],
+                        Theme.accent[3], false)
+                    GameTooltip:AddLine(tooltip, Theme.textSecondary[1], Theme.textSecondary[2], Theme.textSecondary[3],
+                        true)
+                    GameTooltip:Show()
+                end
             end)
 
-            btn:SetScript("OnLeave", function()
-                btn._hoverTarget = 0
+            btn:SetScript("OnLeave", function(self)
+                self._hoverTarget = 0
                 UpdateItemColor()
+                GameTooltip:Hide()
             end)
 
             btn:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -(i - 1) * ITEM_HEIGHT)

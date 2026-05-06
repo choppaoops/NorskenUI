@@ -1,4 +1,3 @@
--- NorskenUI namespace
 ---@class NRSKNUI
 ---@diagnostic disable: undefined-field
 local NRSKNUI = select(2, ...)
@@ -30,7 +29,6 @@ local C_CastingInfo = C_CastingInfo
 local C_ClassColor = C_ClassColor
 local Enum = Enum
 local CreateColor = CreateColor
-local select = select
 local pairs, ipairs = pairs, ipairs
 local wipe = wipe
 local tinsert, tremove, tsort = table.insert, table.remove, table.sort
@@ -56,15 +54,6 @@ local PREVIEW_SPELLS = {
     { name = "Chain Lightning", icon = 136015, shielded = false, channeling = false, raidIcon = nil, hasTarget = true },
 }
 
-DC.framePool = {}
-DC.activeFrames = {}
-DC.activeCount = 0
-DC.sortedUnits = {}
-DC.anchorFrame = nil
-DC.updateFrame = nil
-DC.isPreview = false
-DC.previewTicker = nil
-
 function DC:UpdateDB()
     self.db = NRSKNUI.db.profile.DungeonCasts
 end
@@ -72,9 +61,13 @@ end
 function DC:OnInitialize()
     self:UpdateDB()
     self:SetEnabledState(false)
+
+    self.framePool = {}
+    self.activeFrames = {}
+    self.activeCount = 0
+    self.sortedUnits = {}
 end
 
--- Pre-builds ColorMixin objects
 function DC:CreateColorObjects()
     local db = self.db
     self.colors = {
@@ -84,7 +77,6 @@ function DC:CreateColorObjects()
     }
 end
 
--- Determines whether the module should be active based on instance type
 function DC:ShouldBeActive()
     if self.isPreview then return true end
     local inInstance, instanceType = IsInInstance()
@@ -138,7 +130,6 @@ function DC:ApplyAnchorPosition()
     end
 end
 
--- Creates a new bar frame. This is only called when the pool is empty, so it doesn't need to apply settings or populate any data.
 function DC:CreateBarFrame()
     local frame = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
     frame:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
@@ -172,7 +163,6 @@ function DC:CreateBarFrame()
     return frame
 end
 
--- Applies current settings to a bar frame, but doesn't populate any cast-specific data. Safe to call on frames in the pool or already active.
 ---@param bar Frame
 function DC:ConfigureBar(bar)
     if not bar then return end
@@ -186,9 +176,7 @@ function DC:ConfigureBar(bar)
 
     local height = frameDb.Height
     local width = frameDb.Width
-    local iconSize = iconDb.Enabled and iconDb.Size or 0
 
-    -- Main frame
     bar:SetSize(width, height)
     bar:SetFrameStrata(frameDb.Strata)
     local bg = db.BackgroundColor
@@ -201,9 +189,8 @@ function DC:ConfigureBar(bar)
         bar:SetBorderColor(borderColor[1], borderColor[2], borderColor[3], borderColor[4])
     end
 
-    -- Icon frame
     if iconDb.Enabled then
-        bar.iconFrame:SetSize(iconSize, height)
+        bar.iconFrame:SetSize(height, height)
         bar.iconFrame:Show()
         bar.iconFrame:SetBackdropColor(0, 0, 0, 0.8)
         if not bar.iconFrame.borders then
@@ -216,7 +203,6 @@ function DC:ConfigureBar(bar)
         bar.iconFrame:Hide()
     end
 
-    -- Cast bar positioning
     bar.castBar:ClearAllPoints()
     if iconDb.Enabled then
         bar.castBar:SetPoint("LEFT", bar.iconFrame, "RIGHT", 0, 0)
@@ -228,13 +214,11 @@ function DC:ConfigureBar(bar)
     bar.castBar:SetPoint("BOTTOM", bar, "BOTTOM", 0, 1)
     bar.castBar:SetStatusBarTexture(NRSKNUI:GetStatusbarPath(barDb.StatusBarTexture))
 
-    -- Spark pinned to the right edge of the fill texture so it tracks progress.
     bar.spark:SetSize(12, height)
     bar.spark:ClearAllPoints()
     bar.spark:SetPoint("CENTER", bar.castBar:GetStatusBarTexture(), "RIGHT", 0, 0)
     bar.spark:SetShown(barDb.SparkEnabled)
 
-    -- Text
     local tc = textDb.TextColor
     bar.nameText:ClearAllPoints()
     bar.nameText:SetPoint("LEFT", bar.castBar, "LEFT", 4, 0)
@@ -248,8 +232,10 @@ function DC:ConfigureBar(bar)
     NRSKNUI:ApplyFontToText(bar.timeText, barDb.FontFace, barDb.FontSize, barDb.FontOutline)
     bar.timeText:SetTextColor(tc[1], tc[2], tc[3], tc[4])
     bar.timeText:SetShown(textDb.ShowTime)
+    if bar.timeText.softOutline then
+        bar.timeText.softOutline:SetShown(textDb.ShowTime)
+    end
 
-    -- Target text (positioned between name and time)
     local targetDb = db.Target
     bar.targetText:ClearAllPoints()
     NRSKNUI:ApplyFontToText(bar.targetText, barDb.FontFace, barDb.FontSize, barDb.FontOutline)
@@ -258,13 +244,11 @@ function DC:ConfigureBar(bar)
         bar.targetText:SetPoint("LEFT", bar.nameText, "RIGHT", 2, 0)
         bar.targetText:SetJustifyH("LEFT")
     else
-        -- Default to RIGHT, positioned left of time text
         bar.targetText:SetPoint("RIGHT", bar.timeText, "LEFT", -4, 0)
         bar.targetText:SetJustifyH("RIGHT")
     end
     bar.targetText:Hide()
 
-    -- Raid icon sits to the left of the bar and is optional.
     if raidDb.Enabled then
         bar.raidIcon:SetSize(raidDb.Size, raidDb.Size)
         bar.raidIcon:ClearAllPoints()
@@ -302,7 +286,6 @@ function DC:ReleaseBar(bar)
 end
 
 function DC:ReleaseAllBars()
-    -- Move references out before releasing so we don't mutate the table we're iterating.
     local frames = self.activeFrames
     self.activeFrames = {}
     self.activeCount = 0
@@ -320,7 +303,6 @@ function DC:IsValidUnit(unit)
     return true
 end
 
--- Determines bar color based on casting/channeling and interruptible state. Uses pre-built ColorMixin objects for efficiency.
 function DC:UpdateBarColor(bar)
     if not bar or not bar.castBar then return end
     local texture = bar.castBar:GetStatusBarTexture()
@@ -389,7 +371,6 @@ function DC:UpdateTargetText(bar, targetName, targetClass)
 
     local separator = TARGET_SEPARATORS[targetDb.Separator] or targetDb.Separator or "»"
 
-    -- Build plain text for soft outline (no color codes)
     local plainText
     if separator ~= "" then
         if targetDb.Position == "LEFT" then
@@ -401,7 +382,6 @@ function DC:UpdateTargetText(bar, targetName, targetClass)
         plainText = targetName
     end
 
-    -- Build colored display text (concatenation works with secrets)
     local tc = self.db.Text.TextColor
     local textColorMarkup = string.format("|cff%02x%02x%02x", tc[1] * 255, tc[2] * 255, tc[3] * 255)
     local coloredTarget
@@ -439,7 +419,6 @@ function DC:UpdateTargetText(bar, targetName, targetClass)
     bar.targetText:Show()
 end
 
--- Fetches cast information for a unit and returns it in a standardized format
 ---@param unit string
 ---@return table|nil castData
 function DC:FetchCastData(unit)
@@ -487,7 +466,6 @@ function DC:FetchCastData(unit)
     return nil
 end
 
--- Gets an active bar for a unit or acquires a new one if needed
 function DC:GetOrAcquireBar(unit)
     local bar = self.activeFrames[unit]
     if bar then return bar end
@@ -500,7 +478,6 @@ function DC:GetOrAcquireBar(unit)
     return bar
 end
 
--- Populates a bar with cast data and refreshes its visuals.
 function DC:PopulateBar(bar, unit, data)
     bar.unit = unit
     bar.casting = data.isCasting
@@ -538,7 +515,7 @@ function DC:StartCast(unit)
     end
 
     local bar = self:GetOrAcquireBar(unit)
-    if not bar then return end -- max bars reached
+    if not bar then return end
 
     self:PopulateBar(bar, unit, data)
     bar:Show()
@@ -554,7 +531,6 @@ function DC:StopCast(unit)
     self:PositionAllBars()
 end
 
--- Sorts active units by cast start time for proper stacking order
 function DC:SortUnits()
     wipe(self.sortedUnits)
     for unit in pairs(self.activeFrames) do
@@ -591,7 +567,6 @@ function DC:PositionAllBars()
     end
 end
 
--- Event handlers for cast start/stop and interruptible state changes.
 local CAST_EVENT_HANDLERS = {
     UNIT_SPELLCAST_START = "StartCast",
     UNIT_SPELLCAST_CHANNEL_START = "StartCast",
@@ -623,7 +598,6 @@ function DC:OnCastEvent(event, unit)
     end
 end
 
--- When a cast becomes interruptible or not, we need to update the bar color
 function DC:UpdateInterruptible(unit)
     local bar = self.activeFrames[unit]
     if not bar then return end
@@ -645,7 +619,6 @@ function DC:ScanExistingNameplates()
     end
 end
 
--- Creates an OnUpdate frame
 function DC:CreateUpdateFrame()
     if self.updateFrame then return end
     local f = CreateFrame("Frame")
@@ -689,14 +662,12 @@ function DC:OnUpdate()
     end
 end
 
--- Exposed setting application for profile changes and GUI
 function DC:ApplySettings()
     self:UpdateDB()
     self:CreateColorObjects()
     self:ApplyAnchorPosition()
 
     if self.isPreview then
-        -- Rebuild preview so style/layout changes are visible immediately.
         self:ReleaseAllBars()
         self:CreatePreviewBars()
         return
@@ -713,7 +684,6 @@ function DC:ApplyPosition()
     self:PositionAllBars()
 end
 
--- Creates fake bars for preview mode using the PREVIEW_SPELLS data
 function DC:CreatePreviewBars()
     self:UpdateDB()
     self:CreateColorObjects()
@@ -721,7 +691,6 @@ function DC:CreatePreviewBars()
     local maxBars = mmin(self.db.Frame.MaxBars, #PREVIEW_SPELLS)
     local now = GetTime()
 
-    -- Get player info for preview targets
     local playerName = UnitName("player")
     local _, playerClass = UnitClass("player")
 
@@ -732,7 +701,6 @@ function DC:CreatePreviewBars()
         self.activeFrames[fakeUnit] = bar
         self.activeCount = self.activeCount + 1
 
-        -- Use player name/class for spells that have targets
         local targetName = spell.hasTarget and playerName or nil
         local targetClass = spell.hasTarget and playerClass or nil
 
@@ -745,7 +713,7 @@ function DC:CreatePreviewBars()
         bar.previewIcon = spell.icon
         bar.previewTarget = targetName
         bar.previewTargetClass = targetClass
-        bar.startTime = now + i * 0.001 -- stable ordering
+        bar.startTime = now + i * 0.001
 
         if bar.icon then
             bar.icon:SetTexture(spell.icon or FALLBACK_ICON)

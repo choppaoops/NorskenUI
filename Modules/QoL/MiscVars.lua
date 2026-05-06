@@ -51,6 +51,16 @@ MVAR.DEFS = {
         step = 0.1,
         default = 1.9,
     },
+    {
+        key = "SpellQueueWindow",
+        label = "Spell Queue Window",
+        description = "Adjust how far ahead of the end of a cast spell you can queue another spell.",
+        type = "number",
+        min = 1,
+        max = 400,
+        step = 1,
+        default = 400,
+    },
 }
 
 function MVAR:UpdateDB()

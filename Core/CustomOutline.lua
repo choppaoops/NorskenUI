@@ -431,8 +431,8 @@ function NRSKNUI:ApplyFontToText(fontString, fontName, fontSize, fontOutline, sh
                 fontSize = fontSize,
             })
         end
-        fontString.softOutline:SetFont(fontPath, fontSize)
         fontString.softOutline:SetShown(true)
+        fontString.softOutline:SetFont(fontPath, fontSize)
     else
         if fontString.softOutline then
             fontString.softOutline:SetShown(false)

@@ -13,7 +13,7 @@ GUIFrame:RegisterContent("MiscVars", function(scrollChild, yOffset)
     local manager = GUIFrame:CreateWidgetStateManager()
     local function UpdateAllWidgetStates() manager:UpdateAll(db.Enabled ~= false) end
 
-    local card1 = GUIFrame:CreateCard(scrollChild, "CVars", yOffset)
+    local card1 = GUIFrame:CreateCard(scrollChild, "CVar Browser", yOffset)
 
     if MVAR then
         for i, def in ipairs(MVAR.DEFS) do

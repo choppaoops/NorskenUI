@@ -37,7 +37,10 @@ GUIFrame.SidebarConfig = {
             text = "Missing Buffs & Stances",
             defaultExpanded = false,
             items = {
-                { id = "missingBuffs", text = "Missing Buffs" },
+                { id = "missingBuffs",  text = "Missing Buffs" },
+                { id = "targetedBuffs", text = "Targeted Buffs" },
+                { id = "stanceIcons",   text = "Stance Icons" },
+                { id = "stanceTexts",   text = "Stance Texts" },
             }
         },
         {
@@ -58,7 +61,8 @@ GUIFrame.SidebarConfig = {
             text = "Quality of Life",
             defaultExpanded = false,
             items = {
-                { id = "MiscVars",           text = "CVars" },
+                { id = "missingItems",       text = "Missing Items" },
+                { id = "MiscVars",           text = "CVar Browser" },
                 { id = "Automation",         text = "Automation" },
                 { id = "CopyAnything",       text = "Copy Anything" },
                 { id = "CooldownStrings",    text = "CDM Profile Strings" },

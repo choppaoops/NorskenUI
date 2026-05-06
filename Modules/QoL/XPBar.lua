@@ -58,7 +58,10 @@ function XPBar:OnEnable()
     self:RegisterEvents()
     self:Update()
 
-    C_Timer.After(1, function() self:ApplySettings() end)
+    C_Timer.After(1, function()
+        self:ApplySettings()
+        self:HideBlizzardXPBar()
+    end)
 
     NRSKNUI.EditMode:RegisterElement({
         key = "XPBar",

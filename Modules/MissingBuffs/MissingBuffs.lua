@@ -1,149 +1,62 @@
--- NorskenUI namespace
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
 
--- Safety check
 if not NorskenUI then
     error("MissingBuffs: Addon object not initialized. Check file load order!")
     return
 end
 
--- Create module
 ---@class MissingBuffs: AceModule, AceEvent-3.0
 local MBUFFS = NorskenUI:NewModule("MissingBuffs", "AceEvent-3.0")
 
--- Localization
+local LibSpec = LibStub("LibSpecialization")
+local LCG = LibStub("LibCustomGlow-1.0", true)
+
 local ipairs, pairs = ipairs, pairs
+local select = select
 local wipe = wipe
 local UnitClass, UnitExists, UnitIsDeadOrGhost = UnitClass, UnitExists, UnitIsDeadOrGhost
 local UnitIsConnected, UnitCanAssist, UnitIsPlayer = UnitIsConnected, UnitCanAssist, UnitIsPlayer
 local UnitPosition = UnitPosition
+local UnitIsUnit = UnitIsUnit
+local UnitName = UnitName
 local InCombatLockdown = InCombatLockdown
 local GetNumGroupMembers = GetNumGroupMembers
+local UnitFactionGroup = UnitFactionGroup
+local UnitGroupRolesAssigned = UnitGroupRolesAssigned
 local IsInRaid = IsInRaid
 local GetTime = GetTime
-local GetSpecialization, GetSpecializationInfo = GetSpecialization, GetSpecializationInfo
 local CreateFrame = CreateFrame
 local GetInventorySlotInfo, GetInventoryItemLink = GetInventorySlotInfo, GetInventoryItemLink
-local GetItemInfo, GetInventoryItemTexture = GetItemInfo, GetInventoryItemTexture
+local GetInventoryItemTexture = GetInventoryItemTexture
 local GetWeaponEnchantInfo = GetWeaponEnchantInfo
 local issecretvalue = issecretvalue
-local GetShapeshiftForm, GetShapeshiftFormInfo = GetShapeshiftForm, GetShapeshiftFormInfo
-local tostring, tonumber = tostring, tonumber
+local GetInstanceInfo = GetInstanceInfo
+local GetSpecializationInfoByID = GetSpecializationInfoByID
 local C_Spell, C_SpellBook = C_Spell, C_SpellBook
 local C_PetBattles, C_ChallengeMode = C_PetBattles, C_ChallengeMode
-local GetInstanceInfo = GetInstanceInfo
+local C_Item = C_Item
 local isEncounterInProgress = false
 local AuraUtil = AuraUtil
 local UIParent = UIParent
 local C_Timer = C_Timer
 
--- Constants
 local CHECK_THROTTLE = 0.25
-local MISSING_TEXT = "MISSING"
-local GENERALBUFF_TEXT = ""
+local WEAPON_ENCHANT_ICON = 135697
 
--- Default icon for weapon enchants
-local WEAPON_ENCHANT_ICON = 136244
+local Data = NRSKNUI.MissingBuffsData
+local SAFE_BUFFS = Data.SAFE_BUFFS
+local RESTRICTED_BUFFS = Data.RESTRICTED_BUFFS
+local TARGETED_BUFFS = Data.TARGETED_BUFFS
+local SELF_BUFFS = Data.SELF_BUFFS
+local PRESENCE_BUFFS = Data.PRESENCE_BUFFS
+local POISON_IDS = Data.POISON_IDS
+local ASSA_DOUBLE_POISON_TALENT = Data.ASSA_DOUBLE_POISON_TALENT
+local WELL_FED_NAME = Data.WELL_FED_NAME
+local HEARTY_WELL_FED_NAME = Data.HEARTY_WELL_FED_NAME
+local SPEC_PRIMARY_STAT = Data.SPEC_PRIMARY_STAT
+local RAID_BUFF_STAT_REQUIREMENT = Data.RAID_BUFF_STAT_REQUIREMENT
 
--- SAFE_BUFFS: Always trackable, never secret spellIds
-local SAFE_BUFFS = {
-    -- Raid Buffs
-    { spellId = 1126,   class = "DRUID",   buffType = "raid" },                          -- Mark of the Wild
-    { spellId = 1459,   class = "MAGE",    buffType = "raid" },                          -- Arcane Intellect
-    { spellId = 6673,   class = "WARRIOR", buffType = "raid", ignoreRangeCheck = true }, -- Battle Shout
-    { spellId = 21562,  class = "PRIEST",  buffType = "raid" },                          -- Power Word: Fortitude
-    { spellId = 462854, class = "SHAMAN",  buffType = "raid" },                          -- Skyfury
-    {
-        spellId = 381748,
-        class = "EVOKER",
-        buffType = "raid",
-        ignoreRangeCheck = true,
-        extraBuffSpellIds = { 381732, 381741, 381746, 381749, 381750, 381751, 381752, 381753, 381754, 381756, 381757, 381758 }
-    }, -- Blessing of the Bronze
-
-    -- Rogue Poisons (self buffs)
-    { spellId = 2823,             class = "ROGUE", buffType = "poison", poisonType = "lethal" },    -- Deadly Poison
-    { spellId = 8679,             class = "ROGUE", buffType = "poison", poisonType = "lethal" },    -- Wound Poison
-    { spellId = 315584,           class = "ROGUE", buffType = "poison", poisonType = "lethal" },    -- Instant Poison
-    { spellId = 381664,           class = "ROGUE", buffType = "poison", poisonType = "lethal" },    -- Amplifying Poison
-    { spellId = 3408,             class = "ROGUE", buffType = "poison", poisonType = "nonlethal" }, -- Crippling Poison
-    { spellId = 5761,             class = "ROGUE", buffType = "poison", poisonType = "nonlethal" }, -- Numbing Poison
-    { spellId = 381637,           class = "ROGUE", buffType = "poison", poisonType = "nonlethal" }, -- Atrophic Poison
-
-    -- Weapon Enchants
-    { buffType = "weaponEnchant", slot = "main",   text = "MH",         dbKey = "MHEnchant" },
-    { buffType = "weaponEnchant", slot = "off",    text = "OH",         dbKey = "OHEnchant" },
-}
-
--- Food buff names, used ID's before but for my own sanity, we just check name instead (There are a million different food types and ID's :))
-local WELL_FED_NAME = C_Spell.GetSpellName(19705)
-local HEARTY_WELL_FED_NAME = C_Spell.GetSpellName(462187)
-
--- RESTRICTED_BUFFS: Secret spellIds, skip in combat/M+
-local RESTRICTED_BUFFS = {
-    -- Flasks
-    { spellId = 1235110, category = "Flask" }, -- Flask of the Blood Knights
-    { spellId = 1235057, category = "Flask" }, -- Flask of Thalassian Resistance
-    { spellId = 1235111, category = "Flask" }, -- Flask of the Shattered Sun
-    { spellId = 1235108, category = "Flask" }, -- Flask of the Magisters
-    { spellId = 432021,  category = "Flask" }, -- Alchemical Chaos
-    { spellId = 431971,  category = "Flask" }, -- Flask of Tempered Aggression
-    { spellId = 431972,  category = "Flask" }, -- Flask of Tempered Swiftness
-    { spellId = 431974,  category = "Flask" }, -- Flask of Tempered Mastery
-    { spellId = 431973,  category = "Flask" }, -- Flask of Tempered Versatility
-
-    -- Spec-specific self buffs
-    {
-        spellId = 210126,
-        class = "MAGE",
-        specId = 62,
-        talentId = 205022,
-        buffType = "self",
-        onlySelf = true
-    }, -- Arcane Familiar
-}
-
--- Assassination talent that allows 2 lethal + 2 non-lethal
-local ASSA_DOUBLE_POISON_TALENT = 381801
-
--- Poison spell IDs for icon display
-local POISON_IDS = {
-    ATROPHIC = 381637,
-    NUMBING = 5761,
-    CRIPPLING = 3408,
-    AMPLIFYING = 381664,
-    DEADLY = 2823,
-    INSTANT = 315584,
-    WOUND = 8679,
-}
-
--- Spec ID to name mapping for each class
-local SPEC_ID_TO_NAME = {
-    -- Warrior
-    [71] = "Arms",
-    [72] = "Fury",
-    [73] = "Protection",
-    -- Paladin
-    [65] = "Holy",
-    [66] = "Protection",
-    [70] = "Retribution",
-    -- Druid
-    [102] = "Balance",
-    [103] = "Feral",
-    [104] = "Guardian",
-    [105] = "Restoration",
-    -- Priest
-    [256] = "Discipline",
-    [257] = "Holy",
-    [258] = "Shadow",
-    -- Evoker
-    [1467] = "Devastation",
-    [1468] = "Preservation",
-    [1473] = "Augmentation",
-}
-
--- Unit strings for group checking
 local UNIT_STRINGS = { raid = {}, party = {} }
 for i = 1, 40 do
     UNIT_STRINGS.raid[i] = "raid" .. i
@@ -152,29 +65,117 @@ for i = 1, 40 do
     end
 end
 
--- Module state
 local playerClass = nil
 local isThrottled = false
 local lastCheckTime = 0
 
--- Frame state
 local containerFrame = nil
-local stanceFrame = nil
-local stanceTextFrame = nil
 local iconPool = {}
 local activeIcons = {}
 local currentMissingBuffs = {}
 
--- Preview state
 local isPreviewActive = false
 
--- Check if player is in PvP instance (arena or battleground)
-local function IsInPvPInstance()
-    local _, instanceType = GetInstanceInfo()
-    return instanceType == "arena" or instanceType == "pvp"
+local targetedContainerFrame = nil
+local targetedIconPool = {}
+local targetedActiveIcons = {}
+local currentMissingTargetedBuffs = {}
+
+local groupSpecData = {}
+local groupClassesCache = {}
+
+local expirationTicker = nil
+local EXPIRATION_CHECK_INTERVAL = 3
+
+local groupMembersCache = {}
+local spellNameCache = {}
+local countStringCache = {}
+
+local safeMissingCache = {}
+local restrictedMissingCache = {}
+local targetedMissingCache = {}
+local selfMissingCache = {}
+local presenceMissingCache = {}
+local categorySatisfiedCache = {}
+local categoryExpiringCache = {}
+local categoryExpTimeCache = {}
+local groupSatisfiedCache = {}
+local groupMissingBuffCache = {}
+
+local checkContext = {
+    trackingMode = "personal",
+    groupSize = 0,
+    isInRaid = false,
+    inGroup = false,
+    canCrossFaction = false,
+    showOtherClass = true,
+    checkGroup = true,
+    units = nil,
+    maxIndex = 0,
+}
+
+local CheckForMissingBuffs
+local StopGlow
+
+local function GetCachedSpellName(spellId)
+    if not spellId then return nil end
+    local name = spellNameCache[spellId]
+    if name == nil then
+        name = C_Spell.GetSpellName(spellId) or false
+        spellNameCache[spellId] = name
+    end
+    return name or nil
 end
 
--- Load condition checker
+local cachedIsInPvP = false
+local cachedIsInInstance = false
+
+local function UpdateInstanceCache()
+    local _, instanceType = GetInstanceInfo()
+    cachedIsInPvP = instanceType == "arena" or instanceType == "pvp"
+    cachedIsInInstance = instanceType == "party" or instanceType == "raid" or instanceType == "scenario" or
+        instanceType == "delve"
+end
+
+local function IsInPvPInstance()
+    return cachedIsInPvP
+end
+
+local function IsInInstance()
+    return cachedIsInInstance
+end
+
+local function CanCrossFactionBuff()
+    return cachedIsInInstance
+end
+
+local function UpdateCheckContext()
+    UpdateInstanceCache()
+    checkContext.groupSize = GetNumGroupMembers()
+    checkContext.isInRaid = IsInRaid()
+    checkContext.inGroup = checkContext.groupSize > 0
+    checkContext.canCrossFaction = cachedIsInInstance
+    checkContext.trackingMode = MBUFFS.db and MBUFFS.db.TrackingMode or "personal"
+    checkContext.showOtherClass = true
+    checkContext.checkGroup = true
+    checkContext.units = checkContext.isInRaid and UNIT_STRINGS.raid or UNIT_STRINGS.party
+    checkContext.maxIndex = checkContext.isInRaid and checkContext.groupSize or (checkContext.groupSize - 1)
+end
+
+local playerFaction = nil
+local function GetPlayerFaction()
+    if not playerFaction then
+        playerFaction = UnitFactionGroup("player")
+    end
+    return playerFaction
+end
+
+local function IsSameFaction(unit)
+    if not unit or not UnitExists(unit) then return false end
+    local unitFaction = UnitFactionGroup(unit)
+    return unitFaction == GetPlayerFaction()
+end
+
 local function IsLoadConditionMet(loadCondition)
     if not loadCondition or loadCondition == "ALWAYS" then return true end
     local groupSize = GetNumGroupMembers()
@@ -191,48 +192,126 @@ local function IsLoadConditionMet(loadCondition)
         return not inGroup
     end
 
-    return true -- Default to true for unknown conditions
+    return true
 end
 
--- Small helpers to get spell info and texture
-local function IsSpellKnown(spellId)
-    return spellId and C_SpellBook.IsSpellKnown(spellId)
-end
-local function GetSpellTexture(spellId)
-    if spellId and spellId > 0 then
-        return C_Spell.GetSpellTexture(spellId)
+local function ShouldShowGlow(settings, isMissing, expirationTime)
+    if not settings then return true end
+
+    if settings.GlowMode == "never" then
+        return false
+    elseif settings.GlowMode == "always" then
+        return true
+    elseif settings.GlowMode == "expiration" then
+        if isMissing then
+            return false
+        end
+        if settings.ExpirationMins <= 0 or not expirationTime then
+            return false
+        end
+        local timeLeftMins = (expirationTime - GetTime()) / 60
+        return timeLeftMins <= settings.ExpirationMins
     end
-    return nil
+
+    return true
 end
 
--- Checker for valid units to track,
--- basically filter out units that cannot be affected and/or affect buff status
 local function IsValidTarget(unit)
     if not UnitExists(unit) then return false end
     if UnitIsDeadOrGhost(unit) then return false end
     if not UnitIsConnected(unit) then return false end
     if not UnitIsPlayer(unit) then return false end
     if not UnitCanAssist("player", unit) then return false end
-    -- Filter out units not in the same instance as the player, ty echo wizards for suggestion
-    local _, _, _, playerInstanceId = UnitPosition("player")
-    local _, _, _, unitInstanceId = UnitPosition(unit)
+    if not CanCrossFactionBuff() and not IsSameFaction(unit) then return false end
+    local playerInstanceId = select(4, UnitPosition("player"))
+    local unitInstanceId = select(4, UnitPosition(unit))
     if playerInstanceId and unitInstanceId and playerInstanceId ~= unitInstanceId then
         return false
     end
     return true
 end
 
--- Check player buff status using direct spellID lookup (combat-safe)
+local function GetGroupMembersByRole(targetType)
+    wipe(groupMembersCache)
+    if checkContext.groupSize == 0 then return groupMembersCache end
+
+    local units = checkContext.units
+    local maxIndex = checkContext.maxIndex
+
+    for i = 1, maxIndex do
+        local unit = units[i]
+        if IsValidTarget(unit) then
+            local role = UnitGroupRolesAssigned(unit)
+            if targetType == "any" or
+                (targetType == "tank" and role == "TANK") or
+                (targetType == "healer" and role == "HEALER") then
+                groupMembersCache[#groupMembersCache + 1] = unit
+            end
+        end
+    end
+    return groupMembersCache
+end
+
+local function CanPlayerBenefitFromBuff(buffKey)
+    if not buffKey then return true end
+    local statReq = RAID_BUFF_STAT_REQUIREMENT[buffKey]
+    if not statReq then return true end
+    local specId = NRSKNUI.MySpec.id
+    if not specId then return true end
+    local playerStat = SPEC_PRIMARY_STAT[specId]
+    if not playerStat then return true end
+    return playerStat == statReq
+end
+
+local function GetUnitSpecId(unit)
+    local unitName, unitRealm = UnitName(unit)
+    if not unitName then return nil end
+
+    local specId = groupSpecData[unitName]
+    if specId then return specId end
+
+    if unitRealm and unitRealm ~= "" then
+        local fullName = unitName .. "-" .. unitRealm
+        specId = groupSpecData[fullName]
+        if specId then return specId end
+    end
+
+    for storedName, storedSpecId in pairs(groupSpecData) do
+        local baseName = storedName:match("^([^-]+)")
+        if baseName == unitName then
+            return storedSpecId
+        end
+    end
+
+    return nil
+end
+
+local function CanUnitBenefitFromBuff(unit, buffKey)
+    if not buffKey then return true end
+    local statReq = RAID_BUFF_STAT_REQUIREMENT[buffKey]
+    if not statReq then return true end
+
+    local unitSpecId = GetUnitSpecId(unit)
+    if not unitSpecId then return false end
+
+    local unitStat = SPEC_PRIMARY_STAT[unitSpecId]
+    if not unitStat then return false end
+
+    return unitStat == statReq
+end
+
+---@param spellId number
+---@param extraSpellIds? number[]
+---@return boolean hasBuff
+---@return number? expirationTime
 local function PlayerHasBuff(spellId, extraSpellIds)
     if not spellId then return false, nil end
 
-    -- Direct spellID lookup - works for combat-safe spellIds even in tainted environments
     local auraData = C_UnitAuras.GetPlayerAuraBySpellID(spellId)
     if auraData then
         return true, auraData.expirationTime
     end
 
-    -- Check extra spell IDs if provided
     if extraSpellIds then
         for _, extraId in ipairs(extraSpellIds) do
             auraData = C_UnitAuras.GetPlayerAuraBySpellID(extraId)
@@ -245,12 +324,10 @@ local function PlayerHasBuff(spellId, extraSpellIds)
     return false, nil
 end
 
--- Check unit buff status using direct spell name lookup (combat-safe)
 local function UnitHasBuff(unit, spellId, extraSpellIds)
     if not unit or not IsValidTarget(unit) then return true end
 
-    -- Direct lookup by spell name - works for combat-safe spellIds even in tainted environments
-    local spellName = spellId and C_Spell.GetSpellName(spellId)
+    local spellName = GetCachedSpellName(spellId)
     if spellName then
         local auraData = C_UnitAuras.GetAuraDataBySpellName(unit, spellName, "HELPFUL")
         if auraData then
@@ -258,10 +335,9 @@ local function UnitHasBuff(unit, spellId, extraSpellIds)
         end
     end
 
-    -- Check extra spell IDs
     if extraSpellIds then
         for _, extraId in ipairs(extraSpellIds) do
-            local extraName = C_Spell.GetSpellName(extraId)
+            local extraName = GetCachedSpellName(extraId)
             if extraName then
                 local auraData = C_UnitAuras.GetAuraDataBySpellName(unit, extraName, "HELPFUL")
                 if auraData then
@@ -274,26 +350,16 @@ local function UnitHasBuff(unit, spellId, extraSpellIds)
     return false
 end
 
--- Check if we should track the buff at all
 local function ShouldTrackBuff(buff)
-    -- Class check
     if buff.class and buff.class ~= playerClass then return false end
 
-    -- Spec check
     if buff.specId then
-        local currentSpec = GetSpecialization()
-        if currentSpec then
-            local specId = GetSpecializationInfo(currentSpec)
-            if specId ~= buff.specId then return false end
-        else
-            return false
-        end
+        local currentSpecId = NRSKNUI.MySpec.id
+        if not currentSpecId or currentSpecId ~= buff.specId then return false end
     end
 
-    -- Talent check
-    if buff.talentId and not IsSpellKnown(buff.talentId) then return false end
+    if buff.talentId and not C_SpellBook.IsSpellKnown(buff.talentId) then return false end
 
-    -- User settings enabled check
     local dbKey = buff.dbKey or buff.category
     if dbKey and MBUFFS.db then
         local settings = MBUFFS.db.Consumables and MBUFFS.db.Consumables[dbKey]
@@ -306,49 +372,62 @@ local function ShouldTrackBuff(buff)
     return true
 end
 
--- Check buff status and return count info for raid buffs
-local function CheckBuffWithCount(buff)
+local function GetCountString(buffed, total)
+    local key = buffed * 100 + total
+    local cached = countStringCache[key]
+    if not cached then
+        cached = buffed .. "/" .. total
+        countStringCache[key] = cached
+    end
+    return cached
+end
+
+local function CheckBuffWithCount(buff, expirationMins)
     local result = {
         isMissing = false,
         needsReapply = false,
         buffedCount = 0,
         totalCount = 0,
         buff = buff,
+        expirationTime = nil,
     }
 
-    -- Player check
+    local playerCanBenefit = CanPlayerBenefitFromBuff(buff.key)
+
     local hasBuff, expTime = PlayerHasBuff(buff.spellId, buff.extraBuffSpellIds)
-    if hasBuff then
-        result.buffedCount = 1
-    else
-        result.isMissing = true
+    if playerCanBenefit then
+        if hasBuff then
+            result.buffedCount = 1
+            result.expirationTime = expTime
+        else
+            result.isMissing = true
+        end
     end
 
-    -- Reapply check
-    if expTime and expTime > 0 then
+    if expTime and expTime > 0 and expirationMins > 0 then
         local timeLeft = (expTime - GetTime()) / 60
-        if MBUFFS.db and MBUFFS.db.NotifyLowDuration and timeLeft <= MBUFFS.db.LowDurationThreshold then
+        if timeLeft <= expirationMins then
             result.needsReapply = true
         end
     end
 
-    -- Group check for raid buffs
     if buff.buffType == "raid" and not buff.onlySelf then
         local groupSize = GetNumGroupMembers()
         if groupSize > 0 then
-            result.totalCount = 1 -- Start with player
+            if playerCanBenefit then
+                result.totalCount = 1
+            end
 
             local units = IsInRaid() and UNIT_STRINGS.raid or UNIT_STRINGS.party
             local maxIndex = IsInRaid() and groupSize or (groupSize - 1)
 
             for i = 1, maxIndex do
                 local unit = units[i]
-                if IsValidTarget(unit) then
+                if IsValidTarget(unit) and CanUnitBenefitFromBuff(unit, buff.key) then
                     result.totalCount = result.totalCount + 1
                     if UnitHasBuff(unit, buff.spellId, buff.extraBuffSpellIds) then
                         result.buffedCount = result.buffedCount + 1
                     elseif not result.isMissing then
-                        -- Check range
                         if buff.ignoreRangeCheck or C_Spell.IsSpellInRange(buff.spellId, unit) then
                             result.isMissing = true
                         end
@@ -356,165 +435,291 @@ local function CheckBuffWithCount(buff)
                 end
             end
         else
-            result.totalCount = 1
+            if playerCanBenefit then
+                result.totalCount = 1
+            end
         end
     else
-        result.totalCount = 1
+        if playerCanBenefit then
+            result.totalCount = 1
+        end
     end
 
     return result
 end
 
--- Format display text for buffs
-local function GetBuffDisplayText(buff, checkResult, isOwnClassBuff)
+local function GetBuffDisplayText(buff, checkResult, showCount)
     if buff.text then return buff.text end
 
-    -- Raid buffs, show count if player is the class that provides this buff, feature requested by Sir
-    if buff.buffType == "raid" and isOwnClassBuff and checkResult and checkResult.totalCount > 1 then
-        return checkResult.buffedCount .. "/" .. checkResult.totalCount
+    if buff.buffType == "raid" and showCount and checkResult and checkResult.totalCount > 1 then
+        return GetCountString(checkResult.buffedCount, checkResult.totalCount)
     end
     return ""
 end
 
--- Get buff-providing classes present in the group and in the same instance as the player
-local function GetGroupBuffClasses()
-    local classesInGroup = {}
+local function RebuildGroupClassCache()
+    UpdateInstanceCache()
+    wipe(groupClassesCache)
+
+    if playerClass then
+        groupClassesCache[playerClass] = true
+    end
+
     local groupSize = GetNumGroupMembers()
-    local _, _, _, playerInstanceId = UnitPosition("player")
-
-    -- Solo we only check player's own class
     if groupSize == 0 then
-        if playerClass then
-            classesInGroup[playerClass] = true
-        end
-        return classesInGroup
+        wipe(groupSpecData)
+        return
     end
 
-    if IsInRaid() then
-        for i = 1, groupSize do
-            local unit = UNIT_STRINGS.raid[i]
-            if UnitExists(unit) and UnitIsConnected(unit) and not UnitIsDeadOrGhost(unit) then
-                local _, _, _, unitInstanceId = UnitPosition(unit)
-                if not playerInstanceId or not unitInstanceId or playerInstanceId == unitInstanceId then
-                    local _, class = UnitClass(unit)
-                    if class then
-                        classesInGroup[class] = true
-                    end
-                end
+    local currentMembers = {}
+    local units = IsInRaid() and UNIT_STRINGS.raid or UNIT_STRINGS.party
+    local maxIndex = IsInRaid() and groupSize or (groupSize - 1)
+    local canCrossFaction = cachedIsInInstance
+
+    for i = 1, maxIndex do
+        local unit = units[i]
+        if UnitExists(unit) then
+            local name = UnitName(unit)
+            if name then
+                currentMembers[name] = true
             end
-        end
-    else
-        if playerClass then
-            classesInGroup[playerClass] = true
-        end
-        for i = 1, groupSize - 1 do
-            local unit = UNIT_STRINGS.party[i]
-            if UnitExists(unit) and UnitIsConnected(unit) and not UnitIsDeadOrGhost(unit) then
-                local _, _, _, unitInstanceId = UnitPosition(unit)
-                if not playerInstanceId or not unitInstanceId or playerInstanceId == unitInstanceId then
-                    local _, class = UnitClass(unit)
-                    if class then
-                        classesInGroup[class] = true
-                    end
+            if canCrossFaction or IsSameFaction(unit) then
+                local _, unitClass = UnitClass(unit)
+                if unitClass then
+                    groupClassesCache[unitClass] = true
                 end
             end
         end
     end
 
-    return classesInGroup
+    for playerName in pairs(groupSpecData) do
+        if not currentMembers[playerName] then
+            groupSpecData[playerName] = nil
+        end
+    end
+
+    for playerName, specId in pairs(groupSpecData) do
+        if specId and specId > 0 then
+            local _, _, _, _, _, classFile = GetSpecializationInfoByID(specId)
+            if classFile and not groupClassesCache[classFile] then
+                local shouldAddClass = canCrossFaction
+                if not shouldAddClass then
+                    for i = 1, maxIndex do
+                        local unit = units[i]
+                        if UnitExists(unit) and UnitName(unit) == playerName and IsSameFaction(unit) then
+                            shouldAddClass = true
+                            break
+                        end
+                    end
+                end
+                if shouldAddClass then
+                    groupClassesCache[classFile] = true
+                end
+            end
+        end
+    end
 end
 
--- Check weapon enchant status
+local function OnLibSpecUpdate(specId, _, _, playerName)
+    if not playerName then return end
+
+    if specId and specId > 0 then
+        groupSpecData[playerName] = specId
+    else
+        groupSpecData[playerName] = nil
+    end
+
+    RebuildGroupClassCache()
+    CheckForMissingBuffs()
+end
+
 local function HasWeaponEnchant(slot)
-    local hasMain, _, _, _, hasOff = GetWeaponEnchantInfo()
-    local slotName = slot == "main" and "MAINHANDSLOT" or slot == "off" and "SECONDARYHANDSLOT"
-    if not slotName then return nil, nil, false end
+    local hasMain, mainExpMs, _, _, hasOff, offExpMs = GetWeaponEnchantInfo()
+
+    local slotName, hasEnchant, expMs
+    if slot == "main" then
+        slotName = "MAINHANDSLOT"
+        hasEnchant = hasMain
+        expMs = mainExpMs
+    elseif slot == "off" then
+        slotName = "SECONDARYHANDSLOT"
+        hasEnchant = hasOff
+        expMs = offExpMs
+    else
+        return nil, nil, false, nil
+    end
+
     local slotID = GetInventorySlotInfo(slotName)
     local itemLink = GetInventoryItemLink("player", slotID)
-    if not itemLink then return nil, nil, false end
+    if not itemLink then return nil, nil, false, nil end
 
-    local _, _, _, _, _, _, _, _, equipLoc = C_Item.GetItemInfo(itemLink)
-    if not equipLoc then return nil, nil, false end
+    local equipLoc = select(9, C_Item.GetItemInfo(itemLink))
+    if not equipLoc then return nil, nil, false, nil end
 
-    if equipLoc == "INVTYPE_SHIELD" or equipLoc == "INVTYPE_HOLDABLE" then return nil, nil, false end
+    if equipLoc == "INVTYPE_SHIELD" or equipLoc == "INVTYPE_HOLDABLE" then return nil, nil, false, nil end
 
-    local hasEnchant
-    if slot == "main" then
-        hasEnchant = hasMain
-    else
-        hasEnchant = hasOff
-    end
     local icon = GetInventoryItemTexture("player", slotID)
+    if not icon then return hasEnchant, nil, false, nil end
 
-    if not icon then return hasEnchant, nil, false end
-    return hasEnchant, icon, true
+    local expirationTime = nil
+    if hasEnchant and expMs and expMs > 0 then
+        expirationTime = GetTime() + (expMs / 1000)
+    end
+
+    return hasEnchant, icon, true, expirationTime
 end
 
--- Check buffs that blizzy made non secret so we can check these always
+local function CheckShamanLoad(class)
+    if class ~= "SHAMAN" then
+        return true
+    else
+        if NRSKNUI.MySpec.id == 262 and not C_SpellBook.IsSpellInSpellBook(318038) then return true end
+        if NRSKNUI.MySpec.id == 264 and not C_SpellBook.IsSpellInSpellBook(382021) then return true end
+    end
+    return false
+end
+
+local function ShouldShowBuffForPrimaryStat(buffKey)
+    if not buffKey then return true end
+    local statReq = RAID_BUFF_STAT_REQUIREMENT[buffKey]
+    if not statReq then return true end
+    local specId = NRSKNUI.MySpec.id
+    if not specId then return true end
+    local playerStat = SPEC_PRIMARY_STAT[specId]
+    if not playerStat then return true end
+    return playerStat == statReq
+end
+
 local function CheckSafeBuffs()
-    local missing = {}
-    if not MBUFFS.db then return missing end
+    wipe(safeMissingCache)
+    if not MBUFFS.db then return safeMissingCache end
     local consumablesDb = MBUFFS.db.Consumables or {}
-    local raidBuffsSettings = consumablesDb.RaidBuffs or {}
-    local raidBuffsEnabled = raidBuffsSettings.Enabled ~= false
-    local raidBuffsLoadMet = IsLoadConditionMet(raidBuffsSettings.LoadCondition)
-    local poisonSettings = consumablesDb.Poisons or {}
+    local raidBuffsDb = MBUFFS.db.RaidBuffs or {}
+    local selfBuffsDb = MBUFFS.db.SelfBuffs or {}
+    local poisonSettings = selfBuffsDb.Poisons
     local poisonsEnabled = poisonSettings.Enabled ~= false
     local poisonsLoadMet = IsLoadConditionMet(poisonSettings.LoadCondition)
 
-    -- Track which buff classes are in the group
-    local groupBuffClasses = GetGroupBuffClasses()
+    local showOtherClass = checkContext.showOtherClass
+    local checkGroup = checkContext.checkGroup
 
-    -- Poison tracking state
+    local groupBuffClasses = groupClassesCache
+    local isRogue = playerClass == "ROGUE"
+    local trackPoisons = isRogue and poisonsEnabled and poisonsLoadMet
+
     local lethalCount = 0
     local nonLethalCount = 0
-    local spec = GetSpecialization()
-    local specId = spec and GetSpecializationInfo(spec)
+    local specId = NRSKNUI.MySpec.id
     local isAssassination = specId == 259
-    local hasDoublePoisonTalent = isAssassination and IsSpellKnown(ASSA_DOUBLE_POISON_TALENT)
+    local hasDoublePoisonTalent = isAssassination and C_SpellBook.IsSpellKnown(ASSA_DOUBLE_POISON_TALENT)
     local requiredLethal = hasDoublePoisonTalent and 2 or 1
-    local requiredNonLethal = hasDoublePoisonTalent and 2 or 1
 
-    -- Count poisons player has
-    if playerClass == "ROGUE" and poisonsEnabled and poisonsLoadMet then
-        for _, buff in ipairs(SAFE_BUFFS) do
-            if buff.buffType == "poison" and PlayerHasBuff(buff.spellId) then
+    for _, buff in ipairs(SAFE_BUFFS) do
+        local buffType = buff.buffType
+
+        if buffType == "poison" then
+            if trackPoisons and PlayerHasBuff(buff.spellId) then
                 if buff.poisonType == "lethal" then
                     lethalCount = lethalCount + 1
                 else
                     nonLethalCount = nonLethalCount + 1
                 end
             end
-        end
-    end
-
-    -- Check raid buffs
-    for _, buff in ipairs(SAFE_BUFFS) do
-        if buff.buffType == "raid" and raidBuffsEnabled and raidBuffsLoadMet then
-            local isOwnClassBuff = buff.class == playerClass
-
-            if isOwnClassBuff then
-                -- Player can cast this buff
-                -- Shows count checker of total elligible units in the instance vs units that currently have buff, for example "5/20"
-                if IsSpellKnown(buff.spellId) then
-                    local result = CheckBuffWithCount(buff)
-                    if result.isMissing or result.needsReapply then
-                        local displayText = GetBuffDisplayText(buff, result, true)
-                        missing[#missing + 1] = {
-                            buff = buff,
-                            text = displayText,
-                            checkResult = result,
-                        }
+        elseif buffType == "raid" and buff.key then
+            local buffSettings = raidBuffsDb[buff.key] or {}
+            if buffSettings.Enabled ~= false and IsLoadConditionMet(buffSettings.LoadCondition) then
+                local isOwnClassBuff = buff.class == playerClass
+                if isOwnClassBuff then
+                    local spellToCheck = buff.castSpellId or buff.spellId
+                    if C_SpellBook.IsSpellKnown(spellToCheck) then
+                        local result
+                        if checkGroup then
+                            result = CheckBuffWithCount(buff, buffSettings.ExpirationMins)
+                        else
+                            local hasBuff, expTime = PlayerHasBuff(buff.spellId, buff.extraBuffSpellIds)
+                            result = {
+                                isMissing = not hasBuff,
+                                needsReapply = false,
+                                buffedCount = hasBuff and 1 or 0,
+                                totalCount = 1,
+                                buff = buff,
+                                expirationTime = expTime,
+                            }
+                            if expTime and expTime > 0 and buffSettings.ExpirationMins > 0 then
+                                local timeLeftMins = (expTime - GetTime()) / 60
+                                if timeLeftMins <= buffSettings.ExpirationMins then
+                                    result.needsReapply = true
+                                end
+                            end
+                        end
+                        if result.isMissing or result.needsReapply then
+                            local displayText = checkGroup and GetBuffDisplayText(buff, result, true) or ""
+                            local showGlow = ShouldShowGlow(buffSettings, result.isMissing, result.expirationTime)
+                            safeMissingCache[#safeMissingCache + 1] = {
+                                buff = buff,
+                                text = displayText,
+                                checkResult = result,
+                                showGlow = showGlow,
+                                glowSettings = buffSettings,
+                            }
+                        end
                     end
-                end
-            else
-                -- Buff from another class, only show if that class is in group and player themselves is missing it
-                if groupBuffClasses[buff.class] then
-                    local hasBuff = PlayerHasBuff(buff.spellId, buff.extraBuffSpellIds)
-                    if not hasBuff then
-                        missing[#missing + 1] = {
+                elseif showOtherClass and groupBuffClasses[buff.class] then
+                    local isRaidLeaderMode = checkContext.trackingMode == "all"
+                    if not isRaidLeaderMode and not ShouldShowBuffForPrimaryStat(buff.key) then
+                        -- Skip buffs that don't benefit this spec in personal mode
+                    elseif isRaidLeaderMode and checkGroup then
+                        local result = CheckBuffWithCount(buff, buffSettings.ExpirationMins)
+                        local isMissingFromGroup = result.buffedCount < result.totalCount
+                        if isMissingFromGroup or result.needsReapply then
+                            local displayText = GetBuffDisplayText(buff, result, true)
+                            local showGlow = ShouldShowGlow(buffSettings, isMissingFromGroup, result.expirationTime)
+                            safeMissingCache[#safeMissingCache + 1] = {
+                                buff = buff,
+                                text = displayText,
+                                checkResult = result,
+                                showGlow = showGlow,
+                                glowSettings = buffSettings,
+                            }
+                        end
+                    elseif not PlayerHasBuff(buff.spellId, buff.extraBuffSpellIds) then
+                        local showGlow = ShouldShowGlow(buffSettings, true, nil)
+                        safeMissingCache[#safeMissingCache + 1] = {
                             buff = buff,
                             text = "",
+                            showGlow = showGlow,
+                            glowSettings = buffSettings,
+                        }
+                    end
+                end
+            end
+        elseif buffType == "weaponEnchant" and ShouldTrackBuff(buff) then
+            local shamanLoad = CheckShamanLoad(playerClass)
+            if shamanLoad then
+                local hasEnchant, icon, hasItem, expirationTime = HasWeaponEnchant(buff.slot)
+                if hasItem then
+                    local enchantSettings = consumablesDb[buff.dbKey] or {}
+                    local isMissing = not hasEnchant
+                    local isExpiring = false
+
+                    if hasEnchant and expirationTime and enchantSettings.ExpirationMins and enchantSettings.ExpirationMins > 0 then
+                        local timeLeftMins = (expirationTime - GetTime()) / 60
+                        if timeLeftMins <= enchantSettings.ExpirationMins then
+                            isExpiring = true
+                        end
+                    end
+
+                    if isMissing or isExpiring then
+                        local showGlow = ShouldShowGlow(enchantSettings, isMissing, expirationTime)
+                        safeMissingCache[#safeMissingCache + 1] = {
+                            buff = {
+                                spellId = 0,
+                                text = buff.text,
+                                iconTexture = icon or WEAPON_ENCHANT_ICON,
+                            },
+                            text = buff.text,
+                            showGlow = showGlow,
+                            glowSettings = enchantSettings,
                         }
                     end
                 end
@@ -522,34 +727,29 @@ local function CheckSafeBuffs()
         end
     end
 
-    -- Check weapon enchants
-    for _, buff in ipairs(SAFE_BUFFS) do
-        if buff.buffType == "weaponEnchant" and ShouldTrackBuff(buff) then
-            local hasEnchant, icon, hasItem = HasWeaponEnchant(buff.slot)
-            if hasItem and not hasEnchant then
-                missing[#missing + 1] = {
-                    buff = {
-                        spellId = 0,
-                        text = buff.text,
-                        iconTexture = icon or WEAPON_ENCHANT_ICON,
-                    },
-                    text = buff.text,
-                }
-            end
-        end
-    end
-
-    -- Check rogue poisons
-    if playerClass == "ROGUE" and poisonsEnabled and poisonsLoadMet then
+    if trackPoisons then
         local lethalMissing = requiredLethal - lethalCount
-        local nonLethalMissing = requiredNonLethal - nonLethalCount
+        local showPoisonGlow = ShouldShowGlow(poisonSettings, true, nil)
+
+        local hasAtrophicTalent = C_SpellBook.IsSpellKnown(POISON_IDS.ATROPHIC)
+        local hasNumbingTalent = C_SpellBook.IsSpellKnown(POISON_IDS.NUMBING)
+        local primaryNonLethal = hasAtrophicTalent and POISON_IDS.ATROPHIC or
+            (hasNumbingTalent and POISON_IDS.NUMBING or nil)
+
+        local wantCrippling = isAssassination and hasDoublePoisonTalent and poisonSettings.EnableCrippling
+        local nonLethalRequired = 1
+        if isAssassination and hasDoublePoisonTalent and wantCrippling then
+            nonLethalRequired = 2
+        end
+        local nonLethalMissing = nonLethalRequired - nonLethalCount
 
         if lethalMissing > 0 then
             local lethalIcons = {}
             if isAssassination then
                 lethalIcons[1] = POISON_IDS.DEADLY
                 if hasDoublePoisonTalent then
-                    lethalIcons[2] = IsSpellKnown(POISON_IDS.AMPLIFYING) and POISON_IDS.AMPLIFYING or POISON_IDS.INSTANT
+                    lethalIcons[2] = C_SpellBook.IsSpellKnown(POISON_IDS.AMPLIFYING) and POISON_IDS.AMPLIFYING or
+                        POISON_IDS.INSTANT
                 end
             else
                 lethalIcons[1] = POISON_IDS.INSTANT
@@ -557,127 +757,402 @@ local function CheckSafeBuffs()
 
             for i = 1, lethalMissing do
                 local iconSpellId = lethalIcons[i] or lethalIcons[1]
-                missing[#missing + 1] = {
+                safeMissingCache[#safeMissingCache + 1] = {
                     buff = { spellId = iconSpellId, text = "" },
                     text = "",
+                    showGlow = showPoisonGlow,
+                    glowSettings = poisonSettings,
                 }
             end
         end
 
-        if nonLethalMissing > 0 then
+        if nonLethalMissing > 0 and primaryNonLethal then
             local nonLethalIcons = {}
-            nonLethalIcons[1] = POISON_IDS.ATROPHIC
-            if hasDoublePoisonTalent then
+            nonLethalIcons[1] = primaryNonLethal
+            if wantCrippling then
                 nonLethalIcons[2] = POISON_IDS.CRIPPLING
             end
 
             for i = 1, nonLethalMissing do
                 local iconSpellId = nonLethalIcons[i] or nonLethalIcons[1]
-                missing[#missing + 1] = {
+                safeMissingCache[#safeMissingCache + 1] = {
                     buff = { spellId = iconSpellId, text = "" },
                     text = "",
+                    showGlow = showPoisonGlow,
+                    glowSettings = poisonSettings,
                 }
             end
         end
     end
 
-    return missing
+    return safeMissingCache
 end
 
--- Check for food buff by name
 local function PlayerHasFoodBuff()
     local hasBuff = false
+    local expirationTime = nil
 
     AuraUtil.ForEachAura("player", "HELPFUL", nil, function(auraInfo)
         if not auraInfo or not auraInfo.name then return false end
-        -- Skip secret values - cannot compare tainted strings
         if issecretvalue(auraInfo.name) then return false end
 
         if auraInfo.name == WELL_FED_NAME or auraInfo.name == HEARTY_WELL_FED_NAME then
             hasBuff = true
+            expirationTime = auraInfo.expirationTime
             return true
         end
         return false
     end, true)
 
-    return hasBuff
+    return hasBuff, expirationTime
 end
 
--- Check buffs that are still secret in combat/m+/encounters
-local function CheckRestrictedBuffs()
-    local missing = {}
-    if not MBUFFS.db then return missing end
-    -- Skip in combat, M+, or active encounter (encounter triggers secret env before combat)
-    if InCombatLockdown() or C_ChallengeMode.IsChallengeModeActive() or isEncounterInProgress then return missing end
-    local consumablesDb = MBUFFS.db.Consumables or {}
-    local categorySatisfied = {}
+local function PlayerHasItemInBags(itemId)
+    if not itemId then return false end
+    local count = C_Item.GetItemCount(itemId, false, false, false)
+    return count and count > 0
+end
 
-    -- Check food by name
+local function CheckRestrictedBuffs()
+    wipe(restrictedMissingCache)
+    wipe(categorySatisfiedCache)
+    wipe(categoryExpiringCache)
+    wipe(categoryExpTimeCache)
+    if not MBUFFS.db then return restrictedMissingCache end
+    if InCombatLockdown() or C_ChallengeMode.IsChallengeModeActive() or isEncounterInProgress then
+        return restrictedMissingCache
+    end
+    if UnitLevel("player") < GetMaxLevelForLatestExpansion() then
+        return restrictedMissingCache
+    end
+
+    local consumablesDb = MBUFFS.db.Consumables or {}
+
     local foodSettings = consumablesDb.Food or {}
-    if foodSettings.Enabled ~= false and IsLoadConditionMet(foodSettings.LoadCondition) then
-        local hasFood = PlayerHasFoodBuff()
-        if hasFood then
-            categorySatisfied["Food"] = true
+    local trackFood = foodSettings.Enabled ~= false and IsLoadConditionMet(foodSettings.LoadCondition)
+
+    if trackFood then
+        local hasFoodBuff, foodExpTime = PlayerHasFoodBuff()
+        if hasFoodBuff then
+            categorySatisfiedCache["Food"] = true
+            categoryExpTimeCache["Food"] = foodExpTime
+
+            if foodSettings.ExpirationMins > 0 and foodExpTime and foodExpTime > 0 then
+                local timeLeftMins = (foodExpTime - GetTime()) / 60
+                if timeLeftMins <= foodSettings.ExpirationMins then
+                    categoryExpiringCache["Food"] = true
+                end
+            end
         end
     end
 
-    -- Check flask and self buffs
     for _, buff in ipairs(RESTRICTED_BUFFS) do
         if ShouldTrackBuff(buff) then
             if buff.category then
-                -- Flask category
-                if not categorySatisfied[buff.category] then
-                    if PlayerHasBuff(buff.spellId, buff.extraBuffSpellIds) then
-                        categorySatisfied[buff.category] = true
+                if not categorySatisfiedCache[buff.category] then
+                    local hasBuff, expTime = PlayerHasBuff(buff.spellId, buff.extraBuffSpellIds)
+                    if hasBuff then
+                        categorySatisfiedCache[buff.category] = true
+                        categoryExpTimeCache[buff.category] = expTime
+
+                        local catSettings = consumablesDb[buff.category]
+                        if catSettings.ExpirationMins > 0 and expTime and expTime > 0 then
+                            local timeLeftMins = (expTime - GetTime()) / 60
+                            if timeLeftMins <= catSettings.ExpirationMins then
+                                categoryExpiringCache[buff.category] = true
+                            end
+                        end
                     end
                 end
             elseif buff.buffType == "self" then
-                -- Self buff, like Arcane Familiar
-                local hasBuff = PlayerHasBuff(buff.spellId, buff.extraBuffSpellIds)
-                if not hasBuff then
-                    missing[#missing + 1] = {
+                if not PlayerHasBuff(buff.spellId, buff.extraBuffSpellIds) then
+                    restrictedMissingCache[#restrictedMissingCache + 1] = {
                         buff = buff,
                         text = "",
+                        showGlow = true,
+                        glowSettings = {},
                     }
                 end
             end
         end
     end
 
-    -- Check if food is missing
-    if foodSettings.Enabled ~= false and IsLoadConditionMet(foodSettings.LoadCondition) then
-        if not categorySatisfied["Food"] then
-            missing[#missing + 1] = {
+    if trackFood then
+        local isFoodMissing = not categorySatisfiedCache["Food"]
+        local isFoodExpiring = categoryExpiringCache["Food"]
+
+        if isFoodMissing or isFoodExpiring then
+            local showGlow = ShouldShowGlow(foodSettings, isFoodMissing, categoryExpTimeCache["Food"])
+            restrictedMissingCache[#restrictedMissingCache + 1] = {
                 buff = {
                     spellId = 19705,
                     text = "",
                 },
                 text = "",
+                showGlow = showGlow,
+                glowSettings = foodSettings,
             }
         end
     end
 
-    -- Create missing entries
     local categorySeen = {}
     for _, buff in ipairs(RESTRICTED_BUFFS) do
         if buff.category and ShouldTrackBuff(buff) then
-            if not categorySatisfied[buff.category] and not categorySeen[buff.category] then
-                categorySeen[buff.category] = true
-                missing[#missing + 1] = {
-                    buff = {
-                        spellId = buff.spellId,
+            local isMissing = not categorySatisfiedCache[buff.category]
+            local isExpiring = categoryExpiringCache[buff.category]
+
+            if (isMissing or isExpiring) and not categorySeen[buff.category] then
+                if buff.itemId and not PlayerHasItemInBags(buff.itemId) then
+                    -- Skip if item required but not in bags
+                else
+                    categorySeen[buff.category] = true
+                    local catSettings = consumablesDb[buff.category] or {}
+                    local showGlow = ShouldShowGlow(catSettings, isMissing, categoryExpTimeCache[buff.category])
+                    restrictedMissingCache[#restrictedMissingCache + 1] = {
+                        buff = {
+                            spellId = buff.spellId,
+                            text = "",
+                        },
                         text = "",
-                    },
-                    text = "",
-                }
+                        showGlow = showGlow,
+                        glowSettings = catSettings,
+                    }
+                end
             end
         end
     end
 
-    return missing
+    return restrictedMissingCache
 end
 
--- General buff icon creation and handling
+local function CheckTargetedBuffs()
+    wipe(targetedMissingCache)
+    if not MBUFFS.db then return targetedMissingCache end
+
+    local targetedSettings = MBUFFS.db.TargetedBuffs
+    if not targetedSettings or targetedSettings.Enabled == false then return targetedMissingCache end
+
+    local targetedBuffsDb = MBUFFS.db.TargetedBuffSettings or {}
+    local currentSpecId = NRSKNUI.MySpec.id
+    local inGroup = checkContext.groupSize > 0
+
+    for _, buff in ipairs(TARGETED_BUFFS) do
+        if buff.class == playerClass and buff.key then
+            if not inGroup and not buff.includeSelf then
+                -- Skip buffs that require group targets when solo
+            else
+                local buffSettings = targetedBuffsDb[buff.key] or {}
+                local specMatch = not buff.specId or currentSpecId == buff.specId
+                local talentKnown = not buff.talentId or C_SpellBook.IsSpellKnown(buff.talentId)
+                local spellKnown = C_SpellBook.IsSpellKnown(buff.spellId)
+                local excludedByTalent = buff.excludeIfTalent and C_SpellBook.IsSpellKnown(buff.excludeIfTalent)
+
+                if buffSettings.Enabled ~= false and specMatch and talentKnown and spellKnown and not excludedByTalent then
+                    local buffedCount = 0
+                    local targetCount = 0
+                    local playerIncluded = false
+
+                    if inGroup then
+                        local targets = GetGroupMembersByRole(buff.targetType)
+                        targetCount = #targets
+
+                        for _, unit in ipairs(targets) do
+                            if UnitIsUnit(unit, "player") then
+                                playerIncluded = true
+                            end
+                            if buff.excludeSelf and UnitIsUnit(unit, "player") then
+                                targetCount = targetCount - 1
+                            elseif UnitHasBuff(unit, buff.spellId) then
+                                buffedCount = buffedCount + 1
+                            end
+                        end
+                    end
+
+                    if buff.includeSelf and not playerIncluded then
+                        targetCount = targetCount + 1
+                        if PlayerHasBuff(buff.spellId) then
+                            buffedCount = buffedCount + 1
+                        end
+                    end
+
+                    local requiredTargets = buff.maxTargets
+                    if targetCount < requiredTargets then
+                        requiredTargets = targetCount
+                    end
+
+                    if buffedCount < requiredTargets and requiredTargets > 0 then
+                        targetedMissingCache[#targetedMissingCache + 1] = {
+                            buff = buff,
+                            text = "",
+                            showGlow = true,
+                            glowSettings = buffSettings,
+                        }
+                    end
+                end
+            end
+        end
+    end
+
+    return targetedMissingCache
+end
+
+local function HasWeaponImbue(enchantId)
+    if not enchantId then return false end
+    local _, _, _, mainEnchantId, _, _, _, offEnchantId = GetWeaponEnchantInfo()
+    return mainEnchantId == enchantId or offEnchantId == enchantId
+end
+
+local ELEMENTAL_ORBIT_TALENT = Data.ELEMENTAL_ORBIT_TALENT
+local EARTH_SHIELD_SELF_BUFF = Data.EARTH_SHIELD_SELF_BUFF
+
+local function CheckSelfBuffs()
+    wipe(selfMissingCache)
+    wipe(groupSatisfiedCache)
+    wipe(groupMissingBuffCache)
+    if not MBUFFS.db then return selfMissingCache end
+
+    local selfBuffsDb = MBUFFS.db.SelfBuffs or {}
+    local currentSpecId = NRSKNUI.MySpec.id
+
+    local hasElementalOrbit = playerClass == "SHAMAN" and C_SpellBook.IsSpellKnown(ELEMENTAL_ORBIT_TALENT)
+
+    for _, buff in ipairs(SELF_BUFFS) do
+        if buff.class == playerClass and buff.key then
+            local buffSettings = selfBuffsDb[buff.key] or {}
+            local specMatch = not buff.specId or currentSpecId == buff.specId
+            local talentKnown = not buff.talentId or C_SpellBook.IsSpellKnown(buff.talentId)
+            local spellKnown = C_SpellBook.IsSpellKnown(buff.spellId)
+            local spellCast = C_SpellBook.IsSpellKnown(buff.castSpellId)
+
+            if buffSettings.Enabled ~= false and IsLoadConditionMet(buffSettings.LoadCondition) and specMatch and talentKnown and spellKnown or spellCast then
+                local hasBuff = false
+
+                if buff.enchantId then
+                    hasBuff = HasWeaponImbue(buff.enchantId)
+                elseif buff.groupId == "ShamanShield" and buff.key == "EarthShieldSelf" and hasElementalOrbit then
+                    hasBuff = PlayerHasBuff(EARTH_SHIELD_SELF_BUFF)
+                else
+                    hasBuff = PlayerHasBuff(buff.spellId)
+                end
+
+                if buff.groupId then
+                    if buff.groupId == "ShamanShield" and hasElementalOrbit then
+                        local isEarthShield = buff.key == "EarthShieldSelf"
+                        local isOtherShield = buff.key == "LightningShield" or buff.key == "WaterShield"
+
+                        if isEarthShield then
+                            if hasBuff then
+                                groupSatisfiedCache["ShamanShieldEO_ES"] = true
+                            else
+                                groupMissingBuffCache["ShamanShieldEO_ES"] = { buff = buff, settings = buffSettings }
+                            end
+                        elseif isOtherShield then
+                            if not groupSatisfiedCache["ShamanShieldEO_Other"] then
+                                if hasBuff then
+                                    groupSatisfiedCache["ShamanShieldEO_Other"] = true
+                                elseif not groupMissingBuffCache["ShamanShieldEO_Other"] then
+                                    groupMissingBuffCache["ShamanShieldEO_Other"] = {
+                                        buff = buff,
+                                        settings =
+                                            buffSettings
+                                    }
+                                end
+                            end
+                        end
+                    else
+                        if not groupSatisfiedCache[buff.groupId] then
+                            if hasBuff then
+                                groupSatisfiedCache[buff.groupId] = true
+                            elseif not groupMissingBuffCache[buff.groupId] then
+                                groupMissingBuffCache[buff.groupId] = { buff = buff, settings = buffSettings }
+                            end
+                        end
+                    end
+                elseif not hasBuff then
+                    local showGlow = ShouldShowGlow(buffSettings, true, nil)
+                    selfMissingCache[#selfMissingCache + 1] = {
+                        buff = buff,
+                        text = "",
+                        showGlow = showGlow,
+                        glowSettings = buffSettings,
+                    }
+                end
+            end
+        end
+    end
+
+    for groupId, data in pairs(groupMissingBuffCache) do
+        if not groupSatisfiedCache[groupId] then
+            local showGlow = ShouldShowGlow(data.settings, true, nil)
+            selfMissingCache[#selfMissingCache + 1] = {
+                buff = data.buff,
+                text = "",
+                showGlow = showGlow,
+                glowSettings = data.settings,
+            }
+        end
+    end
+
+    return selfMissingCache
+end
+
+local function CheckPresenceBuffs()
+    wipe(presenceMissingCache)
+    if not MBUFFS.db then return presenceMissingCache end
+
+    if not checkContext.isInRaid then return presenceMissingCache end
+    if checkContext.trackingMode == "personal" then return presenceMissingCache end
+
+    local presenceBuffsDb = MBUFFS.db.PresenceBuffs or {}
+    local showOtherClass = checkContext.showOtherClass
+    local checkGroup = checkContext.checkGroup
+
+    local units = checkContext.units
+    local maxIndex = checkContext.maxIndex
+
+    for _, buff in ipairs(PRESENCE_BUFFS) do
+        local isOwnClassBuff = buff.providerClass == playerClass
+        local shouldTrack = isOwnClassBuff or (showOtherClass and groupClassesCache[buff.providerClass])
+
+        if buff.key and shouldTrack then
+            local buffSettings = presenceBuffsDb[buff.key] or {}
+            local buffEnabled = buffSettings.Enabled ~= false
+
+            if buffEnabled then
+                local hasBuff = false
+
+                if buff.checkAnyGroupMember and checkGroup then
+                    for i = 1, maxIndex do
+                        local unit = units[i]
+                        if IsValidTarget(unit) and UnitHasBuff(unit, buff.spellId) then
+                            hasBuff = true
+                            break
+                        end
+                    end
+
+                    if not hasBuff then
+                        hasBuff = PlayerHasBuff(buff.spellId)
+                    end
+                else
+                    hasBuff = PlayerHasBuff(buff.spellId)
+                end
+
+                if not hasBuff then
+                    local showGlow = ShouldShowGlow(buffSettings, true, nil)
+                    presenceMissingCache[#presenceMissingCache + 1] = {
+                        buff = buff,
+                        text = "",
+                        showGlow = showGlow,
+                        glowSettings = buffSettings,
+                    }
+                end
+            end
+        end
+    end
+
+    return presenceMissingCache
+end
+
 local function CreateIcon()
     local raidDb = MBUFFS.db.RaidBuffDisplay
     local iconFrame = NRSKNUI:CreateIconFrame(containerFrame, raidDb.IconSize)
@@ -703,6 +1178,7 @@ local function AcquireIcon()
 end
 
 local function ReleaseIcon(icon)
+    StopGlow(icon)
     icon.inUse = false
     icon:Hide()
     icon:ClearAllPoints()
@@ -715,7 +1191,6 @@ local function ReleaseAllIcons()
     wipe(activeIcons)
 end
 
--- Container for general buff icons
 local function CreateContainerFrame()
     if containerFrame then return end
     local raidDb = MBUFFS.db.RaidBuffDisplay
@@ -725,215 +1200,226 @@ local function CreateContainerFrame()
     containerFrame:Hide()
 end
 
--- Warrior stance spell IDs
-local WARRIOR_STANCE_SPELLS = {
-    [386164] = true, -- Battle Stance
-    [386196] = true, -- Berserker Stance
-    [386208] = true, -- Defensive Stance
-}
-local STANCE_TIMER_DURATION = 3
+local function CreateTargetedContainerFrame()
+    if targetedContainerFrame then return end
+    local targetedDb = MBUFFS.db.TargetedBuffDisplay
+    targetedContainerFrame = CreateFrame("Frame", "NRSKNUI_TargetedBuffContainer", UIParent)
+    targetedContainerFrame:SetSize(400, targetedDb.IconSize)
+    NRSKNUI:ApplyFramePosition(targetedContainerFrame, targetedDb.Position, targetedDb)
+    targetedContainerFrame:Hide()
+end
 
--- Stance timer state
-local stanceTimerHandle = nil
-local stanceTimerActive = false
+local function CreateTargetedIcon()
+    local targetedDb = MBUFFS.db.TargetedBuffDisplay
+    local iconFrame = NRSKNUI:CreateIconFrame(targetedContainerFrame, targetedDb.IconSize)
+    iconFrame:Hide()
+    return iconFrame
+end
 
--- Stance icon creation
-local function CreateStanceFrame()
-    if stanceFrame then return end
-    local stanceDb = MBUFFS.db.StanceDisplay
-
-    stanceFrame = NRSKNUI:CreateIconFrame(UIParent, stanceDb.IconSize, {
-        name = "NRSKNUI_MissingStanceIcon",
-    })
-
-    -- Position text above the icon
-    stanceFrame.text:ClearAllPoints()
-    stanceFrame.text:SetPoint("BOTTOM", stanceFrame, "TOP", 1, 4)
-
-    -- Create cooldown frame for stance timer
-    local cooldown = CreateFrame("Cooldown", nil, stanceFrame, "CooldownFrameTemplate")
-    cooldown:SetAllPoints(stanceFrame)
-    cooldown:SetFrameLevel(stanceFrame:GetFrameLevel() + 1)
-    cooldown:SetDrawEdge(false)
-    cooldown:SetDrawBling(false)
-    cooldown:SetSwipeColor(0, 0, 0, 0.6)
-    cooldown:SetReverse(true)
-    cooldown:SetHideCountdownNumbers(false)
-
-    -- Style cooldown text
-    ---@type FontString
-    local cdText = cooldown:GetRegions()
-    if cdText and cdText.SetFont then
-        cdText:SetFont(NRSKNUI.FONT or STANDARD_TEXT_FONT, stanceDb.IconSize * 0.5, "OUTLINE")
-        cdText:SetShadowColor(0, 0, 0, 0)
-        cdText:SetShadowOffset(0, 0)
-        cdText:ClearAllPoints()
-        cdText:SetPoint("CENTER", stanceFrame, "CENTER", 1, 0)
+local function AcquireTargetedIcon()
+    for _, icon in ipairs(targetedIconPool) do
+        if not icon.inUse then
+            icon.inUse = true
+            return icon
+        end
     end
 
-    -- Store for later use
-    stanceFrame.cooldown = cooldown
-
-    NRSKNUI:ApplyFramePosition(stanceFrame, stanceDb.Position, stanceDb)
-    NRSKNUI:ApplyFontToText(stanceFrame.text, stanceDb.FontFace, stanceDb.FontSize, stanceDb.FontOutline, stanceDb.FontShadow)
-    stanceFrame.text:SetTextColor(1, 1, 1, 1)
-    stanceFrame:Hide()
+    local newIcon = CreateTargetedIcon()
+    newIcon.inUse = true
+    targetedIconPool[#targetedIconPool + 1] = newIcon
+    return newIcon
 end
 
--- Stance text frame
-local function CreateStanceTextFrame()
-    if stanceTextFrame then return end
-    local textDb = MBUFFS.db.StanceText
-
-    -- Create frame using helper
-    stanceTextFrame = NRSKNUI:CreateTextFrame(UIParent, 200, 30, {
-        name = "NRSKNUI_StanceTextDisplay",
-    })
-
-    -- Apply position and font settings
-    NRSKNUI:ApplyFramePosition(stanceTextFrame, textDb.Position, textDb)
-    NRSKNUI:ApplyFontToText(stanceTextFrame.text, textDb.FontFace, textDb.FontSize, textDb.FontOutline, textDb.FontShadow)
-
-    -- Text alignment based on anchor point
-    local textPoint = NRSKNUI:GetTextJustifyFromAnchor(textDb.Position.AnchorFrom)
-    local textJustify = NRSKNUI:GetTextJustifyFromAnchor(textDb.Position.AnchorFrom)
-    stanceTextFrame.text:ClearAllPoints()
-    stanceTextFrame.text:SetPoint(textPoint, stanceTextFrame, textPoint, 0, 0)
-    stanceTextFrame.text:SetJustifyH(textJustify)
-    stanceTextFrame.text:SetTextColor(1, 1, 1, 1)
-
-    stanceTextFrame:Hide()
+local function ReleaseTargetedIcon(icon)
+    StopGlow(icon)
+    icon.inUse = false
+    icon:Hide()
+    icon:ClearAllPoints()
 end
 
--- Show the stance icon
-local function ShowStanceIcon(spellId, reverseIcon, currentSpellId)
-    if not stanceFrame then CreateStanceFrame() end
-    local stanceDb = MBUFFS.db.StanceDisplay
-    if stanceFrame then
-        -- Apply texture settings
-        local displaySpellId = (reverseIcon and currentSpellId) and currentSpellId or spellId
-        local texture = GetSpellTexture(displaySpellId)
-        stanceFrame.icon:SetTexture(texture)
-
-        -- Apply Font Settings
-        NRSKNUI:ApplyFontToText(stanceFrame.text, stanceDb.FontFace, stanceDb.FontSize, stanceDb.FontOutline, stanceDb.FontShadow)
-        stanceFrame.text:SetText(reverseIcon and "" or MISSING_TEXT)
-
-        -- Apply icon size settings
-        stanceFrame:SetSize(stanceDb.IconSize, stanceDb.IconSize)
-        stanceFrame.icon:SetSize(stanceDb.IconSize, stanceDb.IconSize)
-
-        -- Apply position with custom anchor frame
-        NRSKNUI:ApplyFramePosition(stanceFrame, stanceDb.Position, stanceDb)
-
-        -- Show frame
-        stanceFrame:Show()
+local function ReleaseAllTargetedIcons()
+    for _, icon in ipairs(targetedActiveIcons) do
+        ReleaseTargetedIcon(icon)
     end
+    wipe(targetedActiveIcons)
 end
 
--- Stance text display functions
-local function UpdateStanceTextDisplay()
-    if not MBUFFS.db then return end
-    local textDb = MBUFFS.db.StanceText
+local function StopAllGlowTypes(iconFrame)
+    if not LCG or not iconFrame then return end
+    LCG.PixelGlow_Stop(iconFrame)
+    LCG.AutoCastGlow_Stop(iconFrame)
+    LCG.ButtonGlow_Stop(iconFrame)
+end
 
-    -- Check if stance text is enabled
-    if not textDb.Enabled then
-        if stanceTextFrame then stanceTextFrame:Hide() end
+StopGlow = function(iconFrame)
+    if not iconFrame then return end
+    StopAllGlowTypes(iconFrame)
+    iconFrame.glowActive = false
+    iconFrame.glowType = nil
+end
+
+local function StartGlow(iconFrame, glowSettings)
+    if not LCG or not iconFrame or not glowSettings then return end
+
+    if glowSettings.GlowEnabled == false then
+        if iconFrame.glowActive then
+            StopGlow(iconFrame)
+        end
         return
     end
 
-    -- Only show for warrior/paladin
-    if playerClass ~= "WARRIOR" and playerClass ~= "PALADIN" then
-        if stanceTextFrame then stanceTextFrame:Hide() end
-        return
+    local glowType = glowSettings.GlowType
+    if iconFrame.glowActive and iconFrame.glowType and iconFrame.glowType ~= glowType then
+        StopAllGlowTypes(iconFrame)
     end
 
-    -- Create frame if needed
-    if not stanceTextFrame then CreateStanceTextFrame() end
-
-    -- Get current form/stance
-    local currentForm = GetShapeshiftForm()
-    local currentSpellId = nil
-
-    if currentForm > 0 then
-        local _, _, _, formSpellId = GetShapeshiftFormInfo(currentForm)
-        currentSpellId = formSpellId
+    if glowType == "pixel" then
+        LCG.PixelGlow_Start(iconFrame, glowSettings.GlowColor, glowSettings.GlowLines, glowSettings.GlowFrequency,
+            glowSettings.GlowLength, glowSettings.GlowThickness, 0, 0, glowSettings.GlowBorder, nil)
+    elseif glowType == "autocast" then
+        LCG.AutoCastGlow_Start(iconFrame, glowSettings.GlowColor, glowSettings.GlowLines, glowSettings.GlowFrequency,
+            glowSettings.GlowScale, 1, 1, nil)
+    elseif glowType == "button" then
+        LCG.ButtonGlow_Start(iconFrame, glowSettings.GlowColor, glowSettings.GlowFrequency)
+    elseif glowType == "proc" then
+        LCG.ProcGlow_Start(iconFrame, {
+            color = glowSettings.GlowColor,
+            startAnim = glowSettings.GlowStartAnim ~= false,
+            duration = glowSettings.GlowDuration or 1
+        })
     end
 
-    -- For paladin, check auras via buff
-    if playerClass == "PALADIN" then
-        local paladinAuras = { 465, 317920, 32223 }
-        for _, auraId in ipairs(paladinAuras) do
-            if PlayerHasBuff(auraId) then
-                currentSpellId = auraId
-                break
-            end
-        end
-    end
-    if stanceTextFrame then
-        -- No stance active
-        if not currentSpellId then
-            stanceTextFrame:Hide()
-            return
-        end
-
-        -- Get settings for this stance
-        local classData = textDb[playerClass]
-        if not classData then
-            stanceTextFrame:Hide()
-            return
-        end
-
-        local stanceKey = tostring(currentSpellId)
-        local stanceSettings = classData[stanceKey]
-
-        if not stanceSettings or not stanceSettings.Enabled then
-            stanceTextFrame:Hide()
-            return
-        end
-
-        -- Update text and color
-        local text = stanceSettings.Text or "Stance"
-        local color = stanceSettings.Color or { 1, 1, 1, 1 }
-
-        stanceTextFrame.text:SetText(text)
-        stanceTextFrame.text:SetTextColor(color[1], color[2], color[3], color[4] or 1)
-
-        -- Update font
-        NRSKNUI:ApplyFontToText(stanceTextFrame.text, textDb.FontFace, textDb.FontSize, textDb.FontOutline, textDb.FontShadow)
-
-        -- Update position
-        NRSKNUI:ApplyFramePosition(stanceTextFrame, textDb.Position, textDb)
-
-        -- Update text alignment based on anchor point
-        local textPoint = NRSKNUI:GetTextJustifyFromAnchor(textDb.Position.AnchorFrom)
-        local textJustify = NRSKNUI:GetTextJustifyFromAnchor(textDb.Position.AnchorFrom)
-        stanceTextFrame.text:ClearAllPoints()
-        stanceTextFrame.text:SetPoint(textPoint, stanceTextFrame, textPoint, 0, 0)
-        stanceTextFrame.text:SetJustifyH(textJustify)
-        stanceTextFrame:Show()
-    end
+    iconFrame.glowActive = true
+    iconFrame.glowType = glowType
 end
 
--- Update icon texture, font and size
-local function UpdateIconAppearance(iconFrame, buff, text)
-    -- Apply texture settings
-    local texture = GetSpellTexture(buff.spellId)
+local function UpdateTargetedIconAppearance(iconFrame, buff, showGlow, glowSettings)
+    local texture = C_Spell.GetSpellTexture(buff.spellId)
     if not texture then texture = buff.iconTexture or WEAPON_ENCHANT_ICON end
     iconFrame.icon:SetTexture(texture)
 
-    -- Apply font settings
-    local raidDb = MBUFFS.db.RaidBuffDisplay
-    NRSKNUI:ApplyFontToText(iconFrame.text, raidDb.FontFace, raidDb.FontSize, raidDb.FontOutline, raidDb.FontShadow)
-    iconFrame.text:SetText(text or buff.text or GENERALBUFF_TEXT)
-
-    -- Apply size settings
-    iconFrame:SetSize(MBUFFS.db.RaidBuffDisplay.IconSize, MBUFFS.db.RaidBuffDisplay.IconSize)
+    local targetedDb = MBUFFS.db.TargetedBuffDisplay
+    iconFrame:SetSize(targetedDb.IconSize, targetedDb.IconSize)
     iconFrame.icon:SetAllPoints(iconFrame)
+
+    if showGlow then
+        StartGlow(iconFrame, glowSettings)
+    else
+        StopGlow(iconFrame)
+    end
 end
 
--- Icon arranger, uses center horizontal layout
--- TODO: Maybe add left and right layout?
+local function ArrangeTargetedIcons()
+    if not targetedContainerFrame then return end
+    local targetedDb = MBUFFS.db.TargetedBuffDisplay or {}
+    local count = #targetedActiveIcons
+
+    if count == 0 then
+        targetedContainerFrame:Hide()
+        return
+    end
+
+    local iconSize = targetedDb.IconSize
+    local spacing = targetedDb.IconSpacing
+    local totalWidth = (iconSize * count) + (spacing * (count - 1))
+    targetedContainerFrame:SetSize(totalWidth, iconSize)
+
+    local growDirection = targetedDb.GrowDirection
+    local position = targetedDb.Position
+
+    for i, iconFrame in ipairs(targetedActiveIcons) do
+        iconFrame:ClearAllPoints()
+
+        if growDirection == "LEFT" then
+            local xOffset = -((i - 1) * (iconSize + spacing))
+            iconFrame:SetPoint("RIGHT", targetedContainerFrame, "RIGHT", xOffset, 0)
+        elseif growDirection == "RIGHT" then
+            local xOffset = (i - 1) * (iconSize + spacing)
+            iconFrame:SetPoint("LEFT", targetedContainerFrame, "LEFT", xOffset, 0)
+        else
+            local startX = -totalWidth / 2 + iconSize / 2
+            local xOffset = startX + (i - 1) * (iconSize + spacing)
+            iconFrame:SetPoint("CENTER", targetedContainerFrame, "CENTER", xOffset, 0)
+        end
+        iconFrame:Show()
+    end
+
+    local parent = NRSKNUI:ResolveAnchorFrame(targetedDb.anchorFrameType, targetedDb.ParentFrame)
+
+    targetedContainerFrame:ClearAllPoints()
+
+    if growDirection == "RIGHT" then
+        targetedContainerFrame:SetPoint("LEFT", parent, position.AnchorTo, position.XOffset, position.YOffset)
+    elseif growDirection == "LEFT" then
+        targetedContainerFrame:SetPoint("RIGHT", parent, position.AnchorTo, position.XOffset, position.YOffset)
+    else
+        targetedContainerFrame:SetPoint(position.AnchorFrom, parent, position.AnchorTo, position.XOffset,
+            position.YOffset)
+    end
+
+    targetedContainerFrame:SetFrameStrata(targetedDb.Strata)
+    NRSKNUI:SnapFrameToPixels(targetedContainerFrame, targetedDb.ForcePixelPerfect)
+
+    targetedContainerFrame:Show()
+end
+
+local function ShowTargetedBuffs(missingList, updateInPlace)
+    if updateInPlace then
+        local newCount = #missingList
+        local oldCount = #targetedActiveIcons
+
+        for i, entry in ipairs(missingList) do
+            if i <= oldCount then
+                UpdateTargetedIconAppearance(targetedActiveIcons[i], entry.buff, entry.showGlow, entry.glowSettings)
+            else
+                local iconFrame = AcquireTargetedIcon()
+                UpdateTargetedIconAppearance(iconFrame, entry.buff, entry.showGlow, entry.glowSettings)
+                targetedActiveIcons[#targetedActiveIcons + 1] = iconFrame
+            end
+        end
+
+        while #targetedActiveIcons > newCount do
+            local icon = targetedActiveIcons[#targetedActiveIcons]
+            ReleaseTargetedIcon(icon)
+            targetedActiveIcons[#targetedActiveIcons] = nil
+        end
+    else
+        ReleaseAllTargetedIcons()
+        for _, entry in ipairs(missingList) do
+            local iconFrame = AcquireTargetedIcon()
+            UpdateTargetedIconAppearance(iconFrame, entry.buff, entry.showGlow, entry.glowSettings)
+            targetedActiveIcons[#targetedActiveIcons + 1] = iconFrame
+        end
+    end
+    ArrangeTargetedIcons()
+end
+
+local function HideTargetedBuffIcons()
+    ReleaseAllTargetedIcons()
+    if targetedContainerFrame then
+        targetedContainerFrame:Hide()
+    end
+end
+
+local function UpdateIconAppearance(iconFrame, buff, text, showGlow, glowSettings)
+    local texture = C_Spell.GetSpellTexture(buff.spellId)
+    if not texture then texture = buff.iconTexture or WEAPON_ENCHANT_ICON end
+    iconFrame.icon:SetTexture(texture)
+
+    local raidDb = MBUFFS.db.RaidBuffDisplay
+    NRSKNUI:ApplyFontToText(iconFrame.text, raidDb.FontFace, raidDb.FontSize, raidDb.FontOutline, raidDb.FontShadow)
+    iconFrame.text:SetText(text or buff.text or "")
+
+    iconFrame:SetSize(MBUFFS.db.RaidBuffDisplay.IconSize, MBUFFS.db.RaidBuffDisplay.IconSize)
+    iconFrame.icon:SetAllPoints(iconFrame)
+
+    if showGlow then
+        StartGlow(iconFrame, glowSettings)
+    else
+        StopGlow(iconFrame)
+    end
+end
+
 local function ArrangeIcons()
     if not containerFrame then return end
     local raidDb = MBUFFS.db.RaidBuffDisplay or {}
@@ -944,280 +1430,125 @@ local function ArrangeIcons()
         return
     end
 
-    local totalWidth = (raidDb.IconSize * count) + (raidDb.IconSpacing * (count - 1))
-    containerFrame:SetSize(totalWidth, raidDb.IconSize)
+    local iconSize = raidDb.IconSize
+    local spacing = raidDb.IconSpacing
+    local totalWidth = (iconSize * count) + (spacing * (count - 1))
+    containerFrame:SetSize(totalWidth, iconSize)
 
-    local startX = -totalWidth / 2 + raidDb.IconSize / 2
+    local growDirection = raidDb.GrowDirection
+    local position = raidDb.Position
+
     for i, iconFrame in ipairs(activeIcons) do
         iconFrame:ClearAllPoints()
-        iconFrame:SetPoint("CENTER", containerFrame, "CENTER", startX + (i - 1) * (raidDb.IconSize + raidDb.IconSpacing),
-            0)
+
+        if growDirection == "LEFT" then
+            local xOffset = -((i - 1) * (iconSize + spacing))
+            iconFrame:SetPoint("RIGHT", containerFrame, "RIGHT", xOffset, 0)
+        elseif growDirection == "RIGHT" then
+            local xOffset = (i - 1) * (iconSize + spacing)
+            iconFrame:SetPoint("LEFT", containerFrame, "LEFT", xOffset, 0)
+        else
+            local startX = -totalWidth / 2 + iconSize / 2
+            local xOffset = startX + (i - 1) * (iconSize + spacing)
+            iconFrame:SetPoint("CENTER", containerFrame, "CENTER", xOffset, 0)
+        end
         iconFrame:Show()
     end
 
-    -- Update container position
-    NRSKNUI:ApplyFramePosition(containerFrame, raidDb.Position, raidDb)
+    local parent = NRSKNUI:ResolveAnchorFrame(raidDb.anchorFrameType, raidDb.ParentFrame)
+
+    containerFrame:ClearAllPoints()
+
+    if growDirection == "RIGHT" then
+        containerFrame:SetPoint("LEFT", parent, position.AnchorTo, position.XOffset, position.YOffset)
+    elseif growDirection == "LEFT" then
+        containerFrame:SetPoint("RIGHT", parent, position.AnchorTo, position.XOffset, position.YOffset)
+    else
+        containerFrame:SetPoint(position.AnchorFrom, parent, position.AnchorTo, position.XOffset, position.YOffset)
+    end
+
+    containerFrame:SetFrameStrata(raidDb.Strata)
+    NRSKNUI:SnapFrameToPixels(containerFrame, raidDb.ForcePixelPerfect)
 
     containerFrame:Show()
 end
 
--- Check stances/forms
-local function CheckStances()
-    if playerClass == "WARRIOR" and stanceTimerActive then
-        UpdateStanceTextDisplay()
-        return
-    end
+local function ShowMissingBuffs(missingList, updateInPlace)
+    if updateInPlace then
+        local newCount = #missingList
+        local oldCount = #activeIcons
 
-    if stanceFrame then
-        stanceFrame:Hide()
-    end
-    -- Also update stance text display
-    UpdateStanceTextDisplay()
-    if not MBUFFS.db then return end
-
-    -- Check if stances feature is enabled at all
-    local stancesDb = MBUFFS.db.Stances
-    if not stancesDb then return end
-    if stancesDb.Enabled == false then return end
-
-    -- Get current spec info
-    local spec = GetSpecialization()
-    if not spec then return end
-    local currentSpecId = GetSpecializationInfo(spec)
-    local specName = SPEC_ID_TO_NAME[currentSpecId]
-
-    -- Get class settings
-    local classSettings = stancesDb[playerClass]
-    if not classSettings then return end
-
-    -- Special handling for Priest
-    if playerClass == "PRIEST" then
-        if not classSettings.ShadowEnabled then return end
-        if currentSpecId ~= 258 then return end
-
-        -- When you enter voidform cd, standard tracking is overriden and we cant check this in combat
-        -- This is fine since almost always, you would want to be in shadowform pre combat so we just return early here
-        if InCombatLockdown() or C_ChallengeMode.IsChallengeModeActive() then
-            return
-        end
-
-        -- Check for Shadowform
-        local shadowformSpellId = 232698
-        local hasShadowform = PlayerHasBuff(shadowformSpellId, { 194249 }) -- Shadowform or Voidform
-        if not hasShadowform and IsSpellKnown(shadowformSpellId) then
-            ShowStanceIcon(shadowformSpellId)
-        end
-        return
-    end
-
-    -- Special handling for Druid
-    if playerClass == "DRUID" then
-        local druidSpecs = {
-            [102] = { toggleKey = "BalanceEnabled", combatOnlyKey = "BalanceCombatOnly", spellId = 24858 },
-            [103] = { toggleKey = "FeralEnabled", combatOnlyKey = "FeralCombatOnly", spellId = 768 },
-            [104] = { toggleKey = "GuardianEnabled", combatOnlyKey = "GuardianCombatOnly", spellId = 5487 },
-        }
-
-        local specData = druidSpecs[currentSpecId]
-        if not specData then return end
-        if not classSettings[specData.toggleKey] then return end
-
-        -- Check combat only setting
-        if classSettings[specData.combatOnlyKey] and not InCombatLockdown() then
-            return
-        end
-
-        -- Get current form
-        local currentForm = GetShapeshiftForm()
-        local currentSpellId = nil
-        if currentForm > 0 then
-            local _, _, _, formSpellId = GetShapeshiftFormInfo(currentForm)
-            currentSpellId = formSpellId
-        end
-
-        -- Check if missing required form
-        if currentSpellId ~= specData.spellId then
-            if IsSpellKnown(specData.spellId) then
-                ShowStanceIcon(specData.spellId)
+        for i, entry in ipairs(missingList) do
+            if i <= oldCount then
+                UpdateIconAppearance(activeIcons[i], entry.buff, entry.text, entry.showGlow, entry.glowSettings)
+            else
+                local iconFrame = AcquireIcon()
+                UpdateIconAppearance(iconFrame, entry.buff, entry.text, entry.showGlow, entry.glowSettings)
+                activeIcons[#activeIcons + 1] = iconFrame
             end
         end
-        return
-    end
 
-    -- Special handling for Evoker
-    if playerClass == "EVOKER" then
-        if not classSettings.AugmentationEnabled then return end
-        if currentSpecId ~= 1473 then return end
-
-        local requiredSpellId = tonumber(classSettings.Augmentation) or 403264
-
-        -- Check if has attunement buff
-        local hasAttunement = PlayerHasBuff(requiredSpellId)
-        if not hasAttunement and IsSpellKnown(requiredSpellId) then
-            ShowStanceIcon(requiredSpellId)
+        while #activeIcons > newCount do
+            local icon = activeIcons[#activeIcons]
+            ReleaseIcon(icon)
+            activeIcons[#activeIcons] = nil
         end
-        return
-    end
-
-    -- Warrior and Paladin use per-spec toggles only
-    if not specName then return end
-
-    -- Default required stances per spec
-    local DEFAULT_STANCES = {
-        WARRIOR = {
-            Arms = 386164,       -- Battle Stance
-            Fury = 386196,       -- Berserker Stance
-            Protection = 386208, -- Defensive Stance
-        },
-        PALADIN = {
-            Holy = 465,          -- Devotion Aura
-            Protection = 465,    -- Devotion Aura
-            Retribution = 32223, -- Crusader Aura
-        },
-    }
-
-    -- Check if spec toggle is enabled
-    local specEnabledKey = specName .. "Enabled"
-    if not classSettings[specEnabledKey] then return end
-
-    -- Get required stance
-    local classDefaults = DEFAULT_STANCES[playerClass]
-    local defaultStance = classDefaults and classDefaults[specName]
-    local requiredStanceId = tonumber(classSettings[specName]) or defaultStance
-    if not requiredStanceId then return end
-
-    -- Get reverse icon setting
-    local reverseIconKey = specName .. "ReverseIcon"
-    local reverseIcon = classSettings[reverseIconKey] and true or false
-
-    -- Get current form/stance
-    local currentForm = GetShapeshiftForm()
-    local currentSpellId = nil
-    if currentForm > 0 then
-        local _, _, _, formSpellId = GetShapeshiftFormInfo(currentForm)
-        currentSpellId = formSpellId
-    end
-
-    -- For Paladin, check auras via buffs
-    if playerClass == "PALADIN" then
-        local paladinAuras = { 465, 317920, 32223 }
-        for _, auraId in ipairs(paladinAuras) do
-            if PlayerHasBuff(auraId) then
-                currentSpellId = auraId
-                break
-            end
+    else
+        ReleaseAllIcons()
+        for _, entry in ipairs(missingList) do
+            local iconFrame = AcquireIcon()
+            UpdateIconAppearance(iconFrame, entry.buff, entry.text, entry.showGlow, entry.glowSettings)
+            activeIcons[#activeIcons + 1] = iconFrame
         end
-    end
-
-    -- Check if missing required stance
-    if currentSpellId ~= requiredStanceId then
-        if IsSpellKnown(requiredStanceId) then
-            ShowStanceIcon(requiredStanceId, reverseIcon, currentSpellId)
-        end
-    end
-end
-
--- Show stance timer for warrior
-local function ShowStanceTimer(spellId)
-    if not stanceFrame then CreateStanceFrame() end
-    if not stanceFrame then return end
-    if not stanceFrame.cooldown then return end
-
-    -- Mark timer as active
-    stanceTimerActive = true
-
-    -- Show the icon for the stance we switched to
-    local texture = GetSpellTexture(spellId)
-    if texture then
-        stanceFrame.icon:SetTexture(texture)
-    end
-    stanceFrame.text:SetText("")
-
-    -- Start cooldown animation
-    stanceFrame.cooldown:SetAllPoints(stanceFrame)
-    stanceFrame.cooldown:SetCooldown(GetTime(), STANCE_TIMER_DURATION)
-    stanceFrame:Show()
-
-    -- Cancel existing timer if any
-    if stanceTimerHandle then
-        stanceTimerHandle:Cancel()
-    end
-
-    -- After duration, clear flag and re-check stances
-    stanceTimerHandle = C_Timer.NewTimer(STANCE_TIMER_DURATION, function()
-        stanceTimerHandle = nil
-        stanceTimerActive = false
-        if stanceFrame and not isPreviewActive then
-            CheckStances()
-        end
-    end)
-end
-
--- Show missing buffs
-local function ShowMissingBuffs(missingList)
-    ReleaseAllIcons()
-    for _, entry in ipairs(missingList) do
-        local iconFrame = AcquireIcon()
-        UpdateIconAppearance(iconFrame, entry.buff, entry.text)
-        activeIcons[#activeIcons + 1] = iconFrame
     end
     ArrangeIcons()
 end
 
--- Hide only the raid buff container
 local function HideMissingBuffIcons()
     ReleaseAllIcons()
     if containerFrame then
         containerFrame:Hide()
     end
+    HideTargetedBuffIcons()
 end
 
--- Hide everything
-local function HideAllNotifications()
-    HideMissingBuffIcons()
-    if stanceFrame then
-        stanceFrame:Hide()
-    end
-    if stanceTextFrame then
-        stanceTextFrame:Hide()
-    end
-end
-
--- Check combat-safe elements (all SAFE_BUFFS and stances)
-local function CheckCombatSafeElements()
-    if isPreviewActive then return end
-    if not MBUFFS.db or not MBUFFS.db.Enabled then return end
-    if UnitIsDeadOrGhost("player") or C_PetBattles.IsInBattle() or IsInPvPInstance() then return end
-    ReleaseAllIcons()
-    wipe(currentMissingBuffs)
-
-    -- Check all SAFE_BUFFS (raid buffs, poisons, weapon enchants)
-    local safeMissing = CheckSafeBuffs()
-    for _, entry in ipairs(safeMissing) do
-        currentMissingBuffs[#currentMissingBuffs + 1] = entry
-    end
-
-    -- Check stances
-    CheckStances()
-
-    -- Show results
-    if #currentMissingBuffs > 0 then
-        ShowMissingBuffs(currentMissingBuffs)
-    else
-        ArrangeIcons()
-    end
-end
-
--- Check if tracking should be paused
 local function IsTrackingPaused()
     return isPreviewActive
 end
 
--- Main Check Function
-local function CheckForMissingBuffs()
-    -- Don't run checks when GUI or edit mode is open
+local function CheckCombatSafeElements()
     if IsTrackingPaused() then return end
-    -- Throttled checks
+    if not MBUFFS.db or not MBUFFS.db.Enabled then return end
+    if UnitIsDeadOrGhost("player") or C_PetBattles.IsInBattle() or IsInPvPInstance() then return end
+
+    local safeMissing = CheckSafeBuffs()
+    wipe(currentMissingBuffs)
+    for _, entry in ipairs(safeMissing) do
+        currentMissingBuffs[#currentMissingBuffs + 1] = entry
+    end
+
+    if #currentMissingBuffs > 0 then
+        ShowMissingBuffs(currentMissingBuffs, true)
+    else
+        ReleaseAllIcons()
+        ArrangeIcons()
+    end
+
+    local targetedMissing = CheckTargetedBuffs()
+    wipe(currentMissingTargetedBuffs)
+    for _, entry in ipairs(targetedMissing) do
+        currentMissingTargetedBuffs[#currentMissingTargetedBuffs + 1] = entry
+    end
+
+    if #currentMissingTargetedBuffs > 0 then
+        ShowTargetedBuffs(currentMissingTargetedBuffs, true)
+    else
+        HideTargetedBuffIcons()
+    end
+end
+
+CheckForMissingBuffs = function()
+    if IsTrackingPaused() then return end
     local currentTime = GetTime()
     if currentTime - lastCheckTime < CHECK_THROTTLE then
         if not isThrottled then
@@ -1230,53 +1561,68 @@ local function CheckForMissingBuffs()
         return
     end
     lastCheckTime = currentTime
+
+    UpdateCheckContext()
+
     if not MBUFFS.db or not MBUFFS.db.Enabled then
-        HideAllNotifications()
+        HideMissingBuffIcons()
         return
     end
-    -- In combat or encounter: only check combat-safe elements
-    -- (encounter triggers secret env before combat lockdown)
     if InCombatLockdown() or isEncounterInProgress then
         CheckCombatSafeElements()
         return
     end
-    if UnitIsDeadOrGhost("player") or C_PetBattles.IsInBattle() or IsInPvPInstance() then
-        HideAllNotifications()
+    if cachedIsInPvP or UnitIsDeadOrGhost("player") or C_PetBattles.IsInBattle() then
+        HideMissingBuffIcons()
         return
     end
 
     wipe(currentMissingBuffs)
 
-    -- Check SAFE_BUFFS
     local safeMissing = CheckSafeBuffs()
     for _, entry in ipairs(safeMissing) do
         currentMissingBuffs[#currentMissingBuffs + 1] = entry
     end
 
-    -- Check RESTRICTED_BUFFS
-    -- Only runs when NOT in combat and NOT in M+
     local restrictedMissing = CheckRestrictedBuffs()
     for _, entry in ipairs(restrictedMissing) do
         currentMissingBuffs[#currentMissingBuffs + 1] = entry
     end
 
-    -- Check stances/forms
-    CheckStances()
+    local selfMissing = CheckSelfBuffs()
+    for _, entry in ipairs(selfMissing) do
+        currentMissingBuffs[#currentMissingBuffs + 1] = entry
+    end
+
+    local presenceMissing = CheckPresenceBuffs()
+    for _, entry in ipairs(presenceMissing) do
+        currentMissingBuffs[#currentMissingBuffs + 1] = entry
+    end
+
     if #currentMissingBuffs > 0 then
-        ShowMissingBuffs(currentMissingBuffs)
+        ShowMissingBuffs(currentMissingBuffs, true)
     else
         HideMissingBuffIcons()
     end
+
+    wipe(currentMissingTargetedBuffs)
+    local targetedMissing = CheckTargetedBuffs()
+    for _, entry in ipairs(targetedMissing) do
+        currentMissingTargetedBuffs[#currentMissingTargetedBuffs + 1] = entry
+    end
+
+    if #currentMissingTargetedBuffs > 0 then
+        ShowTargetedBuffs(currentMissingTargetedBuffs, true)
+    else
+        HideTargetedBuffIcons()
+    end
 end
 
--- Event Handlers
 local function OnAuraChange(unit, updateInfo)
     if not MBUFFS.db or not MBUFFS.db.Enabled then return end
     if IsTrackingPaused() then return end
     if unit ~= "player" and not (unit and (unit:find("party") or unit:find("raid"))) then return end
 
-    -- In combat or encounter: check combat-safe elements (SAFE_BUFFS + stances)
-    -- Use CheckForMissingBuffs to respect throttle logic
     if InCombatLockdown() or isEncounterInProgress then
         if unit == "player" then
             CheckForMissingBuffs()
@@ -1288,8 +1634,7 @@ local function OnAuraChange(unit, updateInfo)
         local hasRelevant = false
         if updateInfo.addedAuras then
             for _, aura in ipairs(updateInfo.addedAuras) do
-                if issecretvalue(aura.isHelpful) then return end
-                if aura.isHelpful then
+                if not issecretvalue(aura.isHelpful) and aura.isHelpful then
                     hasRelevant = true
                     break
                 end
@@ -1305,12 +1650,10 @@ local function OnAuraChange(unit, updateInfo)
     CheckForMissingBuffs()
 end
 
--- Update db, used for profile changes
 function MBUFFS:UpdateDB()
     self.db = NRSKNUI.db.profile.MissingBuffs
 end
 
--- Module init
 function MBUFFS:OnInitialize()
     self:UpdateDB()
     local _, class = UnitClass("player")
@@ -1318,22 +1661,29 @@ function MBUFFS:OnInitialize()
     self:SetEnabledState(false)
 end
 
--- Module OnEnable
 function MBUFFS:OnEnable()
     if not self.db or not self.db.Enabled then return end
 
-    -- Create frames
     CreateContainerFrame()
-    CreateStanceFrame()
-    CreateStanceTextFrame()
+    CreateTargetedContainerFrame()
+
+    wipe(groupSpecData)
+    wipe(groupClassesCache)
+    if playerClass then
+        groupClassesCache[playerClass] = true
+    end
+
+    LibSpec.RegisterGroup(self, OnLibSpecUpdate)
 
     C_Timer.After(0.5, function()
         self:ApplySettings()
     end)
 
-    -- Register events
     self:RegisterEvent("UNIT_AURA", function(_, unit, updateInfo) OnAuraChange(unit, updateInfo) end)
-    self:RegisterEvent("GROUP_ROSTER_UPDATE", function() CheckForMissingBuffs() end)
+    self:RegisterEvent("GROUP_ROSTER_UPDATE", function()
+        RebuildGroupClassCache()
+        CheckForMissingBuffs()
+    end)
     self:RegisterEvent("PLAYER_REGEN_DISABLED", function()
         HideMissingBuffIcons()
         CheckCombatSafeElements()
@@ -1346,74 +1696,13 @@ function MBUFFS:OnEnable()
     self:RegisterEvent("ZONE_CHANGED_NEW_AREA", function() C_Timer.After(0.5, CheckForMissingBuffs) end)
     self:RegisterEvent("SCENARIO_UPDATE", function() C_Timer.After(1, CheckForMissingBuffs) end)
     self:RegisterEvent("START_TIMER", function() C_Timer.After(1, CheckForMissingBuffs) end)
-    self:RegisterEvent("UNIT_INVENTORY_CHANGED", function() C_Timer.After(0, CheckForMissingBuffs) end)
+    self:RegisterEvent("UNIT_INVENTORY_CHANGED", function() C_Timer.After(0.1, CheckForMissingBuffs) end)
     self:RegisterEvent("TRAIT_CONFIG_UPDATED", function() C_Timer.After(0.5, CheckForMissingBuffs) end)
     self:RegisterEvent("SPELLS_CHANGED", function() C_Timer.After(0.5, CheckForMissingBuffs) end)
     self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED", function() C_Timer.After(1, CheckForMissingBuffs) end)
     self:RegisterEvent("CHALLENGE_MODE_COMPLETED", function() C_Timer.After(1, CheckForMissingBuffs) end)
-    self:RegisterEvent("UPDATE_SHAPESHIFT_FORM", function()
-        CheckForMissingBuffs()
-        UpdateStanceTextDisplay()
-    end)
-    self:RegisterEvent("UPDATE_SHAPESHIFT_FORMS", function()
-        CheckForMissingBuffs()
-        UpdateStanceTextDisplay()
-    end)
-
-    -- For Warrior stance changes
-    self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED", function(_, unit, _, spellID)
-        if unit ~= "player" then return end
-        if playerClass ~= "WARRIOR" then return end
-        if not WARRIOR_STANCE_SPELLS[spellID] then return end
-        if isPreviewActive then return end
-
-        -- Check if stance display is enabled
-        local stanceDb = self.db and self.db.StanceDisplay
-        if not stanceDb or not stanceDb.Enabled then return end
-
-        -- Get current spec and required stance
-        local stancesDb = self.db and self.db.Stances
-        local classSettings = stancesDb and stancesDb.WARRIOR
-        if not classSettings then return end
-
-        local spec = GetSpecialization()
-        if not spec then return end
-        local specId = GetSpecializationInfo(spec)
-        local specName = SPEC_ID_TO_NAME[specId]
-        if not specName then return end
-
-        -- Check if this spec has tracking enabled
-        local specEnabledKey = specName .. "Enabled"
-        if not classSettings[specEnabledKey] then return end
-
-        -- Get required stance for this spec
-        local DEFAULT_STANCES = {
-            Arms = 386164,
-            Fury = 386196,
-            Protection = 386208,
-        }
-        local requiredStanceId = tonumber(classSettings[specName]) or DEFAULT_STANCES[specName]
-
-        -- If switching to required stance, instantly hide and cancel timer
-        if spellID == requiredStanceId then
-            if stanceTimerHandle then
-                stanceTimerHandle:Cancel()
-                stanceTimerHandle = nil
-            end
-            stanceTimerActive = false
-            if stanceFrame then
-                stanceFrame:Hide()
-            end
-        else
-            -- Switching to wrong stance, show 3s timer
-            ShowStanceTimer(spellID)
-        end
-    end)
-
-    -- M+ events
     self:RegisterEvent("CHALLENGE_MODE_START", function() C_Timer.After(1, CheckForMissingBuffs) end)
 
-    -- Encounter events (secret env triggers before combat lockdown)
     self:RegisterEvent("ENCOUNTER_START", function()
         isEncounterInProgress = true
         HideMissingBuffIcons()
@@ -1426,24 +1715,23 @@ function MBUFFS:OnEnable()
 
     C_Timer.After(2, CheckForMissingBuffs)
 
-    -- Register with edit mode
+    if expirationTicker then
+        expirationTicker:Cancel()
+    end
+    expirationTicker = C_Timer.NewTicker(EXPIRATION_CHECK_INTERVAL, CheckForMissingBuffs)
+
     self:RegisterEditModeElements()
 end
 
--- Register all edit mode elements
 function MBUFFS:RegisterEditModeElements()
     if not NRSKNUI.EditMode then return end
 
-    -- Ensure frames exist before registering
     if not containerFrame then CreateContainerFrame() end
-    if not stanceFrame then CreateStanceFrame() end
-    if not stanceTextFrame then CreateStanceTextFrame() end
+    if not targetedContainerFrame then CreateTargetedContainerFrame() end
 
     local raidDb = self.db.RaidBuffDisplay
-    local stanceDb = self.db.StanceDisplay
-    local textDb = self.db.StanceText
+    local targetedDb = self.db.TargetedBuffDisplay
 
-    -- Raid buff container
     NRSKNUI.EditMode:RegisterElement({
         key = "MissingBuffs",
         displayName = "Missing Buffs",
@@ -1459,85 +1747,68 @@ function MBUFFS:RegisterEditModeElements()
             raidDb.Position.YOffset = pos.YOffset
             if containerFrame then
                 local anchorFrame = NRSKNUI:ResolveAnchorFrame(raidDb.anchorFrameType, raidDb.ParentFrame)
+                local growDirection = raidDb.GrowDirection or "CENTER"
+                local anchorFrom = pos.AnchorFrom
+                if growDirection == "RIGHT" then
+                    anchorFrom = "LEFT"
+                elseif growDirection == "LEFT" then
+                    anchorFrom = "RIGHT"
+                end
                 containerFrame:ClearAllPoints()
-                containerFrame:SetPoint(pos.AnchorFrom, anchorFrame, pos.AnchorTo, pos.XOffset, pos.YOffset)
+                containerFrame:SetPoint(anchorFrom, anchorFrame, pos.AnchorTo, pos.XOffset, pos.YOffset)
             end
         end,
         guiPath = "missingBuffs",
     })
 
-    -- Stance icon frame
     NRSKNUI.EditMode:RegisterElement({
-        key = "MissingStanceIcon",
-        displayName = "Missing Stance Icon",
-        frame = stanceFrame,
+        key = "TargetedBuffs",
+        displayName = "Targeted Buffs",
+        frame = targetedContainerFrame,
         getPosition = function()
-            return stanceDb.Position or {}
+            return targetedDb.Position or {}
         end,
         setPosition = function(pos)
-            stanceDb.Position = stanceDb.Position or {}
-            stanceDb.Position.AnchorFrom = pos.AnchorFrom
-            stanceDb.Position.AnchorTo = pos.AnchorTo
-            stanceDb.Position.XOffset = pos.XOffset
-            stanceDb.Position.YOffset = pos.YOffset
-            if stanceFrame then
-                local anchorFrame = NRSKNUI:ResolveAnchorFrame(stanceDb.anchorFrameType, stanceDb.ParentFrame)
-                stanceFrame:ClearAllPoints()
-                stanceFrame:SetPoint(pos.AnchorFrom, anchorFrame, pos.AnchorTo, pos.XOffset, pos.YOffset)
+            targetedDb.Position = targetedDb.Position or {}
+            targetedDb.Position.AnchorFrom = pos.AnchorFrom
+            targetedDb.Position.AnchorTo = pos.AnchorTo
+            targetedDb.Position.XOffset = pos.XOffset
+            targetedDb.Position.YOffset = pos.YOffset
+            if targetedContainerFrame then
+                local anchorFrame = NRSKNUI:ResolveAnchorFrame(targetedDb.anchorFrameType, targetedDb.ParentFrame)
+                targetedContainerFrame:ClearAllPoints()
+                targetedContainerFrame:SetPoint(pos.AnchorFrom, anchorFrame, pos.AnchorTo, pos.XOffset, pos.YOffset)
             end
         end,
-        guiPath = "missingBuffs",
-    })
-
-    -- Stance text frame
-    NRSKNUI.EditMode:RegisterElement({
-        key = "StanceText",
-        displayName = "Stance Text",
-        frame = stanceTextFrame,
-        getPosition = function()
-            return textDb.Position or {}
-        end,
-        setPosition = function(pos)
-            textDb.Position = textDb.Position or {}
-            textDb.Position.AnchorFrom = pos.AnchorFrom
-            textDb.Position.AnchorTo = pos.AnchorTo
-            textDb.Position.XOffset = pos.XOffset
-            textDb.Position.YOffset = pos.YOffset
-            if stanceTextFrame then
-                local anchorFrame = NRSKNUI:ResolveAnchorFrame(textDb.anchorFrameType, textDb.ParentFrame)
-                stanceTextFrame:ClearAllPoints()
-                stanceTextFrame:SetPoint(pos.AnchorFrom, anchorFrame, pos.AnchorTo, pos.XOffset, pos.YOffset)
-            end
-        end,
-        guiPath = "missingBuffs",
+        guiPath = "targetedBuffs",
     })
 end
 
--- Module OnDisable
 function MBUFFS:OnDisable()
     self:UnregisterAllEvents()
-    HideAllNotifications()
+    LibSpec.UnregisterGroup(self)
+    HideMissingBuffIcons()
 
-    -- Cancel stance timer if active
-    if stanceTimerHandle then
-        stanceTimerHandle:Cancel()
-        stanceTimerHandle = nil
+    if expirationTicker then
+        expirationTicker:Cancel()
+        expirationTicker = nil
     end
-    stanceTimerActive = false
 
-    -- Unregister from edit mode
+    wipe(groupSpecData)
+    wipe(groupClassesCache)
+
     if NRSKNUI.EditMode then
         NRSKNUI.EditMode:UnregisterElement("MissingBuffs")
-        NRSKNUI.EditMode:UnregisterElement("MissingStanceIcon")
-        NRSKNUI.EditMode:UnregisterElement("StanceText")
+        NRSKNUI.EditMode:UnregisterElement("TargetedBuffs")
     end
 end
 
--- Public API
 function MBUFFS:Refresh()
     if self.db and self.db.Enabled then
         self:OnEnable()
-        if not IsTrackingPaused() then
+        if IsTrackingPaused() then
+            self:RefreshPreview()
+        else
             CheckForMissingBuffs()
         end
     else
@@ -1545,181 +1816,230 @@ function MBUFFS:Refresh()
     end
 end
 
--- Public settings applier, called from GUI when the user makes changes
 function MBUFFS:ApplySettings()
     if not self.db then return end
     if not self.db.Enabled then return end
 
-    -- If preview is showing, refresh preview with new settings
     if IsTrackingPaused() then
         self:RefreshPreview()
         return
     end
 
     local raidDb = self.db.RaidBuffDisplay
-    local stanceDb = self.db.StanceDisplay
-    local textDb = self.db.StanceText
+    local targetedDb = self.db.TargetedBuffDisplay
 
-    -- Update container frame
     if containerFrame then
         NRSKNUI:ApplyFramePosition(containerFrame, raidDb.Position, raidDb)
     end
 
-    -- Update stance frame
-    if stanceFrame then
-        stanceFrame:SetSize(stanceDb.IconSize, stanceDb.IconSize)
-        NRSKNUI:ApplyFramePosition(stanceFrame, stanceDb.Position, stanceDb)
-
-        -- Update stance frame font
-        NRSKNUI:ApplyFontToText(stanceFrame.text, stanceDb.FontFace, stanceDb.FontSize, stanceDb.FontOutline, stanceDb.FontShadow)
-    end
-
-    -- Update stance text frame
-    if stanceTextFrame then
-        NRSKNUI:ApplyFontToText(stanceTextFrame.text, textDb.FontFace, textDb.FontSize, textDb.FontOutline, textDb.FontShadow)
-        NRSKNUI:ApplyFramePosition(stanceTextFrame, textDb.Position, textDb)
-
-        -- Update text alignment based on anchor point
-        local textPoint = NRSKNUI:GetTextJustifyFromAnchor(textDb.Position.AnchorFrom)
-        local textJustify = NRSKNUI:GetTextJustifyFromAnchor(textDb.Position.AnchorFrom)
-        stanceTextFrame.text:ClearAllPoints()
-        stanceTextFrame.text:SetPoint(textPoint, stanceTextFrame, textPoint, 0, 0)
-        stanceTextFrame.text:SetJustifyH(textJustify)
-
-        -- Show/hide based on enabled state
-        if not textDb.Enabled then
-            stanceTextFrame:Hide()
-        end
-    end
-
-    -- Update all active icons
     for i, iconFrame in ipairs(activeIcons) do
         if currentMissingBuffs[i] then
-            UpdateIconAppearance(iconFrame, currentMissingBuffs[i].buff, currentMissingBuffs[i].text)
+            local entry = currentMissingBuffs[i]
+            UpdateIconAppearance(iconFrame, entry.buff, entry.text, entry.showGlow, entry.glowSettings)
         end
     end
     ArrangeIcons()
-    UpdateStanceTextDisplay()
+
+    if targetedContainerFrame then
+        NRSKNUI:ApplyFramePosition(targetedContainerFrame, targetedDb.Position, targetedDb)
+    end
+
+    for i, iconFrame in ipairs(targetedActiveIcons) do
+        if currentMissingTargetedBuffs[i] then
+            local entry = currentMissingTargetedBuffs[i]
+            UpdateTargetedIconAppearance(iconFrame, entry.buff, entry.showGlow, entry.glowSettings)
+        end
+    end
+    ArrangeTargetedIcons()
 end
 
--- Setup preview stuff
+local function GetAllEnabledBuffsForPreview()
+    local entries = {}
+    if not MBUFFS.db then return entries end
+
+    local raidBuffsDb = MBUFFS.db.RaidBuffs or {}
+    local consumablesDb = MBUFFS.db.Consumables or {}
+    local selfBuffsDb = MBUFFS.db.SelfBuffs or {}
+    local presenceBuffsDb = MBUFFS.db.PresenceBuffs or {}
+
+    for _, buff in ipairs(SAFE_BUFFS) do
+        if buff.buffType == "raid" and buff.key then
+            local buffSettings = raidBuffsDb[buff.key] or {}
+            if buffSettings.Enabled ~= false then
+                entries[#entries + 1] = {
+                    buff = buff,
+                    text = "0/5",
+                    showGlow = true,
+                    glowSettings = buffSettings,
+                }
+            end
+        elseif buff.buffType == "weaponEnchant" then
+            local enchantSettings = consumablesDb[buff.dbKey] or {}
+            if enchantSettings.Enabled ~= false then
+                entries[#entries + 1] = {
+                    buff = { spellId = 0, text = buff.text, iconTexture = WEAPON_ENCHANT_ICON },
+                    text = buff.text,
+                    showGlow = true,
+                    glowSettings = enchantSettings,
+                }
+            end
+        end
+    end
+
+    local poisonSettings = selfBuffsDb.Poisons
+    if poisonSettings.Enabled ~= false then
+        entries[#entries + 1] = {
+            buff = { spellId = 2823, text = "" },
+            text = "",
+            showGlow = true,
+            glowSettings = poisonSettings,
+        }
+        entries[#entries + 1] = {
+            buff = { spellId = 3408, text = "" },
+            text = "",
+            showGlow = true,
+            glowSettings = poisonSettings,
+        }
+    end
+
+    local flaskSettings = consumablesDb.Flask or {}
+    if flaskSettings.Enabled ~= false then
+        entries[#entries + 1] = {
+            buff = { spellId = 1235111, text = "" },
+            text = "",
+            showGlow = true,
+            glowSettings = flaskSettings,
+        }
+    end
+
+    local foodSettings = consumablesDb.Food or {}
+    if foodSettings.Enabled ~= false then
+        entries[#entries + 1] = {
+            buff = { spellId = 104280, text = "" },
+            text = "",
+            showGlow = true,
+            glowSettings = foodSettings,
+        }
+    end
+
+    local runeSettings = consumablesDb.Rune or {}
+    if runeSettings.Enabled ~= false then
+        entries[#entries + 1] = {
+            buff = { spellId = 1264426, text = "" },
+            text = "",
+            showGlow = true,
+            glowSettings = runeSettings,
+        }
+    end
+
+    for _, buff in ipairs(SELF_BUFFS) do
+        if buff.key then
+            local buffSettings = selfBuffsDb[buff.key] or {}
+            if buffSettings.Enabled ~= false then
+                entries[#entries + 1] = {
+                    buff = buff,
+                    text = "",
+                    showGlow = true,
+                    glowSettings = buffSettings,
+                }
+            end
+        end
+    end
+
+    for _, buff in ipairs(PRESENCE_BUFFS) do
+        if buff.key then
+            local buffSettings = presenceBuffsDb[buff.key] or {}
+            if buffSettings.Enabled ~= false then
+                entries[#entries + 1] = {
+                    buff = buff,
+                    text = "",
+                    showGlow = true,
+                    glowSettings = buffSettings,
+                }
+            end
+        end
+    end
+
+    return entries
+end
+
+local function GetAllEnabledTargetedBuffsForPreview()
+    local entries = {}
+    if not MBUFFS.db then return entries end
+
+    local targetedSettings = MBUFFS.db.TargetedBuffs
+    if not targetedSettings or targetedSettings.Enabled == false then return entries end
+
+    local targetedBuffsDb = MBUFFS.db.TargetedBuffSettings or {}
+
+    for _, buff in ipairs(TARGETED_BUFFS) do
+        if buff.key then
+            local buffSettings = targetedBuffsDb[buff.key] or {}
+            if buffSettings.Enabled ~= false then
+                entries[#entries + 1] = {
+                    buff = buff,
+                    text = "",
+                    showGlow = true,
+                    glowSettings = buffSettings,
+                }
+            end
+        end
+    end
+
+    return entries
+end
+
 local function ShowPreviewIcons()
-    -- Create frames if needed
     if not containerFrame then CreateContainerFrame() end
-    if not stanceFrame then CreateStanceFrame() end
-    if not stanceTextFrame then CreateStanceTextFrame() end
+    if not targetedContainerFrame then CreateTargetedContainerFrame() end
 
-    local raidDb = MBUFFS.db.RaidBuffDisplay or {}
-    local stanceDb = MBUFFS.db.StanceDisplay or {}
-    local textDb = MBUFFS.db.StanceText or {}
-
-    -- Show raid buff preview with sample buffs
-    local previewBuffs = {
-        { buff = { spellId = 381748, text = "" },   text = "" },
-        { buff = { spellId = 1126, text = "" },     text = "" },
-        { buff = { spellId = 21562, text = "" },    text = "" },
-        { buff = { spellId = 1459, text = "" },     text = "" },
-        { buff = { spellId = 462854, text = "" },   text = "" },
-        { buff = { spellId = 6673, text = "" },     text = "" },
-        { buff = { spellId = 1235110, text = "" },  text = "" },
-        { buff = { spellId = 462181, text = "" },   text = "" },
-        { buff = { spellId = 1264426, text = "" },  text = "" },
-        { buff = { spellId = 180608, text = "MH" }, text = "MH" },
-        { buff = { spellId = 180608, text = "OH" }, text = "OH" },
-
-        -- Poisions
-        { buff = { spellId = POISON_IDS.ATROPHIC, text = "" },     text = "" },
-        { buff = { spellId = POISON_IDS.CRIPPLING, text = "" },  text = "" },
-        { buff = { spellId = POISON_IDS.AMPLIFYING, text = "" },   text = "" },
-        { buff = { spellId = POISON_IDS.DEADLY, text = "" },  text = "" },
-    }
-
+    local previewEntries = GetAllEnabledBuffsForPreview()
     wipe(currentMissingBuffs)
-    for _, entry in ipairs(previewBuffs) do
+    for _, entry in ipairs(previewEntries) do
         currentMissingBuffs[#currentMissingBuffs + 1] = entry
     end
-    ShowMissingBuffs(previewBuffs)
 
-    -- Show stance icon preview
-    local previewStanceSpell = 386164
-    local texture = GetSpellTexture(previewStanceSpell)
-    if texture and stanceFrame then
-        stanceFrame.icon:SetTexture(texture)
-        stanceFrame.text:SetText("MISSING")
-        stanceFrame:SetSize(stanceDb.IconSize, stanceDb.IconSize)
-        NRSKNUI:ApplyFontToText(stanceFrame.text, stanceDb.FontFace, stanceDb.FontSize, stanceDb.FontOutline, stanceDb.FontShadow)
-        NRSKNUI:ApplyFramePosition(stanceFrame, stanceDb.Position, stanceDb)
-        stanceFrame:Show()
+    if #currentMissingBuffs > 0 then
+        ShowMissingBuffs(currentMissingBuffs, true)
+    else
+        ReleaseAllIcons()
+        ArrangeIcons()
     end
 
-    -- Show stance text preview - respect Enabled toggle
-    if stanceTextFrame then
-        -- Check if stance text is enabled
-        if not textDb.Enabled then
-            stanceTextFrame:Hide()
-        else
-            -- Apply font settings
-            NRSKNUI:ApplyFontToText(stanceTextFrame.text, textDb.FontFace, textDb.FontSize, textDb.FontOutline, textDb.FontShadow)
+    local targetedEntries = GetAllEnabledTargetedBuffsForPreview()
+    wipe(currentMissingTargetedBuffs)
+    for _, entry in ipairs(targetedEntries) do
+        currentMissingTargetedBuffs[#currentMissingTargetedBuffs + 1] = entry
+    end
 
-            -- Get preview text and color from per-stance settings
-            local previewText = "Battle Stance"
-            local previewColor = { 1, 1, 1, 1 }
-
-            -- Check if we have per-stance settings for the preview stance
-            local classData = textDb["WARRIOR"]
-            if classData then
-                local stanceSettings = classData["386164"]
-                if stanceSettings then
-                    if stanceSettings.Text and stanceSettings.Text ~= "" then
-                        previewText = stanceSettings.Text
-                    end
-                    if stanceSettings.Color then
-                        previewColor = stanceSettings.Color
-                    end
-                end
-            end
-
-            stanceTextFrame.text:SetText(previewText)
-            stanceTextFrame.text:SetTextColor(previewColor[1], previewColor[2], previewColor[3], previewColor[4] or 1)
-
-            NRSKNUI:ApplyFramePosition(stanceTextFrame, textDb.Position, textDb)
-
-            -- Update text alignment based on anchor point
-            local textPoint = NRSKNUI:GetTextJustifyFromAnchor(textDb.Position.AnchorFrom)
-            local textJustify = NRSKNUI:GetTextJustifyFromAnchor(textDb.Position.AnchorFrom)
-            stanceTextFrame.text:ClearAllPoints()
-            stanceTextFrame.text:SetPoint(textPoint, stanceTextFrame, textPoint, 0, 0)
-            stanceTextFrame.text:SetJustifyH(textJustify)
-            stanceTextFrame:Show()
+    if #currentMissingTargetedBuffs > 0 then
+        ShowTargetedBuffs(currentMissingTargetedBuffs, true)
+    else
+        ReleaseAllTargetedIcons()
+        if targetedContainerFrame then
+            targetedContainerFrame:Hide()
         end
     end
 end
 
--- Check if tracking is currently paused
 function MBUFFS:IsPaused()
     return IsTrackingPaused()
 end
 
--- Refresh preview appearance
 function MBUFFS:RefreshPreview()
     if not IsTrackingPaused() then return end
     ShowPreviewIcons()
 end
 
--- Public ShowPreview for PreviewManager
 function MBUFFS:ShowPreview()
-    -- Ensure frames exist
     if not containerFrame then CreateContainerFrame() end
-    if not stanceFrame then CreateStanceFrame() end
-    if not stanceTextFrame then CreateStanceTextFrame() end
     isPreviewActive = true
     ShowPreviewIcons()
 end
 
--- Public HidePreview for PreviewManager
 function MBUFFS:HidePreview()
     isPreviewActive = false
-    HideAllNotifications()
+    HideMissingBuffIcons()
     wipe(currentMissingBuffs)
     if self.db and self.db.Enabled then C_Timer.After(0.1, CheckForMissingBuffs) end
 end

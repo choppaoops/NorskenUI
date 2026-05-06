@@ -189,7 +189,7 @@ local Defaults = {
             Position = {                         -- Position settings
                 AnchorFrom = "CENTER",           -- Anchor point from
                 AnchorTo = "CENTER",             -- Anchor point to
-                XOffset = 794,                     -- X offset
+                XOffset = 794,                   -- X offset
                 YOffset = -433,                  -- Y offset
             },
             Backdrop = {                         -- Backdrop settings
@@ -222,7 +222,7 @@ local Defaults = {
             Position = {                  -- Position settings
                 AnchorFrom = "CENTER",    -- Anchor point from
                 AnchorTo = "CENTER",      -- Anchor point to
-                XOffset = 0.1,              -- X offset
+                XOffset = 0.1,            -- X offset
                 YOffset = 205,            -- Y offset
             },
             Spacing = 0,                  -- Vertical spacing between messages
@@ -392,13 +392,18 @@ local Defaults = {
             PassiveColor = { 0.3, 0.7, 1, 1 }, -- Light blue for passive
             DeadColor = { 1, 0.2, 0.2, 1 },    -- Red for dead
             -- Font settings
-            FontFace = "Expressway",           -- Font face
-            FontSize = 27,                     -- Font size
-            FontOutline = "SOFTOUTLINE",       -- Font outline (NONE, OUTLINE, THICKOUTLINE, SOFTOUTLINE)
-            -- Position settings
-            Strata = "HIGH",                   -- Frame strata
-            anchorFrameType = "UIPARENT",      -- Anchor frame type
-            ParentFrame = "UIParent",          -- Parent frame name
+            FontFace = "Expressway",
+            FontSize = 27,
+            FontOutline = "SOFTOUTLINE",
+            FontShadow = {
+                Enabled = false,
+                Color = { 0, 0, 0, 1 },
+                OffsetX = 1,
+                OffsetY = -1,
+            },
+            Strata = "HIGH",
+            anchorFrameType = "UIPARENT",
+            ParentFrame = "UIParent",
             Position = {                       -- Position settings
                 AnchorFrom = "CENTER",         -- Anchor point from
                 AnchorTo = "CENTER",           -- Anchor point to
@@ -531,6 +536,7 @@ local Defaults = {
 
             Gateway = {
                 Enabled = true,
+                Text = "GATE USABLE CUH",
                 Color = { 0, 1, 0 },
                 -- Font settings
                 FontFace = "Expressway",      -- Font face
@@ -611,8 +617,8 @@ local Defaults = {
                 anchorFrameType = "UIPARENT", -- Anchor frame type
                 ParentFrame = "UIParent",     -- Parent frame name
                 Position = {                  -- Position settings
-                    AnchorFrom = "TOP",    -- Anchor point from
-                    AnchorTo = "TOP",      -- Anchor point to
+                    AnchorFrom = "TOP",       -- Anchor point from
+                    AnchorTo = "TOP",         -- Anchor point to
                     XOffset = 0,              -- X offset
                     YOffset = -1,
                 },
@@ -846,7 +852,7 @@ local Defaults = {
                     AlertColor = { 1, 0, 0, 1 },                -- Red for new messages/alerts
                     ActiveColor = { 1, 1, 1, 1 },               -- White for selected/active tab
                     WhisperColor = { 1, 0.5, 0.8, 1 },          -- Pink for whisper tabs
-                    InactiveColorMode = "theme",               -- "theme", "class", or "custom"
+                    InactiveColorMode = "theme",                -- "theme", "class", or "custom"
                     InactiveColor = { 0.898, 0.063, 0.224, 1 }, -- Custom color for inactive tabs
                 },
                 -- EditBox Backdrop Settings
@@ -1901,24 +1907,92 @@ local Defaults = {
         -- Missing Buffs Tracker
         MissingBuffs = {
             -- General Settings
-            Enabled = true, -- Enable/disable module
+            Enabled = true,       -- Enable/disable module
+            TrackingMode = "smart", -- Tracking mode: all (raid leader), smart (personal)
             -- Consumable Tracking
             Consumables = {
-                Flask = { Enabled = true, LoadCondition = "ANYGROUP" },
-                Food = { Enabled = true, LoadCondition = "ANYGROUP" },
-                MHEnchant = { Enabled = true, LoadCondition = "ANYGROUP" },
-                OHEnchant = { Enabled = true, LoadCondition = "ANYGROUP" },
-                Rune = { Enabled = true, LoadCondition = "RAID" },
-                RaidBuffs = { Enabled = true, LoadCondition = "ANYGROUP" },
-                Poisons = { Enabled = true, LoadCondition = "ALWAYS" },
+                Flask = { Enabled = true, LoadCondition = "ANYGROUP", GlowMode = "always", ExpirationMins = 10, GlowEnabled = true, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                Food = { Enabled = true, LoadCondition = "ANYGROUP", GlowMode = "always", ExpirationMins = 10, GlowEnabled = false, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                MHEnchant = { Enabled = true, LoadCondition = "ANYGROUP", GlowMode = "always", ExpirationMins = 10, GlowEnabled = false, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                OHEnchant = { Enabled = true, LoadCondition = "ANYGROUP", GlowMode = "always", ExpirationMins = 10, GlowEnabled = false, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                Rune = { Enabled = true, LoadCondition = "RAID", GlowMode = "always", ExpirationMins = 10, GlowEnabled = false, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+            },
+
+            -- Individual Raid Buffs
+            RaidBuffs = {
+                MarkOfTheWild = { Enabled = true, LoadCondition = "ANYGROUP", GlowMode = "always", ExpirationMins = 10, GlowEnabled = true, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                ArcaneIntellect = { Enabled = true, LoadCondition = "ANYGROUP", GlowMode = "always", ExpirationMins = 10, GlowEnabled = true, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                BattleShout = { Enabled = true, LoadCondition = "ANYGROUP", GlowMode = "always", ExpirationMins = 10, GlowEnabled = true, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                PowerWordFortitude = { Enabled = true, LoadCondition = "ANYGROUP", GlowMode = "always", ExpirationMins = 10, GlowEnabled = true, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                Skyfury = { Enabled = true, LoadCondition = "ANYGROUP", GlowMode = "always", ExpirationMins = 10, GlowEnabled = true, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                BlessingOfTheBronze = { Enabled = true, LoadCondition = "ANYGROUP", GlowMode = "always", ExpirationMins = 10, GlowEnabled = true, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+            },
+
+            -- Individual Self Buffs
+            SelfBuffs = {
+                Poisons = { Enabled = true, LoadCondition = "ALWAYS", EnableCrippling = false, GlowMode = "always", ExpirationMins = 10, GlowEnabled = true, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                ArcaneFamiliar = { Enabled = true, LoadCondition = "ALWAYS", GlowMode = "always", ExpirationMins = 10, GlowEnabled = true, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                GrimoireSacrifice = { Enabled = true, LoadCondition = "ALWAYS", GlowMode = "always", ExpirationMins = 10, GlowEnabled = true, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                -- Shaman weapon imbues
+                FlametongueWeapon = { Enabled = true, LoadCondition = "ALWAYS", GlowMode = "always", ExpirationMins = 10, GlowEnabled = false, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                WindfuryWeapon = { Enabled = true, LoadCondition = "ALWAYS", GlowMode = "always", ExpirationMins = 10, GlowEnabled = false, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                EarthlivingWeapon = { Enabled = true, LoadCondition = "ALWAYS", GlowMode = "always", ExpirationMins = 10, GlowEnabled = false, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                -- Shaman shields
+                EarthShieldSelf = { Enabled = true, LoadCondition = "ALWAYS", GlowMode = "always", ExpirationMins = 10, GlowEnabled = false, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                LightningShield = { Enabled = true, LoadCondition = "ALWAYS", GlowMode = "always", ExpirationMins = 10, GlowEnabled = false, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                WaterShield = { Enabled = true, LoadCondition = "ALWAYS", GlowMode = "always", ExpirationMins = 10, GlowEnabled = false, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+            },
+
+            -- Individual Presence Buffs
+            PresenceBuffs = {
+                DevotionAura = { Enabled = true, GlowMode = "always", GlowEnabled = false, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                Soulstone = { Enabled = true, GlowMode = "always", GlowEnabled = false, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                AtrophicPoison = { Enabled = true, GlowMode = "always", GlowEnabled = false, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 15, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+            },
+
+            TargetedBuffs = {
+                Enabled = true,
+                LoadCondition = "ANYGROUP",
+            },
+
+            TargetedBuffSettings = {
+                BeaconOfLight = { Enabled = true, LoadCondition = "ANYGROUP", GlowMode = "always", ExpirationMins = 10, GlowEnabled = true, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 10, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                BeaconOfFaith = { Enabled = true, LoadCondition = "ANYGROUP", GlowMode = "always", ExpirationMins = 10, GlowEnabled = true, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 10, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                BlisteringScales = { Enabled = true, LoadCondition = "ANYGROUP", GlowMode = "always", ExpirationMins = 10, GlowEnabled = true, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 10, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                Timelessness = { Enabled = true, LoadCondition = "ANYGROUP", GlowMode = "always", ExpirationMins = 10, GlowEnabled = true, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 10, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                SourceOfMagic = { Enabled = true, LoadCondition = "ANYGROUP", GlowMode = "always", ExpirationMins = 10, GlowEnabled = true, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 10, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                EarthShieldOthers = { Enabled = true, LoadCondition = "ANYGROUP", GlowMode = "always", ExpirationMins = 10, GlowEnabled = true, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 10, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                SymbioticRelationship = { Enabled = true, LoadCondition = "ANYGROUP", GlowMode = "always", ExpirationMins = 10, GlowEnabled = true, GlowType = "pixel", GlowColor = { 1, 0.8, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 10, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+            },
+
+            TargetedBuffDisplay = {
+                IconSize = 40,
+                IconSpacing = 1,
+                GrowDirection = "CENTER",
+                Strata = "HIGH",
+                anchorFrameType = "UIPARENT",
+                ParentFrame = "UIParent",
+                Position = {
+                    AnchorFrom = "CENTER",
+                    AnchorTo = "CENTER",
+                    XOffset = 0,
+                    YOffset = -430,
+                },
             },
             -- Raid Buff Display Settings (separate position from main)
             RaidBuffDisplay = {
                 IconSize = 48,
                 IconSpacing = 1,
+                GrowDirection = "CENTER",    -- Growth direction: LEFT, CENTER, RIGHT
                 FontFace = "Expressway",     -- Font face
                 FontSize = 20,               -- Font size
                 FontOutline = "SOFTOUTLINE", -- Font outline
+                FontShadow = {
+                    Enabled = false,
+                    Color = { 0, 0, 0, 1 },
+                    OffsetX = 1,
+                    OffsetY = -1,
+                },
                 Strata = "HIGH",
                 anchorFrameType = "UIPARENT",
                 ParentFrame = "UIParent",
@@ -1928,6 +2002,18 @@ local Defaults = {
                     XOffset = 0,
                     YOffset = -380,
                 },
+                -- Glow Settings
+                GlowEnabled = true,
+                GlowType = "pixel",
+                GlowColor = { 1, 0.8, 0, 1 },
+                GlowLines = 8,
+                GlowFrequency = 0.25,
+                GlowLength = 8,
+                GlowThickness = 2,
+                GlowBorder = true,
+                GlowScale = 1,
+                GlowStartAnim = true,
+                GlowDuration = 1,
             },
             -- Stance & Spec Buff Settings
             Stances = {
@@ -1994,7 +2080,8 @@ local Defaults = {
 
             -- Stance Display Settings (separate position)
             StanceDisplay = {
-                Enabled = true,              -- Enable stance text display
+                Enabled = true,
+                ShowMissingText = true,
                 IconSize = 36,
                 FontFace = "Expressway",     -- Font face
                 FontSize = 13,               -- Font size
@@ -2043,6 +2130,30 @@ local Defaults = {
 
             -- Custom buffs to track (spellId based)
             CustomBuffs = {
+            },
+        },
+
+        -- Missing Items Tracker (bag item warnings)
+        MissingItems = {
+            Enabled = false,
+            ActiveGroup = "Default",
+            Groups = { "Default" },
+            Items = {},
+            Display = {
+                FontFace = "Expressway",
+                FontSize = 14,
+                FontOutline = "OUTLINE",
+                LineSpacing = 4,
+                DefaultColor = { 1, 0.2, 0.2, 1 },
+                Strata = "HIGH",
+                anchorFrameType = "UIPARENT",
+                ParentFrame = "UIParent",
+                Position = {
+                    AnchorFrom = "CENTER",
+                    AnchorTo = "CENTER",
+                    XOffset = 0,
+                    YOffset = -200,
+                },
             },
         },
     },

@@ -13,16 +13,9 @@ local RAID_CLASS_COLORS = RAID_CLASS_COLORS
 local C_Timer = C_Timer
 
 local SIDEBAR_WIDTH = 192
-local ITEM_HEIGHT = 28
+local ITEM_HEIGHT = 34
 local BUTTON_HEIGHT = 28
 local LIST_PADDING = 4
-
-local function GetModule()
-    if NorskenUI then
-        return NorskenUI:GetModule("CooldownStrings", true)
-    end
-    return nil
-end
 
 local function BuildSpecList()
     local specs = {}
@@ -54,11 +47,12 @@ GUIFrame:RegisterPanel("CooldownStrings", function(container)
     if not db then return end
     if not db.Profiles then db.Profiles = {} end
 
+    local mod = NorskenUI and NorskenUI:GetModule("CooldownStrings", true)
+
     local allSpecList = BuildSpecList()
     local allWidgets = {}
 
     local function ApplyModuleState(enabled)
-        local mod = GetModule()
         if not mod then return end
         mod.db.Enabled = enabled
         if enabled then
@@ -75,7 +69,6 @@ GUIFrame:RegisterPanel("CooldownStrings", function(container)
     end
 
     local function SyncWithModule()
-        local mod = GetModule()
         if mod and mod.RefreshPanel then
             mod:RefreshPanel()
         end
@@ -103,7 +96,6 @@ GUIFrame:RegisterPanel("CooldownStrings", function(container)
     local function GetAllProfiles()
         local profiles = {}
         for name, profileData in pairs(db.Profiles) do
-            local mod = GetModule()
             local specInfo = mod and profileData.SpecID and mod.GetSpecInfoByID(profileData.SpecID)
             local className = specInfo and specInfo.class or "ZZZZZ"
             table_insert(profiles, { key = name, name = name, data = profileData, className = className, specInfo = specInfo })
@@ -291,7 +283,6 @@ GUIFrame:RegisterPanel("CooldownStrings", function(container)
         local applyBtn = GUIFrame:CreateButton(btnRow, "Apply to CDM", {
             height = 38,
             callback = function()
-                local mod = GetModule()
                 if not mod then return end
                 mod.ApplyProfileToCDM(selectedProfile.String or "", selectedProfileName, {
                     onConflict = function(proceed)

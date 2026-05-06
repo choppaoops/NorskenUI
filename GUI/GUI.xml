@@ -18,6 +18,7 @@
     <Script file="GUIWidgets\Widgets\GUI-NUIMultiLineEditBox.lua" />
     <Script file="GUIWidgets\Widgets\GUI-NUISeparator.lua" />
     <Script file="GUIWidgets\Widgets\GUI-NUIText.lua" />
+    <Script file="GUIWidgets\Widgets\GUI-NUIIcon.lua" />
 
     <!-- GUI Premade Cards -->
     <Script file="GUIWidgets\Cards\GUI-PositionCard.lua" />
@@ -25,7 +26,9 @@
     <Script file="GUIWidgets\Cards\GUI-GlowSettingsCard.lua" />
     <Script file="GUIWidgets\Cards\GUI-SoundSettingsCard.lua" />
     <Script file="GUIWidgets\Cards\GUI-FilterCards.lua" />
+    <Script file="GUIWidgets\Cards\GUI-SpecFilterCard.lua" />
     <Script file="GUIWidgets\Cards\GUI-SpellBrowserCard.lua" />
+    <Script file="GUIWidgets\Cards\GUI-ItemBrowserCard.lua" />
     <Script file="GUIWidgets\Cards\GUI-TextFormatCard.lua" />
 
     <!-- GUI Home Page -->
@@ -48,13 +51,18 @@
     <Script file="GUITabs\GUI-Combat\GUI-CombatMessageTab.lua" />
     <Script file="GUITabs\GUI-Combat\GUI-CombatRes.lua" />
     <Script file="GUITabs\GUI-Combat\GUI-CombatCursor.lua" />
-    <Script file="GUITabs\GUI-Combat\GUI-MissingBuffsTab.lua" />
     <Script file="GUITabs\GUI-Combat\GUI-PetTextsTab.lua" />
     <Script file="GUITabs\GUI-Combat\GUI-GatewayTab.lua" />
     <Script file="GUITabs\GUI-Combat\GUI-RangeChecker.lua" />
     <Script file="GUITabs\GUI-Combat\GUI-TimeSpiral.lua" />
     <Script file="GUITabs\GUI-Combat\GUI-FocusCastbar.lua" />
     <Script file="GUITabs\GUI-Combat\GUI-ExternalBuffs.lua" />
+
+    <!-- GUI Missing Buffs Tabs -->
+    <Script file="GUITabs\GUI-MissingBuffs\GUI-MissingBuffsTab.lua" />
+    <Script file="GUITabs\GUI-MissingBuffs\GUI-TargetedBuffs.lua" />
+    <Script file="GUITabs\GUI-MissingBuffs\GUI-StanceIcons.lua" />
+    <Script file="GUITabs\GUI-MissingBuffs\GUI-StanceTexts.lua" />
 
     <!-- GUI QoL Tabs -->
     <Script file="GUITabs\GUI-QoL\GUI-AutomationTab.lua" />
@@ -69,6 +77,7 @@
     <Script file="GUITabs\GUI-QoL\GUI-AuctionHouseFilter.lua" />
     <Script file="GUITabs\GUI-QoL\GUI-Recuperate.lua" />
     <Script file="GUITabs\GUI-QoL\GUI-CharacterPanel.lua" />
+    <Script file="GUITabs\GUI-QoL\GUI-MissingItemsTab.lua" />
 
     <!-- GUI Skinning Tabs -->
     <Script file="GUITabs\GUISkinning\GUI-TooltipsTab.lua" />

@@ -20,7 +20,9 @@ do
     local function UpdateSpec()
         NRSKNUI.MySpec.id, NRSKNUI.MySpec.role, NRSKNUI.MySpec.position, NRSKNUI.MySpec.talents = LS.MySpecialization()
     end
-    UpdateSpec()
+    C_Timer.After(0.1, function()
+        UpdateSpec()
+    end)
     LS.RegisterPlayerSpecChange(NRSKNUI, UpdateSpec)
 end
 

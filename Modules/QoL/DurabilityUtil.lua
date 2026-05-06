@@ -182,8 +182,8 @@ function DUR:OnEnable()
 
     self:CreateFrame()
     self:CreateWarningFrame()
-    self:ApplySettings()
     self:RegisterEvents()
+    C_Timer.After(0.5, function() self:ApplySettings() end)
 
     NRSKNUI.EditMode:RegisterElement({
         key = "DurabilityWarning",
@@ -228,8 +228,6 @@ function DUR:OnEnable()
         end,
         guiPath = "Durability",
     })
-
-    C_Timer.After(0.5, function() self:ApplySettings() end)
 end
 
 function DUR:OnDisable()
@@ -245,7 +243,8 @@ function DUR:ShowPreview()
     if not self.warningFrame then self:CreateWarningFrame() end
 
     self.isPreview = true
-    self:ApplySettings()
+    --self:ApplySettings()
+    C_Timer.After(0.5, function() self:ApplySettings() end)
 
     if self.frame and self.text then
         self.frame:Show()
