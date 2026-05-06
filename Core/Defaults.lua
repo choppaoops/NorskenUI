@@ -404,11 +404,11 @@ local Defaults = {
             Strata = "HIGH",
             anchorFrameType = "UIPARENT",
             ParentFrame = "UIParent",
-            Position = {                       -- Position settings
-                AnchorFrom = "CENTER",         -- Anchor point from
-                AnchorTo = "CENTER",           -- Anchor point to
-                XOffset = 0,                   -- X offset
-                YOffset = 220,                 -- Y offset
+            Position = {               -- Position settings
+                AnchorFrom = "CENTER", -- Anchor point from
+                AnchorTo = "CENTER",   -- Anchor point to
+                XOffset = 0,           -- X offset
+                YOffset = 220,         -- Y offset
             },
         },
 
@@ -1533,10 +1533,10 @@ local Defaults = {
                 IconsPerRow = 12,
                 MaxRows = 5,
                 IconZoom = 0.32,
+                GrowthDirection = "LEFT_DOWN",
 
                 -- Visual settings
                 BorderColor = { 0, 0, 0, 1 },
-                BackgroundColor = { 0, 0, 0, 0.3 },
                 EnchantBorderColor = { 0.6, 0, 1, 1 }, -- Purple for weapon enchants
 
                 -- Font settings
@@ -1550,6 +1550,14 @@ local Defaults = {
                     AnchorFrom = "CENTER",
                     AnchorTo = "CENTER",
                     XOffset = 0,
+                    YOffset = 1,
+                },
+
+                -- Stack text position (relative to icon)
+                StackPosition = {
+                    AnchorFrom = "BOTTOMRIGHT",
+                    AnchorTo = "BOTTOMRIGHT",
+                    XOffset = -1,
                     YOffset = 1,
                 },
 
@@ -1907,7 +1915,7 @@ local Defaults = {
         -- Missing Buffs Tracker
         MissingBuffs = {
             -- General Settings
-            Enabled = true,       -- Enable/disable module
+            Enabled = true,         -- Enable/disable module
             TrackingMode = "smart", -- Tracking mode: all (raid leader), smart (personal)
             -- Consumable Tracking
             Consumables = {

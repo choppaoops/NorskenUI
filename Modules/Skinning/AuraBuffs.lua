@@ -1,22 +1,18 @@
--- NorskenUI namespace
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
 
--- Check for addon object
 if not NorskenUI then
     error("BuffTracking: Addon object not initialized!")
     return
 end
 
--- Create module
 ---@class BuffTracking: AceModule, AceEvent-3.0
 local BUFFS = NorskenUI:NewModule("BuffTracking", "AceEvent-3.0")
 
--- Store references to all initialized buttons
 BUFFS.buttons = {}
 
--- Localization
 local CreateFrame = CreateFrame
+local pairs, ipairs = pairs, ipairs
 local unpack = unpack
 local format = string.format
 local floor = math.floor
@@ -30,43 +26,47 @@ local C_UnitAuras = C_UnitAuras
 local C_DurationUtil = C_DurationUtil
 local GameTooltip = GameTooltip
 
--- Reusable duration object to avoid garbage creation
 local reusableDurationObj = C_DurationUtil.CreateDuration()
 
--- Update db, used for profile changes
+local DIRECTION_TO_POINT = {
+    DOWN_RIGHT = "TOPLEFT",
+    DOWN_LEFT = "TOPRIGHT",
+    UP_RIGHT = "BOTTOMLEFT",
+    UP_LEFT = "BOTTOMRIGHT",
+    RIGHT_DOWN = "TOPLEFT",
+    RIGHT_UP = "BOTTOMLEFT",
+    LEFT_DOWN = "TOPRIGHT",
+    LEFT_UP = "BOTTOMRIGHT",
+}
+local DIRECTION_TO_X_MULT = { DOWN_RIGHT = 1, DOWN_LEFT = -1, UP_RIGHT = 1, UP_LEFT = -1, RIGHT_DOWN = 1, RIGHT_UP = 1, LEFT_DOWN = -1, LEFT_UP = -1, }
+local DIRECTION_TO_Y_MULT = { DOWN_RIGHT = -1, DOWN_LEFT = -1, UP_RIGHT = 1, UP_LEFT = 1, RIGHT_DOWN = -1, RIGHT_UP = 1, LEFT_DOWN = -1, LEFT_UP = 1, }
+local IS_HORIZONTAL_GROWTH = { RIGHT_DOWN = true, RIGHT_UP = true, LEFT_DOWN = true, LEFT_UP = true, }
+
 function BUFFS:UpdateDB()
     self.db = NRSKNUI.db.profile.Skinning.BuffTracking
 end
 
--- Module init
 function BUFFS:OnInitialize()
     self:UpdateDB()
     self:SetEnabledState(false)
 end
 
--- Tooltip enter
 local function auraOnEnter(button)
     GameTooltip:SetOwner(button, "ANCHOR_BOTTOMLEFT")
 
     local auraIndex = button:GetAttribute("index")
     if auraIndex then
         local unit = button:GetParent():GetAttribute("unit")
-        if GameTooltip:SetUnitAura(unit, auraIndex, "HELPFUL") then
-            GameTooltip:Show()
-        end
+        if GameTooltip:SetUnitAura(unit, auraIndex, "HELPFUL") then GameTooltip:Show() end
     elseif button:GetAttribute("target-slot") then
-        if GameTooltip:SetInventoryItem("player", button:GetID()) then
-            GameTooltip:Show()
-        end
+        if GameTooltip:SetInventoryItem("player", button:GetID()) then GameTooltip:Show() end
     end
 end
 
--- Tooltip leave
 local function auraOnLeave()
     GameTooltip:Hide()
 end
 
--- Update buff button data
 local function auraUpdateBuff(button, auraIndex)
     local unit = button:GetParent():GetAttribute("unit")
     local auraInfo = C_UnitAuras.GetAuraDataByIndex(unit, auraIndex, "HELPFUL")
@@ -89,12 +89,11 @@ local function auraUpdateBuff(button, auraIndex)
     end
 end
 
--- Update weapon enchant button data
 local function auraUpdateEnchant(button, inventorySlotIndex)
     local duration, count, _
-    if inventorySlotIndex == 16 then     -- main hand
+    if inventorySlotIndex == 16 then
         _, duration, count = GetWeaponEnchantInfo()
-    elseif inventorySlotIndex == 17 then -- off hand
+    elseif inventorySlotIndex == 17 then
         _, _, _, _, _, duration, count = GetWeaponEnchantInfo()
     else
         return
@@ -113,7 +112,6 @@ local function auraUpdateEnchant(button, inventorySlotIndex)
     end
 end
 
--- Attribute changed handler
 local function auraOnAttributeChanged(button, attribute, ...)
     if attribute == "index" then
         auraUpdateBuff(button, ...)
@@ -122,148 +120,127 @@ local function auraOnAttributeChanged(button, attribute, ...)
     end
 end
 
--- Initialize a single aura button
+local function applyTimerStyle(button, db)
+    local cooldownText = button.Cooldown:GetRegions()
+    if cooldownText and cooldownText.SetFont then
+        NRSKNUI:ApplyFont(cooldownText, db.FontFace, db.TimerFontSize, db.FontOutline)
+        if cooldownText.SetShadowOffset then cooldownText:SetShadowOffset(0, 0) end
+        if cooldownText.SetJustifyH then cooldownText:SetJustifyH(NRSKNUI:GetTextJustifyFromAnchor(db.TimerPosition
+            .AnchorFrom)) end
+        cooldownText:ClearAllPoints()
+        cooldownText:SetPoint(db.TimerPosition.AnchorFrom, button, db.TimerPosition.AnchorTo, db.TimerPosition.XOffset,
+            db.TimerPosition.YOffset)
+    end
+end
+
 local function auraButtonInit(button)
     if button._initialized then return end
     button._initialized = true
-
-    -- Store reference
     BUFFS.buttons[button] = true
 
-    local db = BUFFS.db
-
-    -- Add backdrop/background
     button.bg = button:CreateTexture(nil, "BACKGROUND")
     button.bg:SetAllPoints()
-    button.bg:SetColorTexture(unpack(db.BackgroundColor))
+    button.bg:SetColorTexture(0, 0, 0, 0.3)
 
-    -- Add borders
-    NRSKNUI:AddBorders(button, db.BorderColor)
+    NRSKNUI:AddBorders(button, BUFFS.db.BorderColor)
 
-    -- Icon texture
     button.Icon = button:CreateTexture(nil, "ARTWORK")
     button.Icon:SetAllPoints()
     NRSKNUI:ApplyZoom(button.Icon, NRSKNUI.GlobalZoom)
 
-    -- Count text
     button.Count = button:CreateFontString(nil, "OVERLAY")
-    button.Count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1)
-    button.Count:SetJustifyH("RIGHT")
-    NRSKNUI:ApplyFont(button.Count, db.FontFace, db.FontSize, db.FontOutline)
+    button.Count:SetPoint(BUFFS.db.StackPosition.AnchorFrom, button, BUFFS.db.StackPosition.AnchorTo,
+        BUFFS.db.StackPosition.XOffset, BUFFS.db.StackPosition.YOffset)
+    button.Count:SetJustifyH(NRSKNUI:GetTextJustifyFromAnchor(BUFFS.db.StackPosition.AnchorFrom))
+    NRSKNUI:ApplyFont(button.Count, BUFFS.db.FontFace, BUFFS.db.FontSize, BUFFS.db.FontOutline)
     button.Count:SetShadowOffset(0, 0)
 
-    -- Cooldown frame
     button.Cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
     button.Cooldown:SetAllPoints()
     button.Cooldown:SetDrawEdge(false)
     button.Cooldown:SetDrawSwipe(false)
+    button.Cooldown:SetDrawBling(false)
     button.Cooldown:SetHideCountdownNumbers(false)
 
-    -- Apply timer font size, position, and remove shadow from cooldown timer text
-    local timerFontSize = db.TimerFontSize or 14
-    local timerPos = db.TimerPosition or {}
-    local cooldownText = button.Cooldown:GetRegions()
-    if cooldownText and cooldownText.SetFont then
-        NRSKNUI:ApplyFont(cooldownText, db.FontFace, timerFontSize, db.FontOutline)
-        if cooldownText.SetShadowOffset then cooldownText:SetShadowOffset(0, 0) end
-        cooldownText:ClearAllPoints()
-        cooldownText:SetPoint(
-            timerPos.AnchorFrom or "CENTER",
-            button,
-            timerPos.AnchorTo or "CENTER",
-            timerPos.XOffset or 0,
-            timerPos.YOffset or 0
-        )
-    end
+    applyTimerStyle(button, BUFFS.db)
 
-    -- Script handlers
     button:HookScript("OnAttributeChanged", auraOnAttributeChanged)
     button:SetScript("OnEnter", auraOnEnter)
     button:SetScript("OnLeave", auraOnLeave)
 end
 
--- Apply visual settings to a single button
 local function applyButtonSettings(button, db)
-    if button.bg then button.bg:SetColorTexture(unpack(db.BackgroundColor)) end
+    if button.bg then button.bg:SetColorTexture(0, 0, 0, 0.3) end
     if button.SetBorderColor then button:SetBorderColor(unpack(db.BorderColor)) end
     if button.Count then
         NRSKNUI:ApplyFont(button.Count, db.FontFace, db.FontSize, db.FontOutline)
         button.Count:SetShadowOffset(0, 0)
+        button.Count:ClearAllPoints()
+        button.Count:SetPoint(db.StackPosition.AnchorFrom, button, db.StackPosition.AnchorTo,
+            db.StackPosition.XOffset, db.StackPosition.YOffset)
+        button.Count:SetJustifyH(NRSKNUI:GetTextJustifyFromAnchor(db.StackPosition.AnchorFrom))
     end
-    if button.Cooldown then
-        local timerFontSize = db.TimerFontSize or 14
-        local timerPos = db.TimerPosition or {}
-        local cooldownText = button.Cooldown:GetRegions()
-        if cooldownText and cooldownText.SetFont then
-            NRSKNUI:ApplyFont(cooldownText, db.FontFace, timerFontSize, db.FontOutline)
-            if cooldownText.SetShadowOffset then cooldownText:SetShadowOffset(0, 0) end
-            cooldownText:ClearAllPoints()
-            cooldownText:SetPoint(
-                timerPos.AnchorFrom or "CENTER",
-                button,
-                timerPos.AnchorTo or "CENTER",
-                timerPos.XOffset or 0,
-                timerPos.YOffset or 0
-            )
-        end
-    end
+    if button.Cooldown then applyTimerStyle(button, db) end
     if button.Icon then NRSKNUI:ApplyZoom(button.Icon, NRSKNUI.GlobalZoom) end
 end
 
--- Apply settings to all initialized buttons
 function BUFFS:ApplySettings()
     if NRSKNUI:ShouldNotLoadModule() then return end
     for button in pairs(self.buttons) do applyButtonSettings(button, self.db) end
     if self.previewActive then self:ShowPreview() end
 end
 
--- Create the main buff frame
 function BUFFS:CreateBuffFrame()
     if self.buffs then return end
     local spacing = self.db.IconSize + self.db.IconSpacing
 
-    -- Create secure aura header
     self.buffs = CreateFrame("Frame", "NorskenUIBuffFrame", UIParent, "SecureAuraHeaderTemplate")
 
-    -- Position
     local anchorFrame = NRSKNUI:ResolveAnchorFrame(self.db.anchorFrameType, self.db.ParentFrame)
-    self.buffs:SetPoint(
-        self.db.Position.AnchorFrom,
-        anchorFrame,
-        self.db.Position.AnchorTo,
-        self.db.Position.XOffset,
-        self.db.Position.YOffset
-    )
+    self.buffs:SetPoint(self.db.Position.AnchorFrom, anchorFrame, self.db.Position.AnchorTo, self.db.Position.XOffset,
+        self.db.Position.YOffset)
     NRSKNUI:PixelPerfect(self.buffs)
 
-    -- Set up templates and filters
     self.buffs:SetAttribute("template", "SecureAuraButtonTemplate")
     self.buffs:SetAttribute("unit", "player")
     self.buffs:SetAttribute("filter", self.db.Filter)
     self.buffs:SetAttribute("includeWeapons", self.db.IncludeWeaponEnchants and 1 or 0)
     self.buffs:SetAttribute("weaponTemplate", "SecureAuraButtonTemplate")
 
-    -- Sorting
     self.buffs:SetAttribute("sortMethod", self.db.SortMethod)
     self.buffs:SetAttribute("sortDirection", self.db.SortDirection)
     self.buffs:SetAttribute("separateOwn", 1)
 
-    -- Position and size for aura buttons
-    self.buffs:SetAttribute("point", "TOPRIGHT")
-    self.buffs:SetAttribute("minWidth", self.db.IconsPerRow * spacing)
-    self.buffs:SetAttribute("minHeight", self.db.MaxRows * spacing)
-    self.buffs:SetAttribute("xOffset", -spacing)
-    self.buffs:SetAttribute("wrapYOffset", -spacing)
+    local direction = self.db.GrowthDirection
+    local point = DIRECTION_TO_POINT[direction]
+    local xMult = DIRECTION_TO_X_MULT[direction]
+    local yMult = DIRECTION_TO_Y_MULT[direction]
+
+    self.buffs:SetAttribute("point", point)
     self.buffs:SetAttribute("wrapAfter", self.db.IconsPerRow)
+
+    if IS_HORIZONTAL_GROWTH[direction] then
+        self.buffs:SetAttribute("minWidth", self.db.IconsPerRow * spacing)
+        self.buffs:SetAttribute("minHeight", self.db.MaxRows * spacing)
+        self.buffs:SetAttribute("xOffset", xMult * spacing)
+        self.buffs:SetAttribute("yOffset", 0)
+        self.buffs:SetAttribute("wrapXOffset", 0)
+        self.buffs:SetAttribute("wrapYOffset", yMult * spacing)
+    else
+        self.buffs:SetAttribute("minWidth", self.db.MaxRows * spacing)
+        self.buffs:SetAttribute("minHeight", self.db.IconsPerRow * spacing)
+        self.buffs:SetAttribute("xOffset", 0)
+        self.buffs:SetAttribute("yOffset", yMult * spacing)
+        self.buffs:SetAttribute("wrapXOffset", xMult * spacing)
+        self.buffs:SetAttribute("wrapYOffset", 0)
+    end
     self.buffs:SetAttribute("initialConfigFunction", format([[
         self:SetWidth(%d)
         self:SetHeight(%d)
     ]], self.db.IconSize, self.db.IconSize))
 
-    -- Register attribute driver for vehicle support
     RegisterAttributeDriver(self.buffs, "unit", "[vehicleui] vehicle; player")
 
-    -- Hook attribute changes so we can skin aura buttons
     self.buffs:HookScript("OnAttributeChanged", function(_, attribute, ...)
         local prefix = attribute:sub(1, 5)
         if prefix == "child" or prefix == "tempe" then
@@ -273,39 +250,24 @@ function BUFFS:CreateBuffFrame()
     self.buffs:Show()
 end
 
--- Apply position from db settings
 function BUFFS:ApplyPosition()
     if InCombatLockdown() then return end
     local anchorFrame = NRSKNUI:ResolveAnchorFrame(self.db.anchorFrameType, self.db.ParentFrame)
 
-    -- Update main frame position
     if self.buffs then
         self.buffs:ClearAllPoints()
-        self.buffs:SetPoint(
-            self.db.Position.AnchorFrom,
-            anchorFrame,
-            self.db.Position.AnchorTo,
-            self.db.Position.XOffset,
-            self.db.Position.YOffset
-        )
-        self.buffs:SetFrameStrata(self.db.Strata or "MEDIUM")
-        NRSKNUI:SnapFrameToPixels(self.buffs)
+        self.buffs:SetPoint(self.db.Position.AnchorFrom, anchorFrame, self.db.Position.AnchorTo,
+            self.db.Position.XOffset, self.db.Position.YOffset)
+        self.buffs:SetFrameStrata(self.db.Strata)
     end
 
-    -- Also update preview frame position if active
     if self.previewActive and self.previewFrame then
         self.previewFrame:ClearAllPoints()
-        self.previewFrame:SetPoint(
-            self.db.Position.AnchorFrom,
-            anchorFrame,
-            self.db.Position.AnchorTo,
-            self.db.Position.XOffset,
-            self.db.Position.YOffset
-        )
+        self.previewFrame:SetPoint(self.db.Position.AnchorFrom, anchorFrame, self.db.Position.AnchorTo,
+            self.db.Position.XOffset, self.db.Position.YOffset)
     end
 end
 
--- Update position
 function BUFFS:UpdatePosition(pos)
     if InCombatLockdown() then return end
     self.db.Position.AnchorFrom = pos.AnchorFrom
@@ -315,24 +277,22 @@ function BUFFS:UpdatePosition(pos)
     self:ApplyPosition()
 end
 
--- Module OnEnable
 function BUFFS:OnEnable()
     if NRSKNUI:ShouldNotLoadModule() then return end
     if not self.db.Enabled then return end
 
+    -- Get rid off blizzy buff frames
     NRSKNUI:Hide('BuffFrame')
     CVarCallbackRegistry:UnregisterCallback('consolidateBuffs', BuffFrame)
     CVarCallbackRegistry:UnregisterCallback('collapseExpandBuffs', BuffFrame)
 
     self:CreateBuffFrame()
 
-    -- Delayed positioning to ensure custom anchor frames exist
     C_Timer.After(0.5, function() self:ApplyPosition() end)
 
     self:RegisterEditMode()
 end
 
--- Register with EditMode system
 function BUFFS:RegisterEditMode()
     if not self.buffs then return end
     if not NRSKNUI.EditMode then return end
@@ -353,9 +313,8 @@ function BUFFS:RegisterEditMode()
     })
 end
 
--- Preview stuff
+-- Preview
 
--- Sample buff icons for preview
 local PREVIEW_ICONS = {
     136048, -- Mark of the Wild
     135932, -- Arcane Intellect
@@ -367,66 +326,43 @@ local PREVIEW_ICONS = {
     134830, -- Well Fed
 }
 
--- Create a single preview button
 local function CreatePreviewButton(parent, index, db)
-    local iconSize = db.IconSize
-
     local button = CreateFrame("Frame", nil, parent)
-    button:SetSize(iconSize, iconSize)
+    button:SetSize(db.IconSize, db.IconSize)
 
-    -- Add backdrop/background
     button.bg = button:CreateTexture(nil, "BACKGROUND")
     button.bg:SetAllPoints()
-    button.bg:SetColorTexture(unpack(db.BackgroundColor))
+    button.bg:SetColorTexture(0, 0, 0, 0.3)
 
-    -- Add borders
     NRSKNUI:AddBorders(button, db.BorderColor)
 
-    -- Icon texture
     button.Icon = button:CreateTexture(nil, "ARTWORK")
     button.Icon:SetAllPoints()
     NRSKNUI:ApplyZoom(button.Icon, NRSKNUI.GlobalZoom)
     local iconIndex = ((index - 1) % #PREVIEW_ICONS) + 1
     button.Icon:SetTexture(PREVIEW_ICONS[iconIndex])
 
-    -- Count text
     button.Count = button:CreateFontString(nil, "OVERLAY")
-    button.Count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1)
-    button.Count:SetJustifyH("RIGHT")
+    button.Count:SetPoint(db.StackPosition.AnchorFrom, button, db.StackPosition.AnchorTo,
+        db.StackPosition.XOffset, db.StackPosition.YOffset)
+    button.Count:SetJustifyH(NRSKNUI:GetTextJustifyFromAnchor(db.StackPosition.AnchorFrom))
     NRSKNUI:ApplyFont(button.Count, db.FontFace, db.FontSize, db.FontOutline)
     button.Count:SetShadowOffset(0, 0)
-    -- Show stack count on some icons
     if index % 4 == 1 then
-        button.Count:SetText(2)
+        button.Count:SetText("2")
     elseif index % 4 == 2 then
-        button.Count:SetText(3)
+        button.Count:SetText("3")
     end
 
-    -- Cooldown frame
     button.Cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
     button.Cooldown:SetAllPoints()
     button.Cooldown:SetDrawEdge(false)
     button.Cooldown:SetDrawSwipe(false)
+    button.Cooldown:SetDrawBling(false)
     button.Cooldown:SetHideCountdownNumbers(false)
 
-    -- Apply timer font size and position
-    local timerFontSize = db.TimerFontSize or 14
-    local timerPos = db.TimerPosition or {}
-    local cooldownText = button.Cooldown:GetRegions()
-    if cooldownText and cooldownText.SetFont then
-        NRSKNUI:ApplyFont(cooldownText, db.FontFace, timerFontSize, db.FontOutline)
-        if cooldownText.SetShadowOffset then cooldownText:SetShadowOffset(0, 0) end
-        cooldownText:ClearAllPoints()
-        cooldownText:SetPoint(
-            timerPos.AnchorFrom or "CENTER",
-            button,
-            timerPos.AnchorTo or "CENTER",
-            timerPos.XOffset or 0,
-            timerPos.YOffset or 0
-        )
-    end
+    applyTimerStyle(button, db)
 
-    -- Set a fake cooldown for preview
     if index % 3 ~= 0 then
         local duration = 15 + ((index * 7) % 45)
         local startTime = GetTime() - (duration * (0.2 + (index % 5) * 0.1))
@@ -439,18 +375,21 @@ local function CreatePreviewButton(parent, index, db)
     return button
 end
 
--- Show preview with fake buff icons
 function BUFFS:ShowPreview()
     local spacing = self.db.IconSize + self.db.IconSpacing
     local previewCount = self.db.IconsPerRow * self.db.MaxRows
 
-    -- Create preview frame if needed
     if not self.previewFrame then
         self.previewFrame = CreateFrame("Frame", "NorskenUIBuffPreview", UIParent)
         self.previewButtons = {}
     end
 
-    -- Position preview frame
+    local direction = self.db.GrowthDirection
+    local point = DIRECTION_TO_POINT[direction]
+    local xMult = DIRECTION_TO_X_MULT[direction]
+    local yMult = DIRECTION_TO_Y_MULT[direction]
+    local horizontal = IS_HORIZONTAL_GROWTH[direction]
+
     local anchorFrame = NRSKNUI:ResolveAnchorFrame(self.db.anchorFrameType, self.db.ParentFrame)
     self.previewFrame:ClearAllPoints()
     self.previewFrame:SetPoint(
@@ -460,21 +399,31 @@ function BUFFS:ShowPreview()
         self.db.Position.XOffset,
         self.db.Position.YOffset
     )
-    self.previewFrame:SetSize(self.db.IconsPerRow * spacing, self.db.MaxRows * spacing)
 
-    -- Clear old buttons
+    if horizontal then
+        self.previewFrame:SetSize(self.db.IconsPerRow * spacing, self.db.MaxRows * spacing)
+    else
+        self.previewFrame:SetSize(self.db.MaxRows * spacing, self.db.IconsPerRow * spacing)
+    end
+
     for _, btn in ipairs(self.previewButtons) do
         btn:Hide()
         btn:SetParent(nil)
     end
     wipe(self.previewButtons)
 
-    -- Create preview buttons
     for i = 1, previewCount do
         local button = CreatePreviewButton(self.previewFrame, i, self.db)
-        local col = (i - 1) % self.db.IconsPerRow
-        local row = floor((i - 1) / self.db.IconsPerRow)
-        button:SetPoint("TOPRIGHT", self.previewFrame, "TOPRIGHT", -col * spacing, -row * spacing)
+        local col, row
+        if horizontal then
+            col = (i - 1) % self.db.IconsPerRow
+            row = floor((i - 1) / self.db.IconsPerRow)
+            button:SetPoint(point, self.previewFrame, point, col * xMult * spacing, row * yMult * spacing)
+        else
+            row = (i - 1) % self.db.IconsPerRow
+            col = floor((i - 1) / self.db.IconsPerRow)
+            button:SetPoint(point, self.previewFrame, point, col * xMult * spacing, row * yMult * spacing)
+        end
         button:Show()
         self.previewButtons[i] = button
     end
@@ -484,14 +433,12 @@ function BUFFS:ShowPreview()
     if self.buffs then self.buffs:Hide() end
 end
 
--- Hide preview
 function BUFFS:HidePreview()
     if self.previewFrame then self.previewFrame:Hide() end
     self.previewActive = false
     if self.buffs and self.db.Enabled then self.buffs:Show() end
 end
 
--- Toggle preview
 function BUFFS:TogglePreview()
     if self.previewActive then
         self:HidePreview()
@@ -501,7 +448,6 @@ function BUFFS:TogglePreview()
     return self.previewActive
 end
 
--- Check if preview is active
 function BUFFS:IsPreviewActive()
     return self.previewActive or false
 end
