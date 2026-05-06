@@ -1,91 +1,46 @@
--- NorskenUI namespace
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
 local GUIFrame = NRSKNUI.GUIFrame
 local Theme = NRSKNUI.Theme
 
---TODO: Update
-
--- Localization Setup
-local table_insert = table.insert
-local ipairs = ipairs
-
--- Helper to get UICleanup module
-local function GetUICleanupModule()
-    if NorskenUI then
-        return NorskenUI:GetModule("UICleanup", true)
-    end
-    return nil
-end
-
--- Register UICleanup tab content
 GUIFrame:RegisterContent("UICleanup", function(scrollChild, yOffset)
-    if NRSKNUI:ShouldNotLoadModule() then return end
-    -- Safety check for database
+    if NRSKNUI:ShouldNotLoadModule() then return GUIFrame:ShowDBError(scrollChild, yOffset) end
     local db = NRSKNUI.db and NRSKNUI.db.profile.Skinning.UICleanup
-    if not db then
-        local errorCard = GUIFrame:CreateCard(scrollChild, "Error", yOffset)
-        errorCard:AddLabel("Database not available")
-        return yOffset + errorCard:GetContentHeight() + Theme.paddingMedium
-    end
+    if not db then GUIFrame:ShowDBError(scrollChild, yOffset) end
+    local manager = GUIFrame:CreateWidgetStateManager()
 
-    -- Get UICleanup module
-    local UIC = GetUICleanupModule()
+    ---@type UICleanup?
+    local UIC = NorskenUI:GetModule("UICleanup", true)
+    local function UpdateAllWidgetStates() manager:UpdateAll(db.Enabled) end
 
-    -- Track widgets for enable/disable logic
-    local allWidgets = {} -- All widgets (except main toggle)
-
-    -- Helper to apply new state
-    local function ApplyUICleanupState(enabled)
-        if not UIC then return end
-        UIC.db.Enabled = enabled
-        if enabled then
-            NorskenUI:EnableModule("UICleanup")
-        else
-            NorskenUI:DisableModule("UICleanup")
-        end
-    end
-
-    -- Comprehensive widget state update
-    local function UpdateAllWidgetStates()
-        local mainEnabled = db.Enabled ~= false
-
-        -- First: Apply main enable state to ALL widgets
-        for _, widget in ipairs(allWidgets) do
-            if widget.SetEnabled then
-                widget:SetEnabled(mainEnabled)
-            end
-        end
-    end
-
-    ----------------------------------------------------------------
     -- Card 1: UICleanup Toggle
-    ----------------------------------------------------------------
     local card1 = GUIFrame:CreateCard(scrollChild, "General UICleanup", yOffset)
 
-    -- Enable Checkbox
-    local row1 = GUIFrame:CreateRow(card1.content, 40)
+    local row1 = GUIFrame:CreateRow(card1.content, Theme.rowHeightLast)
     local enableCheck = GUIFrame:CreateCheckbox(row1, "Enable UICleanup", {
         value = db.HideBlizzardClutter ~= false,
         callback = function(checked)
             db.HideBlizzardClutter = checked
-            ApplyUICleanupState(checked)
+            if UIC then
+                if checked then
+                    NorskenUI:EnableModule("UICleanup")
+                else
+                    NorskenUI:DisableModule("UICleanup")
+                end
+            end
             UpdateAllWidgetStates()
             if not db.HideBlizzardClutter then
                 NRSKNUI:CreateReloadPrompt("Enabling Blizzard UI elements requires a reload to take full effect.")
             end
         end,
-        msgPopup = true, msgText = "UICleanup", msgOn = "On", msgOff = "Off"
+        msgPopup = true,
+        msgText = "UICleanup",
     })
     row1:AddWidget(enableCheck, 1)
-    card1:AddRow(row1, 40)
+    card1:AddRow(row1, Theme.rowHeightLast, 0)
 
-    -- Separator
-    local row1sep = GUIFrame:CreateRow(card1.content, 8)
-    local sepCBCard = GUIFrame:CreateSeparator(row1sep)
-    row1sep:AddWidget(sepCBCard, 1)
-    table_insert(allWidgets, sepCBCard)
-    card1:AddRow(row1sep, 8)
+    local sepRow1 = GUIFrame:CreateSeparator(card1.content)
+    card1:AddRow(sepRow1, Theme.rowHeightSeparator)
 
     local hiddenNames = {
         "Objective Tracker Background",
@@ -108,13 +63,12 @@ GUIFrame:RegisterContent("UICleanup", function(scrollChild, yOffset)
         bgMode = "hide"
     })
     row:AddWidget(textWidget, 1)
-    table_insert(allWidgets, textWidget)
+    manager:Register(textWidget, "all")
     card1:AddRow(row, rowHeight)
 
-    yOffset = yOffset + card1:GetContentHeight() + Theme.paddingSmall
+    yOffset = card1:GetNextOffset()
 
-    -- Apply initial widget states
     UpdateAllWidgetStates()
-    yOffset = yOffset - (Theme.paddingSmall)
+
     return yOffset
 end)
