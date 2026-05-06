@@ -1,96 +1,42 @@
--- NorskenUI namespace
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
 local GUIFrame = NRSKNUI.GUIFrame
 local Theme = NRSKNUI.Theme
 
---TODO: Update
-
--- Localization Setup
-local table_insert = table.insert
-local ipairs = ipairs
-
--- Helper to get Blizzard Mouseover module
-local function GetBlizzardMouseoverModule()
-    if NorskenUI then
-        return NorskenUI:GetModule("BlizzardMouseover", true)
-    end
-    return nil
-end
-
--- Combat Message Tab Content
 GUIFrame:RegisterContent("BlizzardMouseover", function(scrollChild, yOffset)
     local db = NRSKNUI.db and NRSKNUI.db.profile.Skinning.BlizzardMouseover
-    if not db or not NRSKNUI:ShouldNotLoadModule() then
-        local errorCard = GUIFrame:CreateCard(scrollChild, "Error", yOffset)
-        errorCard:AddLabel("Database not available")
-        return yOffset + errorCard:GetContentHeight() + Theme.paddingMedium
-    end
+    if not db or NRSKNUI:ShouldNotLoadModule() then GUIFrame:ShowDBError(scrollChild, yOffset) end
 
-    -- Get Combat Message module
-    local BMO = GetBlizzardMouseoverModule()
+    ---@type BlizzardMouseover?
+    local BMO = NorskenUI:GetModule("BlizzardMouseover", true)
+    local manager = GUIFrame:CreateWidgetStateManager()
+    local function UpdateAllWidgetStates() manager:UpdateAll(db.Enabled) end
 
-    -- Track widgets for enable/disable logic
-    local allWidgets = {} -- All widgets (except main toggle)
+    local function ApplySettings() if BMO then BMO:ApplySettings() end end
 
-    -- Helper to apply settings
-    local function ApplySettings()
-        if BMO then
-            BMO:ApplySettings()
-        end
-    end
-
-    -- Helper to apply new state
-    local function ApplyBlizzardMouseoverState(enabled)
-        if not BMO then return end
-        BMO.db.Enabled = enabled
-        if enabled then
-            NorskenUI:EnableModule("BlizzardMouseover")
-        else
-            NorskenUI:DisableModule("BlizzardMouseover")
-        end
-    end
-
-    -- Comprehensive widget state update
-    local function UpdateAllWidgetStates()
-        local mainEnabled = db.Enabled ~= false
-
-        -- First: Apply main enable state to ALL widgets
-        for _, widget in ipairs(allWidgets) do
-            if widget.SetEnabled then
-                widget:SetEnabled(mainEnabled)
-            end
-        end
-    end
-
-    ----------------------------------------------------------------
-    -- Card 1: Blizzard Mouseover Enable + Non Mouseover Alpha
-    ----------------------------------------------------------------
+    -- Card 1: Toggle
     local card1 = GUIFrame:CreateCard(scrollChild, "Blizzard Mouseover", yOffset)
 
-    -- Enable Checkbox
-    local row1 = GUIFrame:CreateRow(card1.content, 40)
+    local row1 = GUIFrame:CreateRow(card1.content, Theme.rowHeight)
     local enableCheck = GUIFrame:CreateCheckbox(row1, "Enable Blizzard Mouseover", {
-        value = db.Enabled ~= false,
+        value = db.Enabled,
         callback = function(checked)
             db.Enabled = checked
-            ApplyBlizzardMouseoverState(checked)
+            if checked then
+                NorskenUI:EnableModule("BlizzardMouseover")
+            else
+                NorskenUI:DisableModule("BlizzardMouseover")
+            end
             UpdateAllWidgetStates()
         end,
         msgPopup = true,
         msgText = "Blizzard Mouseover",
-        msgOn = "On",
-        msgOff = "Off",
     })
     row1:AddWidget(enableCheck, 1)
-    card1:AddRow(row1, 40)
+    card1:AddRow(row1, Theme.rowHeight)
 
-    -- Separator
-    local row1sep = GUIFrame:CreateRow(card1.content, 8)
-    local sepMoverCard = GUIFrame:CreateSeparator(row1sep)
-    row1sep:AddWidget(sepMoverCard, 1)
-    table_insert(allWidgets, sepMoverCard)
-    card1:AddRow(row1sep, 8)
+    local sepRow1 = GUIFrame:CreateSeparator(card1.content)
+    card1:AddRow(sepRow1, Theme.rowHeightSeparator)
 
     local textRow1Size = 30
     local row1b = GUIFrame:CreateRow(card1.content, textRow1Size)
@@ -100,19 +46,16 @@ GUIFrame:RegisterContent("BlizzardMouseover", function(scrollChild, yOffset)
         bgMode = "hide"
     })
     row1b:AddWidget(ttInfoText, 1)
-    table_insert(allWidgets, ttInfoText)
+    manager:Register(ttInfoText, "all")
     card1:AddRow(row1b, textRow1Size)
 
-    yOffset = yOffset + card1:GetContentHeight() + Theme.paddingSmall
+    yOffset = card1:GetNextOffset()
 
-    ----------------------------------------------------------------
-    -- Card 2: Mouseover Settings
-    ----------------------------------------------------------------
+    -- Card 2: Settings
     local card2 = GUIFrame:CreateCard(scrollChild, "Mouseover Settings", yOffset)
-    table_insert(allWidgets, card2)
+    manager:Register(card2, "all")
 
-    -- Alpha when non mouseover
-    local row2 = GUIFrame:CreateRow(card2.content, 40)
+    local row2 = GUIFrame:CreateRow(card2.content, Theme.rowHeight)
     local nonMouseoverAlpha = GUIFrame:CreateSlider(row2, "Alpha When No Mouseover", {
         min = 0,
         max = 1,
@@ -124,11 +67,10 @@ GUIFrame:RegisterContent("BlizzardMouseover", function(scrollChild, yOffset)
         end
     })
     row2:AddWidget(nonMouseoverAlpha, 1)
-    table_insert(allWidgets, nonMouseoverAlpha)
-    card2:AddRow(row2, 40)
+    manager:Register(nonMouseoverAlpha, "all")
+    card2:AddRow(row2, Theme.rowHeight)
 
-    -- Fade In Duration
-    local row3 = GUIFrame:CreateRow(card2.content, 36)
+    local row3 = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast)
     local FadeInDuration = GUIFrame:CreateSlider(row3, "Fade In Duration", {
         min = 0,
         max = 10,
@@ -139,9 +81,8 @@ GUIFrame:RegisterContent("BlizzardMouseover", function(scrollChild, yOffset)
         end
     })
     row3:AddWidget(FadeInDuration, 0.5)
-    table_insert(allWidgets, FadeInDuration)
+    manager:Register(FadeInDuration, "all")
 
-    -- Fade Out Duration
     local FadeOutDuration = GUIFrame:CreateSlider(row3, "Fade Out Duration", {
         min = 0,
         max = 10,
@@ -152,22 +93,18 @@ GUIFrame:RegisterContent("BlizzardMouseover", function(scrollChild, yOffset)
         end
     })
     row3:AddWidget(FadeOutDuration, 0.5)
-    table_insert(allWidgets, FadeOutDuration)
+    manager:Register(FadeOutDuration, "all")
+    card2:AddRow(row3, Theme.rowHeightLast, 0)
 
-    card2:AddRow(row3, 36)
+    yOffset = card2:GetNextOffset()
 
-    yOffset = yOffset + card2:GetContentHeight() + Theme.paddingSmall
-
-    ----------------------------------------------------------------
-    -- Card 3: Blizzard Elements To Mouseover
-    ----------------------------------------------------------------
+    -- Card 3: Mouseover Elements
     local card3 = GUIFrame:CreateCard(scrollChild, "Blizzard Elements To Mouseover", yOffset)
-    table_insert(allWidgets, card3)
+    manager:Register(card3, "all")
 
-    -- Toggle for bagBar mouseover
-    local row4 = GUIFrame:CreateRow(card3.content, 40)
+    local row4 = GUIFrame:CreateRow(card3.content, Theme.rowHeightLast)
     local bagEnableCheck = GUIFrame:CreateCheckbox(row4, "Enable BagBar Mouseover", {
-        value = db.BagMouseover.Enabled ~= false,
+        value = db.BagMouseover.Enabled,
         callback = function(checked)
             db.BagMouseover.Enabled = checked
             if BMO then
@@ -177,12 +114,12 @@ GUIFrame:RegisterContent("BlizzardMouseover", function(scrollChild, yOffset)
         end,
     })
     row4:AddWidget(bagEnableCheck, 1)
-    table_insert(allWidgets, bagEnableCheck)
+    manager:Register(bagEnableCheck, "all")
+    card3:AddRow(row4, Theme.rowHeightLast, 0)
 
-    card3:AddRow(row4, 40)
+    yOffset = card3:GetNextOffset()
 
-    -- Apply initial widget states
     UpdateAllWidgetStates()
-    yOffset = yOffset - (Theme.paddingSmall * 2)
+
     return yOffset
 end)
