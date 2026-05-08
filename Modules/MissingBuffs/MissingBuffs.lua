@@ -325,9 +325,16 @@ local function PlayerHasBuff(spellId, extraSpellIds)
 end
 
 local function UnitHasBuff(unit, spellId, extraSpellIds)
-    if not unit or not IsValidTarget(unit) then return true end
+    if not unit or not IsValidTarget(unit) or not UnitIsConnected(unit) then return true end
 
     local spellName = GetCachedSpellName(spellId)
+    if not spellName then
+        spellName = C_Spell.GetSpellName(spellId)
+        if spellName then
+            spellNameCache[spellId] = spellName
+        end
+    end
+
     if spellName then
         local auraData = C_UnitAuras.GetAuraDataBySpellName(unit, spellName, "HELPFUL")
         if auraData then
@@ -373,6 +380,9 @@ local function ShouldTrackBuff(buff)
 end
 
 local function GetCountString(buffed, total)
+    if buffed < 0 then buffed = 0 end
+    if total < 0 then total = 0 end
+    if buffed > total then buffed = total end
     local key = buffed * 100 + total
     local cached = countStringCache[key]
     if not cached then
@@ -423,7 +433,7 @@ local function CheckBuffWithCount(buff, expirationMins)
 
             for i = 1, maxIndex do
                 local unit = units[i]
-                if IsValidTarget(unit) and CanUnitBenefitFromBuff(unit, buff.key) then
+                if not UnitIsUnit(unit, "player") and IsValidTarget(unit) and CanUnitBenefitFromBuff(unit, buff.key) then
                     result.totalCount = result.totalCount + 1
                     if UnitHasBuff(unit, buff.spellId, buff.extraBuffSpellIds) then
                         result.buffedCount = result.buffedCount + 1
@@ -452,7 +462,9 @@ local function GetBuffDisplayText(buff, checkResult, showCount)
     if buff.text then return buff.text end
 
     if buff.buffType == "raid" and showCount and checkResult and checkResult.totalCount > 1 then
-        return GetCountString(checkResult.buffedCount, checkResult.totalCount)
+        local buffed = checkResult.buffedCount or 0
+        local total = checkResult.totalCount or 0
+        return GetCountString(buffed, total)
     end
     return ""
 end
@@ -1021,10 +1033,10 @@ local function CheckSelfBuffs()
             local buffSettings = selfBuffsDb[buff.key] or {}
             local specMatch = not buff.specId or currentSpecId == buff.specId
             local talentKnown = not buff.talentId or C_SpellBook.IsSpellKnown(buff.talentId)
-            local spellKnown = C_SpellBook.IsSpellKnown(buff.spellId)
-            local spellCast = C_SpellBook.IsSpellKnown(buff.castSpellId)
+            local spellKnown = buff.spellId and C_SpellBook.IsSpellKnown(buff.spellId)
+            local spellCast = buff.castSpellId and C_SpellBook.IsSpellKnown(buff.castSpellId)
 
-            if buffSettings.Enabled ~= false and IsLoadConditionMet(buffSettings.LoadCondition) and specMatch and talentKnown and spellKnown or spellCast then
+            if buffSettings.Enabled ~= false and IsLoadConditionMet(buffSettings.LoadCondition) and specMatch and talentKnown and (spellKnown or spellCast) then
                 local hasBuff = false
 
                 if buff.enchantId then

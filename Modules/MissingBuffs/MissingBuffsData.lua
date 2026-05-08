@@ -160,7 +160,6 @@ Data.SPEC_PRIMARY_STAT = {
     [73] = "physical",    -- Protection
 }
 
-
 Data.RAID_BUFF_STAT_REQUIREMENT = { ArcaneIntellect = "intellect", BattleShout = "physical", }
 
 Data.LOAD_CONDITIONS = {
