@@ -273,6 +273,7 @@ function GUIFrame:CreateFontSettingsCard(scrollChild, yOffset, config)
     card.shadowSubWidgets = shadowSubWidgets
     card.shadowEnableCheck = shadowEnableCheck
     card.UpdateShadowState = UpdateShadowState
+    card._hasInternalWidgetState = true
     UpdateShadowState()
 
     ---@cast card NUIFontSettingsCard

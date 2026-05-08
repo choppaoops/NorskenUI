@@ -48,6 +48,8 @@ end
 
 ---@param mainEnabled boolean
 function NUIWidgetStateManagerMixin:UpdateAll(mainEnabled)
+    local compositeWidgets = {}
+
     for widget, groups in pairs(self.widgetGroups) do
         local enabled = mainEnabled
 
@@ -63,10 +65,23 @@ function NUIWidgetStateManagerMixin:UpdateAll(mainEnabled)
             end
         end
 
+        if widget._hasInternalWidgetState then
+            compositeWidgets[#compositeWidgets + 1] = { widget = widget, enabled = enabled }
+        else
+            if widget.SetEnabled then
+                widget:SetEnabled(enabled)
+            elseif widget.SetDisabled then
+                widget:SetDisabled(not enabled)
+            end
+        end
+    end
+
+    for _, entry in ipairs(compositeWidgets) do
+        local widget = entry.widget
         if widget.SetEnabled then
-            widget:SetEnabled(enabled)
+            widget:SetEnabled(entry.enabled)
         elseif widget.SetDisabled then
-            widget:SetDisabled(not enabled)
+            widget:SetDisabled(not entry.enabled)
         end
     end
 end

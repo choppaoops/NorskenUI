@@ -275,6 +275,7 @@ function GUIFrame:CreateGlowSettingsCard(scrollChild, yOffset, config)
     card.typeOnlyRows = typeOnlyRows
     card.frequencyRow = frequencyRow
     card._initialized = false
+    card._hasInternalWidgetState = true
 
     function card.updateTypeVisibility()
         local glowType = db[keys.type]

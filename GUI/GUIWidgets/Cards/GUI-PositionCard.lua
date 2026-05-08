@@ -168,6 +168,9 @@ end
 ---    showAnchorFrameType = boolean, -- Show anchor type dropdown (default: true)
 ---    showStrata = boolean,        -- Show strata dropdown (default: false)
 ---    sliderRange = {min, max},    -- X/Y slider range (default: {-1000, 1000})
+---    contextOptions = table,      -- Optional: {{key = "party", text = "Party", positionKey = "PartyPosition"}, ...}
+---    defaultContext = string,     -- Optional: default context key (default: first option)
+---    splitToggleKey = string,     -- Optional: db key for split positioning toggle (enables toggle + dropdown)
 ---}
 ---```
 ---@param scrollChild Frame
@@ -185,6 +188,10 @@ function GUIFrame:CreatePositionCard(scrollChild, yOffset, config)
     local showAnchorFrameType = config.showAnchorFrameType ~= false
     local showStrata = config.showStrata == true
     local sliderRange = config.sliderRange or { -1000, 1000 }
+    local contextOptions = config.contextOptions
+    local defaultContext = config.defaultContext
+    local splitToggleKey = config.splitToggleKey
+    local onContextChange = config.onContextChange
 
     local keys = {
         anchorFrameType = dbKeys.anchorFrameType or "anchorFrameType",
@@ -202,6 +209,25 @@ function GUIFrame:CreatePositionCard(scrollChild, yOffset, config)
         [keys.strata] = true,
     }
 
+    local currentContext = defaultContext
+    local currentPositionKey = "Position"
+
+    if contextOptions and #contextOptions > 0 then
+        if not currentContext then
+            currentContext = contextOptions[1].key
+        end
+        for _, opt in ipairs(contextOptions) do
+            if opt.key == currentContext then
+                currentPositionKey = opt.positionKey
+                break
+            end
+        end
+    end
+
+    local function getPositionTable()
+        return db[currentPositionKey]
+    end
+
     local function getValue(key, default)
         if rootKeys[key] then
             if db[key] ~= nil then
@@ -209,8 +235,9 @@ function GUIFrame:CreatePositionCard(scrollChild, yOffset, config)
             end
             return default
         end
-        if db.Position and db.Position[key] ~= nil then
-            return db.Position[key]
+        local posTable = getPositionTable()
+        if posTable and posTable[key] ~= nil then
+            return posTable[key]
         elseif db[key] ~= nil then
             return db[key]
         end
@@ -220,10 +247,13 @@ function GUIFrame:CreatePositionCard(scrollChild, yOffset, config)
     local function setValue(key, val)
         if rootKeys[key] then
             db[key] = val
-        elseif db.Position then
-            db.Position[key] = val
         else
-            db[key] = val
+            local posTable = getPositionTable()
+            if posTable then
+                posTable[key] = val
+            else
+                db[key] = val
+            end
         end
         if onChange then onChange() end
     end
@@ -232,6 +262,72 @@ function GUIFrame:CreatePositionCard(scrollChild, yOffset, config)
     local AnchorButtonwidgets = {}
     local card = GUIFrame:CreateCard(scrollChild, title, yOffset)
     local currentType = getValue(keys.anchorFrameType, defaults.anchorFrameType or "SCREEN")
+
+    local selfPointWidget, anchorPointWidget, xSlider, ySlider
+
+    local function refreshPositionWidgets()
+        if selfPointWidget then
+            selfPointWidget:SetValue(getValue(keys.selfPoint, defaults.selfPoint or "CENTER"))
+        end
+        if anchorPointWidget then
+            anchorPointWidget:SetValue(getValue(keys.anchorPoint, defaults.anchorPoint or "CENTER"))
+        end
+        if xSlider and xSlider.SetValue then
+            xSlider:SetValue(getValue(keys.xOffset, defaults.xOffset or 0))
+        end
+        if ySlider and ySlider.SetValue then
+            ySlider:SetValue(getValue(keys.yOffset, defaults.yOffset or 0))
+        end
+    end
+
+    if contextOptions and #contextOptions > 0 then
+        local contextRow = GUIFrame:CreateRow(card.content, Theme.rowHeight)
+        local contextList = {}
+        for _, opt in ipairs(contextOptions) do
+            table_insert(contextList, { key = opt.key, text = opt.text })
+        end
+
+        if splitToggleKey then
+            local splitToggle = GUIFrame:CreateCheckbox(contextRow, "Split Positioning", {
+                value = db[splitToggleKey],
+                callback = function(checked)
+                    db[splitToggleKey] = checked
+                    if not checked then
+                        currentPositionKey = contextOptions[1].positionKey
+                        refreshPositionWidgets()
+                    end
+                    if onChange then onChange() end
+                end
+            })
+            contextRow:AddWidget(splitToggle, 0.5)
+            table_insert(widgets, splitToggle)
+            card.splitToggle = splitToggle
+        end
+
+        local contextDropdown = GUIFrame:CreateDropdown(contextRow, "Configure For", {
+            options = contextList,
+            value = currentContext,
+            callback = function(key)
+                currentContext = key
+                for _, opt in ipairs(contextOptions) do
+                    if opt.key == key then
+                        currentPositionKey = opt.positionKey
+                        break
+                    end
+                end
+                refreshPositionWidgets()
+                if onContextChange then onContextChange(key, currentPositionKey) end
+            end
+        })
+        contextRow:AddWidget(contextDropdown, 0.5)
+        table_insert(widgets, contextDropdown)
+        card.contextDropdown = contextDropdown
+
+        card:AddRow(contextRow, Theme.rowHeight)
+
+        local contextSep = GUIFrame:CreateSeparator(card.content)
+        card:AddRow(contextSep, Theme.rowHeightSeparator)
+    end
 
     if showAnchorFrameType then
         local row1 = GUIFrame:CreateRow(card.content, 40)
@@ -292,7 +388,7 @@ function GUIFrame:CreatePositionCard(scrollChild, yOffset, config)
     local row3 = GUIFrame:CreateRow(card.content, 80)
 
     local selfPointValue = getValue(keys.selfPoint, defaults.selfPoint or "CENTER")
-    local selfPointWidget = CreateAnchorButtons(row3, "Anchor From", selfPointValue, function(val)
+    selfPointWidget = CreateAnchorButtons(row3, "Anchor From", selfPointValue, function(val)
         setValue(keys.selfPoint, val)
     end)
     row3:AddWidget(selfPointWidget, 0.5)
@@ -303,7 +399,7 @@ function GUIFrame:CreatePositionCard(scrollChild, yOffset, config)
         (currentType == "SELECTFRAME" and "To Frame's" or "To Screen's") or
         "To Frame's"
     local anchorPointValue = getValue(keys.anchorPoint, defaults.anchorPoint or "CENTER")
-    local anchorPointWidget = CreateAnchorButtons(row3, anchorPointLabel, anchorPointValue, function(val)
+    anchorPointWidget = CreateAnchorButtons(row3, anchorPointLabel, anchorPointValue, function(val)
         setValue(keys.anchorPoint, val)
     end)
     row3:AddWidget(anchorPointWidget, 0.5)
@@ -313,7 +409,7 @@ function GUIFrame:CreatePositionCard(scrollChild, yOffset, config)
 
     local row4 = GUIFrame:CreateRow(card.content, 40)
 
-    local xSlider = GUIFrame:CreateSlider(row4, "X Offset", {
+    xSlider = GUIFrame:CreateSlider(row4, "X Offset", {
         min = sliderRange[1],
         max = sliderRange[2],
         step = 0.1,
@@ -326,7 +422,7 @@ function GUIFrame:CreatePositionCard(scrollChild, yOffset, config)
     row4:AddWidget(xSlider, 0.5)
     table_insert(widgets, xSlider)
 
-    local ySlider = GUIFrame:CreateSlider(row4, "Y Offset", {
+    ySlider = GUIFrame:CreateSlider(row4, "Y Offset", {
         min = sliderRange[1],
         max = sliderRange[2],
         step = 0.1,
@@ -367,6 +463,7 @@ function GUIFrame:CreatePositionCard(scrollChild, yOffset, config)
 
     card.positionWidgets = widgets
     card.AnchorButtonWidgets = AnchorButtonwidgets
+    card._hasInternalWidgetState = true
 
     function card:SetEnabled(enabled)
         if enabled then
@@ -379,11 +476,18 @@ function GUIFrame:CreatePositionCard(scrollChild, yOffset, config)
             if self.titleText then self.titleText:SetAlpha(0.5) end
         end
 
+        local splitEnabled = not splitToggleKey or db[splitToggleKey]
+
         for _, widget in ipairs(self.positionWidgets) do
+            local widgetEnabled = enabled
+            if widget == self.contextDropdown and not splitEnabled then
+                widgetEnabled = false
+            end
+
             if widget.SetEnabled then
-                widget:SetEnabled(enabled)
+                widget:SetEnabled(widgetEnabled)
             elseif widget.SetDisabled then
-                widget:SetDisabled(not enabled)
+                widget:SetDisabled(not widgetEnabled)
             end
         end
     end

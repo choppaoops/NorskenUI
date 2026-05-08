@@ -415,6 +415,10 @@ local Defaults = {
         -- Healer Mana Tracker
         HealerMana = {
             Enabled = true,
+            EnableInRaid = true,
+            MaxHealers = 6,
+            FrameSpacing = 4,
+            GrowDirection = "DOWN",
             -- Frame settings
             IconSize = 38,
             FrameWidth = 120,
@@ -437,7 +441,14 @@ local Defaults = {
             Strata = "HIGH",
             anchorFrameType = "UIPARENT",
             ParentFrame = "UIParent",
-            Position = {
+            SplitPositioning = false,
+            PartyPosition = {
+                AnchorFrom = "CENTER",
+                AnchorTo = "CENTER",
+                XOffset = -584,
+                YOffset = -72,
+            },
+            RaidPosition = {
                 AnchorFrom = "CENTER",
                 AnchorTo = "CENTER",
                 XOffset = -584,

@@ -9,8 +9,6 @@ end
 ---@class HealerMana: AceModule, AceEvent-3.0, AceTimer-3.0
 local HM = NorskenUI:NewModule("HealerMana", "AceEvent-3.0", "AceTimer-3.0")
 
-local LibSpec = LibStub("LibSpecialization")
-
 local CreateFrame = CreateFrame
 local UnitExists = UnitExists
 local UnitIsConnected = UnitIsConnected
@@ -18,32 +16,32 @@ local UnitClass = UnitClass
 local UnitName = UnitName
 local UnitPowerPercent = UnitPowerPercent
 local UnitGroupRolesAssigned = UnitGroupRolesAssigned
-local GetSpecializationInfoByID = GetSpecializationInfoByID
 local IsInRaid = IsInRaid
 local IsInGroup = IsInGroup
 local pairs = pairs
+local ipairs = ipairs
 local wipe = wipe
 local issecretvalue = issecretvalue
+local NotifyInspect = NotifyInspect
+local GetInspectSpecialization = GetInspectSpecialization
+local GetSpecializationInfoByID = GetSpecializationInfoByID
+local CanInspect = CanInspect
+local UnitGUID = UnitGUID
+local select = select
+local GetNumGroupMembers = GetNumGroupMembers
+local format = string.format
+local C_Timer_After = C_Timer.After
 
 HM.healerFrames = {}
-HM.libSpecCache = {}
+HM.currentHealers = {}
+HM.inspectQueue = {}
 
-local HEALER_ICONS = { DRUID = 136041, MONK = 608952, PALADIN = 135920, SHAMAN = 136052, EVOKER = 4622476, }
-
-local PREVIEW_HEALER_SPECS = {
-    { class = "DRUID",   icon = 136041 },
-    { class = "MONK",    icon = 608952 },
-    { class = "PALADIN", icon = 135920 },
-    { class = "PRIEST",  icon = 135940 },
-    { class = "PRIEST",  icon = 237541 },
-    { class = "SHAMAN",  icon = 136052 },
-    { class = "EVOKER",  icon = 4622476 },
-}
+local FALLBACK_ICON = 135915
+local PREVIEW_SPECS = { 105, 270, 65, 256, 257, 264, 1468 }
+local INSPECT_DELAY = 0.05
 
 function HM:UpdateDB()
-    if NRSKNUI.db and NRSKNUI.db.profile then
-        self.db = NRSKNUI.db.profile.HealerMana
-    end
+    self.db = NRSKNUI.db.profile.HealerMana
 end
 
 function HM:OnInitialize()
@@ -51,14 +49,11 @@ function HM:OnInitialize()
     self:SetEnabledState(false)
 end
 
-function HM:HideFrame()
-    self.currentHealer = nil
-    if self.healerFrames[1] then
-        self.healerFrames[1]:Hide()
-    end
-    if self.containerFrame then
-        self.containerFrame:Hide()
-    end
+function HM:HideAllFrames()
+    wipe(self.currentHealers)
+    self:ClearInspectQueue()
+    for _, frame in pairs(self.healerFrames) do frame:Hide() end
+    if self.containerFrame then self.containerFrame:Hide() end
 end
 
 function HM:UpdateManaDisplay(frame, unit, connected)
@@ -67,7 +62,7 @@ function HM:UpdateManaDisplay(frame, unit, connected)
         frame.mana:SetTextColor(manaColor[1], manaColor[2], manaColor[3])
         frame.icon:SetVertexColor(1, 1, 1)
         local pct = UnitPowerPercent(unit, Enum.PowerType.Mana, true, CurveConstants.ScaleTo100)
-        frame.mana:SetText(string.format("%.0f%%", pct))
+        frame.mana:SetText(format("%.0f%%", pct))
     else
         frame.mana:SetTextColor(0.5, 0.5, 0.5)
         frame.mana:SetText("OFFLINE")
@@ -109,23 +104,8 @@ function HM:CreateHealerFrame(index)
 end
 
 function HM:GetHealerFrame(index)
-    if not self.healerFrames[index] then
-        self.healerFrames[index] = self:CreateHealerFrame(index)
-    end
+    if not self.healerFrames[index] then self.healerFrames[index] = self:CreateHealerFrame(index) end
     return self.healerFrames[index]
-end
-
-function HM:UpdateFrameAppearance(frame)
-    frame:SetSize(self.db.FrameWidth, self.db.IconSize)
-    frame.iconFrame:SetSize(self.db.IconSize, self.db.IconSize)
-
-    frame.name:ClearAllPoints()
-    frame.name:SetPoint("BOTTOMLEFT", frame.iconFrame, "RIGHT", 4, self.db.NameYOffset)
-    NRSKNUI:ApplyFontToText(frame.name, self.db.FontFace, self.db.NameFontSize, self.db.FontOutline, self.db.FontShadow)
-
-    frame.mana:ClearAllPoints()
-    frame.mana:SetPoint("TOPLEFT", frame.iconFrame, "RIGHT", 4, self.db.ManaYOffset)
-    NRSKNUI:ApplyFontToText(frame.mana, self.db.FontFace, self.db.ManaFontSize, self.db.FontOutline, self.db.FontShadow)
 end
 
 function HM:CreateContainer()
@@ -139,117 +119,290 @@ function HM:CreateContainer()
     return frame
 end
 
+function HM:GetGrowAnchor(anchor)
+    local growDown = self.db.GrowDirection == "DOWN"
+    local verticalTarget = growDown and "TOP" or "BOTTOM"
+    local verticalOpposite = growDown and "BOTTOM" or "TOP"
+
+    if anchor:find(verticalOpposite) then
+        return anchor:gsub(verticalOpposite, verticalTarget)
+    elseif anchor:find(verticalTarget) then
+        return anchor
+    elseif anchor == "LEFT" then
+        return verticalTarget .. "LEFT"
+    elseif anchor == "RIGHT" then
+        return verticalTarget .. "RIGHT"
+    else
+        return verticalTarget
+    end
+end
+
+function HM:GetCurrentPosition()
+    if self.isPreview and self.previewContext then
+        return self.previewContext == "raid" and self.db.RaidPosition or self.db.PartyPosition
+    end
+    if not self.db.SplitPositioning then return self.db.PartyPosition end
+    local inRaid = IsInRaid()
+    return inRaid and self.db.RaidPosition or self.db.PartyPosition
+end
+
+function HM:SetPreviewContext(context)
+    self.previewContext = context
+    if self.isPreview then
+        self:ApplyPosition()
+    end
+end
+
 function HM:ApplyPosition()
     if not self.containerFrame then return end
-    NRSKNUI:ApplyFramePosition(self.containerFrame, self.db.Position, self.db)
+
+    local pos = self:GetCurrentPosition()
+    local adjustedPos = {
+        AnchorFrom = self:GetGrowAnchor(pos.AnchorFrom),
+        AnchorTo = pos.AnchorTo,
+        XOffset = pos.XOffset,
+        YOffset = pos.YOffset,
+    }
+
+    NRSKNUI:ApplyFramePosition(self.containerFrame, adjustedPos, self.db)
 end
 
-function HM:PositionFrame()
-    local frame = self.healerFrames[1]
-    if frame then
-        frame:ClearAllPoints()
-        frame:SetPoint("TOPLEFT", self.containerFrame, "TOPLEFT", 0, 0)
+function HM:UpdateContainerSize()
+    if not self.containerFrame then return end
+
+    local count = #self.currentHealers
+    if count == 0 then
+        self.containerFrame:SetSize(self.db.FrameWidth, self.db.IconSize)
+        return
     end
-    self.containerFrame:SetSize(self.db.FrameWidth, self.db.IconSize)
+
+    local totalHeight = (self.db.IconSize * count) + (self.db.FrameSpacing * (count - 1))
+    self.containerFrame:SetSize(self.db.FrameWidth, totalHeight)
 end
 
-function HM:OnLibSpecUpdate(specID, role, _, playerName)
-    if role == "HEALER" then
-        self.libSpecCache[playerName] = specID
-        if self.db and self.db.Enabled and not self.isPreview then
-            self:FindHealer()
+function HM:PositionFrames()
+    local growDown = self.db.GrowDirection == "DOWN"
+    local spacing = self.db.FrameSpacing
+    local iconSize = self.db.IconSize
+
+    for i, healer in ipairs(self.currentHealers) do
+        local frame = self.healerFrames[healer.frameIndex]
+        if frame then
+            frame:ClearAllPoints()
+            local yOffset = (i - 1) * (iconSize + spacing)
+            if growDown then
+                frame:SetPoint("TOPLEFT", self.containerFrame, "TOPLEFT", 0, -yOffset)
+            else
+                frame:SetPoint("BOTTOMLEFT", self.containerFrame, "BOTTOMLEFT", 0, yOffset)
+            end
         end
     end
 end
 
-function HM:FindHealer()
-    if not self.db or not self.db.Enabled then return end
-    if self.isPreview then return end
+function HM:QueueInspect(healer)
+    if not healer or not healer.unit or not healer.guid then return end
+    for _, queued in ipairs(self.inspectQueue) do if queued.guid == healer.guid then return end end
+    self.inspectQueue[#self.inspectQueue + 1] = healer
+    self:ProcessInspectQueue()
+end
 
-    if not IsInGroup() or IsInRaid() then
-        self:HideFrame()
+function HM:ProcessInspectQueue()
+    if self.currentInspect then return end
+    if #self.inspectQueue == 0 then return end
+
+    local healer = self.inspectQueue[1]
+    if not healer or not UnitExists(healer.unit) or not CanInspect(healer.unit) then
+        table.remove(self.inspectQueue, 1)
+        C_Timer_After(0.1, function() self:ProcessInspectQueue() end)
         return
     end
 
-    local healerUnit, healerConnected
+    self.currentInspect = healer.guid
+    NotifyInspect(healer.unit)
 
-    for i = 1, 4 do
-        local unit = "party" .. i
-        if UnitExists(unit) and UnitGroupRolesAssigned(unit) == "HEALER" then
-            healerUnit = unit
-            healerConnected = UnitIsConnected(unit)
+    C_Timer_After(2, function()
+        if self.currentInspect == healer.guid then
+            self.currentInspect = nil
+            self:ProcessInspectQueue()
+        end
+    end)
+end
+
+function HM:OnInspectReady(guid)
+    if self.currentInspect ~= guid then return end
+    self.currentInspect = nil
+
+    for i, queued in ipairs(self.inspectQueue) do
+        if queued.guid == guid then
+            table.remove(self.inspectQueue, i)
             break
         end
     end
 
-    if not healerUnit then
-        self:HideFrame()
+    local healer = self:GetHealerByGUID(guid)
+    if not healer or not UnitExists(healer.unit) then
+        C_Timer_After(INSPECT_DELAY, function() self:ProcessInspectQueue() end)
         return
     end
 
-    local healerName = UnitName(healerUnit)
-    if issecretvalue and issecretvalue(healerName) then
-        healerName = "Healer"
+    local specID = GetInspectSpecialization(healer.unit)
+    if specID and specID > 0 then
+        healer.specID = specID
+        self:UpdateHealerFrame(healer)
     end
-    local _, healerClass = UnitClass(healerUnit)
 
-    self.currentHealer = {
-        unit = healerUnit,
-        name = healerName,
-        specID = self.libSpecCache[healerName],
-        class = healerClass,
-        classColor = NRSKNUI:GetClassColor(healerClass),
-        connected = healerConnected,
-    }
-
-    self:UpdateHealerFrame()
+    C_Timer_After(INSPECT_DELAY, function() self:ProcessInspectQueue() end)
 end
 
-function HM:UpdateHealerFrame()
-    local healer = self.currentHealer
-    if not healer then return end
-    local frame = self:GetHealerFrame(1)
+function HM:GetHealerByGUID(guid)
+    for _, healer in ipairs(self.currentHealers) do
+        if healer.guid == guid then
+            return healer
+        end
+    end
+    return nil
+end
 
-    -- All classes have 1 heal spec except priest
-    -- So we only do extra checks for when the healer is a priest
-    local icon
-    if healer.class == "PRIEST" then
-        local specID = healer.specID
-        if specID and specID ~= 0 then
-            _, _, _, icon = GetSpecializationInfoByID(specID)
+function HM:OnSpecChanged(_, unit)
+    if not unit then return end
+
+    for _, healer in ipairs(self.currentHealers) do
+        if healer.unit == unit then
+            healer.specID = nil
+            self:QueueInspect(healer)
+            return
+        end
+    end
+end
+
+function HM:ClearInspectQueue()
+    wipe(self.inspectQueue)
+    self.currentInspect = nil
+end
+
+function HM:FindHealers()
+    if not self.db or not self.db.Enabled then return end
+    if self.isPreview then return end
+
+    local inRaid = IsInRaid()
+    local inGroup = IsInGroup()
+
+    local currentGroupType = inRaid and "raid" or (inGroup and "party" or nil)
+    local groupTypeChanged = self.lastGroupType ~= currentGroupType
+    self.lastGroupType = currentGroupType
+
+    if not inGroup then
+        self:HideAllFrames()
+        return
+    end
+
+    if inRaid and not self.db.EnableInRaid then
+        self:HideAllFrames()
+        return
+    end
+
+    if groupTypeChanged then
+        self:ClearInspectQueue()
+        self:ApplyPosition()
+    end
+
+    local prevHealerCount = #self.currentHealers
+    wipe(self.currentHealers)
+    local healerCount = 0
+    local maxHealers = inRaid and self.db.MaxHealers or 1
+
+    if inRaid then
+        local numMembers = GetNumGroupMembers()
+        for i = 1, numMembers do
+            if healerCount >= maxHealers then break end
+
+            local unit = "raid" .. i
+            if UnitExists(unit) and UnitGroupRolesAssigned(unit) == "HEALER" then
+                healerCount = healerCount + 1
+                self:AddHealer(unit, healerCount)
+            end
         end
     else
-        icon = HEALER_ICONS[healer.class]
+        for i = 1, 4 do
+            if healerCount >= maxHealers then break end
+
+            local unit = "party" .. i
+            if UnitExists(unit) and UnitGroupRolesAssigned(unit) == "HEALER" then
+                healerCount = healerCount + 1
+                self:AddHealer(unit, healerCount)
+            end
+        end
     end
 
-    if icon then
-        frame.icon:SetTexture(icon)
-        NRSKNUI:ApplyZoom(frame.icon, NRSKNUI.GlobalZoom)
+    if healerCount == 0 then
+        self:HideAllFrames()
+        return
     end
+
+    for i = healerCount + 1, prevHealerCount do
+        if self.healerFrames[i] then self.healerFrames[i]:Hide() end
+    end
+
+    self:UpdateContainerSize()
+    self:PositionFrames()
+
+    for _, healer in ipairs(self.currentHealers) do self:UpdateHealerFrame(healer) end
+
+    self.containerFrame:Show()
+end
+
+function HM:AddHealer(unit, frameIndex)
+    local healerName = UnitName(unit)
+    if issecretvalue and issecretvalue(healerName) then healerName = "Healer" end
+    local _, healerClass = UnitClass(unit)
+    local guid = UnitGUID(unit)
+
+    local healer = {
+        unit = unit,
+        guid = guid,
+        name = healerName,
+        class = healerClass,
+        classColor = NRSKNUI:GetClassColor(healerClass),
+        connected = UnitIsConnected(unit),
+        frameIndex = frameIndex,
+    }
+
+    self.currentHealers[#self.currentHealers + 1] = healer
+end
+
+function HM:UpdateHealerFrame(healer)
+    if not healer then return end
+    local frame = self:GetHealerFrame(healer.frameIndex)
+
+    local icon
+    if healer.specID then
+        icon = select(4, GetSpecializationInfoByID(healer.specID))
+    else
+        self:QueueInspect(healer)
+    end
+
+    frame.icon:SetTexture(icon or FALLBACK_ICON)
+    NRSKNUI:ApplyZoom(frame.icon, NRSKNUI.GlobalZoom)
 
     frame.name:SetText(healer.name)
     frame.name:SetTextColor(healer.classColor[1], healer.classColor[2], healer.classColor[3])
 
     self:UpdateManaDisplay(frame, healer.unit, healer.connected)
 
-    self:PositionFrame()
     frame:Show()
-    self.containerFrame:Show()
 end
 
 function HM:UpdateMana()
     if self.isPreview then return end
 
-    local healer = self.currentHealer
-    if not healer then return end
-
-    local frame = self.healerFrames[1]
-    if not frame or not frame:IsShown() then return end
-
-    local connected = UnitIsConnected(healer.unit)
-    healer.connected = connected
-
-    self:UpdateManaDisplay(frame, healer.unit, connected)
+    for _, healer in ipairs(self.currentHealers) do
+        local frame = self.healerFrames[healer.frameIndex]
+        if frame and frame:IsShown() then
+            local connected = UnitIsConnected(healer.unit)
+            healer.connected = connected
+            self:UpdateManaDisplay(frame, healer.unit, connected)
+        end
+    end
 end
 
 function HM:ShowPreview()
@@ -259,50 +412,73 @@ function HM:ShowPreview()
     self.isPreview = true
     self:CreateContainer()
 
-    local randomSpec = PREVIEW_HEALER_SPECS[math.random(1, #PREVIEW_HEALER_SPECS)]
+    wipe(self.currentHealers)
+    local previewCount = self.db.MaxHealers
 
-    self.currentHealer = {
-        unit = "player",
-        name = UnitName("player"),
-        class = randomSpec.class,
-        classColor = NRSKNUI:GetClassColor(randomSpec.class),
-    }
+    for i = 1, previewCount do
+        local specID = PREVIEW_SPECS[((i - 1) % #PREVIEW_SPECS) + 1]
+        local _, _, _, icon, _, class = GetSpecializationInfoByID(specID)
 
-    local frame = self:GetHealerFrame(1)
-    self:UpdateFrameAppearance(frame)
+        local healer = {
+            unit = "player",
+            guid = "preview" .. i,
+            name = i == 1 and UnitName("player") or ("Healer " .. i),
+            class = class,
+            classColor = NRSKNUI:GetClassColor(class),
+            connected = true,
+            frameIndex = i,
+            specID = specID,
+        }
+        self.currentHealers[i] = healer
 
-    frame.icon:SetTexture(randomSpec.icon)
-    frame.icon:SetVertexColor(1, 1, 1)
-    NRSKNUI:ApplyZoom(frame.icon, NRSKNUI.GlobalZoom)
+        local frame = self:GetHealerFrame(i)
+        frame:SetSize(self.db.FrameWidth, self.db.IconSize)
+        frame.iconFrame:SetSize(self.db.IconSize, self.db.IconSize)
+        frame.name:ClearAllPoints()
+        frame.name:SetPoint("BOTTOMLEFT", frame.iconFrame, "RIGHT", 4, self.db.NameYOffset)
+        NRSKNUI:ApplyFontToText(frame.name, self.db.FontFace, self.db.NameFontSize, self.db.FontOutline,
+            self.db.FontShadow)
+        frame.mana:ClearAllPoints()
+        frame.mana:SetPoint("TOPLEFT", frame.iconFrame, "RIGHT", 4, self.db.ManaYOffset)
+        NRSKNUI:ApplyFontToText(frame.mana, self.db.FontFace, self.db.ManaFontSize, self.db.FontOutline,
+            self.db.FontShadow)
 
-    frame.name:SetText(self.currentHealer.name)
-    local cc = self.currentHealer.classColor
-    frame.name:SetTextColor(cc[1], cc[2], cc[3])
+        frame.icon:SetTexture(icon or FALLBACK_ICON)
+        frame.icon:SetVertexColor(1, 1, 1)
+        NRSKNUI:ApplyZoom(frame.icon, NRSKNUI.GlobalZoom)
 
-    local manaColor = self.db.HighManaColor
-    frame.mana:SetTextColor(manaColor[1], manaColor[2], manaColor[3])
-    frame.mana:SetText(string.format("%d%%", math.random(1, 100)))
+        frame.name:SetText(healer.name)
+        frame.name:SetTextColor(healer.classColor[1], healer.classColor[2], healer.classColor[3])
 
-    self:PositionFrame()
-    frame:Show()
+        local manaColor = self.db.HighManaColor
+        frame.mana:SetTextColor(manaColor[1], manaColor[2], manaColor[3])
+        frame.mana:SetText(format("%d%%", math.random(1, 100)))
+
+        frame:Show()
+    end
+
+    for i = previewCount + 1, #self.healerFrames do self.healerFrames[i]:Hide() end
+
+    self:UpdateContainerSize()
+    self:PositionFrames()
     self.containerFrame:Show()
 end
 
 function HM:HidePreview()
     self.isPreview = false
-    self:HideFrame()
+    self.previewContext = nil
+    self:HideAllFrames()
 
     if self.db and self.db.Enabled then
-        self:FindHealer()
+        self:ApplyPosition()
+        self:FindHealers()
     end
 end
 
 function HM:ApplySettings()
     self:UpdateDB()
     if not self.db or not self.db.Enabled then
-        if self.containerFrame then
-            self.containerFrame:Hide()
-        end
+        if self.containerFrame then self.containerFrame:Hide() end
         return
     end
 
@@ -310,42 +486,25 @@ function HM:ApplySettings()
     self:ApplyPosition()
 
     for _, frame in pairs(self.healerFrames) do
-        self:UpdateFrameAppearance(frame)
+        frame:SetSize(self.db.FrameWidth, self.db.IconSize)
+        frame.iconFrame:SetSize(self.db.IconSize, self.db.IconSize)
+        frame.name:ClearAllPoints()
+        frame.name:SetPoint("BOTTOMLEFT", frame.iconFrame, "RIGHT", 4, self.db.NameYOffset)
+        NRSKNUI:ApplyFontToText(frame.name, self.db.FontFace, self.db.NameFontSize, self.db.FontOutline,
+            self.db.FontShadow)
+        frame.mana:ClearAllPoints()
+        frame.mana:SetPoint("TOPLEFT", frame.iconFrame, "RIGHT", 4, self.db.ManaYOffset)
+        NRSKNUI:ApplyFontToText(frame.mana, self.db.FontFace, self.db.ManaFontSize, self.db.FontOutline,
+            self.db.FontShadow)
     end
 
-    self:FindHealer()
+    self:UpdateContainerSize()
 
     if self.isPreview then
         self:ShowPreview()
+    else
+        self:FindHealers()
     end
-end
-
-function HM:Refresh()
-    self:UpdateDB()
-
-    if self.isPreview then
-        if self.healerFrames[1] then
-            self:UpdateFrameAppearance(self.healerFrames[1])
-        end
-        if self.containerFrame then
-            self.containerFrame:SetSize(self.db.FrameWidth, self.db.IconSize)
-            self:ApplyPosition()
-        end
-        return
-    end
-
-    self.currentHealer = nil
-    wipe(self.libSpecCache)
-
-    for _, frame in pairs(self.healerFrames) do frame:Hide() end
-    wipe(self.healerFrames)
-
-    if self.containerFrame then
-        self.containerFrame:Hide()
-        self.containerFrame = nil
-    end
-
-    self:ApplySettings()
 end
 
 function HM:StartUpdates()
@@ -364,30 +523,28 @@ function HM:OnEnable()
     self:UpdateDB()
     if not self.db or not self.db.Enabled then return end
 
-    LibSpec.RegisterGroup(self, function(specID, role, position, playerName)
-        HM:OnLibSpecUpdate(specID, role, position, playerName)
-    end)
-
     self:ApplySettings()
     self:StartUpdates()
-    self:RegisterEvent("GROUP_ROSTER_UPDATE", "FindHealer")
-    self:RegisterEvent("PLAYER_ENTERING_WORLD", "FindHealer")
+    self:RegisterEvent("GROUP_ROSTER_UPDATE", "FindHealers")
+    self:RegisterEvent("PLAYER_ENTERING_WORLD", "FindHealers")
+    self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED", "OnSpecChanged")
+    self:RegisterEvent("INSPECT_READY", function(_, guid) HM:OnInspectReady(guid) end)
 
-    -- Delayed to ensure anchor frames exist on load
-    C_Timer.After(0.5, function() self:ApplyPosition() end)
+    C_Timer_After(0.5, function() self:ApplyPosition() end)
 
     NRSKNUI.EditMode:RegisterElement({
         key = "HealerMana",
         displayName = "Healer Mana",
         frame = self.containerFrame,
         getPosition = function()
-            return self.db.Position
+            return self:GetCurrentPosition()
         end,
         setPosition = function(pos)
-            self.db.Position.AnchorFrom = pos.AnchorFrom
-            self.db.Position.AnchorTo = pos.AnchorTo
-            self.db.Position.XOffset = pos.XOffset
-            self.db.Position.YOffset = pos.YOffset
+            local currentPos = self:GetCurrentPosition()
+            currentPos.AnchorFrom = pos.AnchorFrom
+            currentPos.AnchorTo = pos.AnchorTo
+            currentPos.XOffset = pos.XOffset
+            currentPos.YOffset = pos.YOffset
             self:ApplyPosition()
         end,
         getParentFrame = function()
@@ -400,9 +557,9 @@ end
 function HM:OnDisable()
     self:StopUpdates()
     self:UnregisterAllEvents()
-    LibSpec.UnregisterGroup(self)
-    wipe(self.libSpecCache)
-    self.currentHealer = nil
+    wipe(self.currentHealers)
+    self:ClearInspectQueue()
+    self.lastGroupType = nil
     self.isPreview = false
     if self.containerFrame then self.containerFrame:Hide() end
     for _, frame in pairs(self.healerFrames) do frame:Hide() end
