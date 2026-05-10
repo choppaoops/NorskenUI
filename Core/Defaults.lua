@@ -327,6 +327,46 @@ local Defaults = {
             },
         },
 
+        -- Burning Rush Tracker (Warlock)
+        BurningRush = {
+            Enabled = false,
+            IconSize = 40,
+
+            -- Glow
+            GlowEnabled = true,
+            GlowType = "pixel",
+            GlowColor = { 1, 0.5, 0, 1 },
+
+            -- Glow Shared Settings
+            GlowXOffset = 0,
+            GlowYOffset = 0,
+
+            -- Pixel Glow Specific
+            GlowLines = 7,
+            GlowFrequency = 0.25,
+            GlowLength = 8,
+            GlowThickness = 1,
+            GlowBorder = true,
+
+            -- AutoCast Specific
+            GlowScale = 1,
+
+            -- Proc Specific
+            GlowDuration = 1,
+            GlowStartAnim = false,
+
+            -- Position
+            Strata = "HIGH",
+            anchorFrameType = "UIPARENT",
+            ParentFrame = "UIParent",
+            Position = {
+                AnchorFrom = "CENTER",
+                AnchorTo = "CENTER",
+                XOffset = 0,
+                YOffset = -50,
+            },
+        },
+
         -- Incarnation Stack Tracker
         IncarnStacks = {
             Enabled = false,

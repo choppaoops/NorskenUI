@@ -424,15 +424,10 @@ function NRSKNUI:ApplyFontToText(fontString, fontName, fontSize, fontOutline, sh
         fontString:SetShadowOffset(0, 0)
         fontString:SetShadowColor(0, 0, 0, 0)
 
-        local fontPath = self:GetFontPath(fontName)
         if not fontString.softOutline then
-            fontString.softOutline = self:CreateSoftOutline(fontString, {
-                fontPath = fontPath,
-                fontSize = fontSize,
-            })
+            fontString.softOutline = self:CreateSoftOutline(fontString, {})
         end
         fontString.softOutline:SetShown(true)
-        fontString.softOutline:SetFont(fontPath, fontSize)
     else
         if fontString.softOutline then
             fontString.softOutline:SetShown(false)

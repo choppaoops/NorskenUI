@@ -49,6 +49,7 @@ GUIFrame.SidebarConfig = {
             text = "Class Util",
             defaultExpanded = false,
             items = {
+                { id = "BurningRush",  text = "Warlock: Burning Rush" },
                 { id = "IncarnStacks", text = "Guardian Druid: Incarn Stacks" },
                 { id = "HuntersMark",  text = "Hunter: Mark Missing" },
                 { id = "PetTexts",     text = "Pet Status Texts" },

@@ -105,6 +105,7 @@
     <Script file="GUITabs\GUI-Dungeons\GUI-DungeonCasts.lua" />
 
     <!-- GUI Miscellaneous Tabs -->
+    <Script file="GUITabs\GUI-Miscellaneous\GUI-BurningRush.lua" />
     <Script file="GUITabs\GUI-Miscellaneous\GUI-IncarnStacks.lua" />
     <Script file="GUITabs\GUI-Miscellaneous\GUI-BenchAlert.lua" />
 

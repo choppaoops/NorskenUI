@@ -49,7 +49,8 @@ local DEFAULT_FONT = "Expressway"
 ---@return boolean
 function NRSKNUI:IsFontValid(fontPath)
     if not fontPath or fontPath == "" then return false end
-    return pcall(fontProbe.SetFont, fontProbe, fontPath, 12, "")
+    local ok, result = pcall(fontProbe.SetFont, fontProbe, fontPath, 12, "")
+    return ok and result
 end
 
 local function IsFontKey(key)
@@ -151,5 +152,11 @@ function NRSKNUI:ApplyFont(fontString, fontName, fontSize, fontOutline)
     if not self:IsFontValid(fontPath) then fontPath = "Fonts\\FRIZQT__.TTF" end
 
     local size = (fontSize and fontSize > 0) and fontSize or 12
-    return fontString:SetFont(fontPath, size, self:GetFontOutline(fontOutline)) or false
+    local outline = self:GetFontOutline(fontOutline)
+
+    if fontString:SetFont(fontPath, size, outline) then
+        return true
+    end
+
+    return fontString:SetFont("Fonts\\FRIZQT__.TTF", size, outline) or false
 end
