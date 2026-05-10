@@ -56,7 +56,6 @@
     <Script file="GUITabs\GUI-Combat\GUI-RangeChecker.lua" />
     <Script file="GUITabs\GUI-Combat\GUI-TimeSpiral.lua" />
     <Script file="GUITabs\GUI-Combat\GUI-FocusCastbar.lua" />
-    <Script file="GUITabs\GUI-Combat\GUI-ExternalBuffs.lua" />
 
     <!-- GUI Missing Buffs Tabs -->
     <Script file="GUITabs\GUI-MissingBuffs\GUI-MissingBuffsTab.lua" />
@@ -92,8 +91,11 @@
     <Script file="GUITabs\GUISkinning\GUI-BlizzardRaidmanager.lua" />
     <Script file="GUITabs\GUISkinning\GUI-UIWidgetsTab.lua" />
     <Script file="GUITabs\GUISkinning\GUI-BnetFrame.lua" />
-    <Include file="GUITabs\GUISkinning\CustomSkin\CustomSkin.xml" />
 
+    <!-- GUI Skinning Tabs -->
+    <Script file="GUITabs\GUI-AuraTracking\GUI-Buffs.lua" />
+    <Script file="GUITabs\GUI-AuraTracking\GUI-Debuffs.lua" />
+    <Script file="GUITabs\GUI-AuraTracking\GUI-ExternalBuffs.lua" />
 
     <!-- GUI Dungeons Tabs -->
     <Script file="GUITabs\GUI-Dungeons\GUI-InstanceReset.lua" />

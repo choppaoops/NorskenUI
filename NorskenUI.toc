@@ -24,6 +24,7 @@ Modules/QoL/QoL.xml
 Modules/Skinning/Skinning.xml
 Modules/Dungeons/Dungeons.xml
 Modules/Miscellaneous/Miscellaneous.xml
+Modules/AuraTracking/AuraTracking.xml
 
 # Load GUI
 GUI/GUI.xml

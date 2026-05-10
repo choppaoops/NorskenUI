@@ -12,7 +12,5 @@
     <Script file="UICleanup.lua" />
     <Script file="Battlenet.lua" />
     <Script file="BlizzardRaidmanager.lua" />
-    <Script file="AuraBuffs.lua" />
-    <Script file="AuraDebuffs.lua" />
     <Script file="UIWidgets.lua" />
 </Ui>
