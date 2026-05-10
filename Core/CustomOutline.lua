@@ -32,6 +32,7 @@ local function StripEscapeCodes(text)
         :gsub("|T.-|t", "   ")
         :gsub("|A.-|a", "   ")
         :gsub("|H.-|h(.-)|h", "%1")
+        :gsub("{rt%d}", " ")
 end
 
 local function HandleFadeHook(frame, outline, startAlpha)

@@ -21,8 +21,16 @@ local C_ClassColor = C_ClassColor
 local C_Timer = C_Timer
 local GetTime = GetTime
 local max = math.max
+local gsub = string.gsub
 
 CM.messageFrames = {}
+
+local function ProcessRaidTargetIcons(text)
+    if not text then return text end
+    return gsub(text, "{rt(%d)}", function(num)
+        return "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_" .. num .. ":0|t"
+    end)
+end
 CM.activeMessages = {}
 
 local MESSAGE_TYPES = {
@@ -203,8 +211,12 @@ function CM:SetMessageContent(frame, msgText, color, msgType)
         self:UpdateFrameFont(frame, msgType)
     end
     frame.text:SetText("")
-    frame.text:SetText(msgText)
+    frame.text:SetText(ProcessRaidTargetIcons(msgText))
     frame.text:SetTextColor(color[1], color[2], color[3], color[4])
+
+    if frame.text._nrsknSoftOutline then
+        frame.text._nrsknSoftOutline:_ApplyOffsets()
+    end
 
     local textWidth = frame.text:GetStringWidth()
     local textHeight = frame.text:GetStringHeight()
