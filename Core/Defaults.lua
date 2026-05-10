@@ -342,10 +342,10 @@ local Defaults = {
             GlowYOffset = 0,
 
             -- Pixel Glow Specific
-            GlowLines = 7,
+            GlowLines = 5,
             GlowFrequency = 0.25,
-            GlowLength = 8,
-            GlowThickness = 1,
+            GlowLength = 10,
+            GlowThickness = 2,
             GlowBorder = true,
 
             -- AutoCast Specific
@@ -418,6 +418,34 @@ local Defaults = {
                 AnchorTo = "CENTER",
                 XOffset = 0,
                 YOffset = -50,
+            },
+        },
+
+        -- Totem Tracker
+        TotemTracker = {
+            Enabled = true,
+            IconSize = 44,
+            IconSpacing = 1,
+            GrowDirection = "RIGHT",
+            ShowTimer = true,
+            ForcePixelPerfect = false,
+            Swipe = false,
+            Reverse = false,
+
+            -- Font settings
+            FontFace = "Expressway",
+            FontOutline = "OUTLINE",
+            TimerFontSize = 18,
+
+            -- Position
+            Strata = "HIGH",
+            anchorFrameType = "UIPARENT",
+            ParentFrame = "UIParent",
+            Position = {
+                AnchorFrom = "CENTER",
+                AnchorTo = "CENTER",
+                XOffset = -500,
+                YOffset = -450,
             },
         },
 

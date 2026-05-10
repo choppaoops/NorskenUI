@@ -6,4 +6,5 @@
     <Script file="HuntersMark.lua"/>
     <Script file="IncarnStacks.lua"/>
     <Script file="PetTexts.lua"/>
+    <Script file="TotemTracker.lua"/>
 </Ui>

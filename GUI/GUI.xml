@@ -108,6 +108,7 @@
     <Script file="GUITabs\GUI-Miscellaneous\GUI-BurningRush.lua" />
     <Script file="GUITabs\GUI-Miscellaneous\GUI-IncarnStacks.lua" />
     <Script file="GUITabs\GUI-Miscellaneous\GUI-BenchAlert.lua" />
+    <Script file="GUITabs\GUI-Miscellaneous\GUI-TotemTracker.lua" />
 
     <Script file="GUIMain\GUI-MainFrame.lua" />
 </Ui>
