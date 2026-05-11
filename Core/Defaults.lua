@@ -1615,6 +1615,8 @@ local Defaults = {
                 MaxRows = 5,
                 IconZoom = 0.32,
                 GrowthDirection = "LEFT_DOWN",
+                Swipe = false,
+                Reverse = false,
 
                 -- Visual settings
                 BorderColor = { 0, 0, 0, 1 },
@@ -1660,33 +1662,54 @@ local Defaults = {
                 SortDirection = "-",
             },
 
-            -- DebuffTracking (SecureAuraHeader based debuff display)
+            -- DebuffTracking (Manual frame management with advanced filtering)
             DebuffTracking = {
                 Enabled = true,
 
                 -- Icon settings
-                IconSize = 41,
+                IconSize = 52,
                 IconSpacing = 1,
                 IconsPerRow = 12,
                 MaxRows = 1,
                 IconZoom = 0.32,
+                Swipe = true,
+                Reverse = true,
 
                 -- Visual settings
                 BorderColor = { 0.8, 0, 0, 1 },
-                BackgroundColor = { 0, 0, 0, 0.3 },
+                BorderColorMode = "dispel", -- "custom" or "dispel"
+
+                -- Custom dispel type colors (nil = use Blizzard default)
+                DispelColors = {
+                    None = nil,
+                    Magic = nil,
+                    Curse = nil,
+                    Disease = nil,
+                    Poison = nil,
+                    Bleed = nil,
+                    Enrage = nil,
+                },
 
                 -- Font settings
                 FontFace = "Expressway",
                 FontSize = 14,
                 FontOutline = "OUTLINE",
-                TimerFontSize = 14,
+                TimerFontSize = 16,
 
-                -- Timer text position (relative to icon)
+                -- Timer text position
                 TimerPosition = {
                     AnchorFrom = "CENTER",
                     AnchorTo = "CENTER",
                     XOffset = 0,
                     YOffset = 0,
+                },
+
+                -- Stack text position
+                StackPosition = {
+                    AnchorFrom = "BOTTOMRIGHT",
+                    AnchorTo = "BOTTOMRIGHT",
+                    XOffset = -1,
+                    YOffset = 1,
                 },
 
                 -- Position
@@ -1700,9 +1723,25 @@ local Defaults = {
                     YOffset = 9,
                 },
 
+                -- Growth direction
+                GrowHorizontal = "LEFT", -- "LEFT" or "RIGHT"
+                GrowVertical = "DOWN",   -- "UP" or "DOWN"
+
                 -- Filtering
-                SortMethod = "TIME",
-                SortDirection = "-",
+                Filters = {
+                    PLAYER = true,
+                    RAID = false,
+                    CANCELABLE = false,
+                    NOT_CANCELABLE = false,
+                    INCLUDE_NAME_PLATE_ONLY = false,
+                    EXTERNAL_DEFENSIVE = false,
+                    CROWD_CONTROL = false,
+                    RAID_IN_COMBAT = false,
+                    RAID_PLAYER_DISPELLABLE = false,
+                    BIG_DEFENSIVE = false,
+                    IMPORTANT = false,
+                },
+                Blocklist = {},
             },
 
             -- ExternalBuffTracking (External defensive buffs like Pain Suppression, Ironbark, etc.)

@@ -1,269 +1,401 @@
--- NorskenUI namespace
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
 
--- Check for addon object
 if not NorskenUI then
     error("DebuffTracking: Addon object not initialized!")
     return
 end
 
--- Create module
 ---@class DebuffTracking: AceModule, AceEvent-3.0
 local DEBUFFS = NorskenUI:NewModule("DebuffTracking", "AceEvent-3.0")
 
--- Store references to all initialized buttons
 DEBUFFS.buttons = {}
+DEBUFFS.buttonPool = {}
+DEBUFFS.auraCache = {}
+DEBUFFS.activeAuras = {}
 
--- Localization
 local CreateFrame = CreateFrame
+local issecretvalue = issecretvalue
 local unpack = unpack
-local format = string.format
-local floor = math.floor
+local pairs, ipairs = pairs, ipairs
 local wipe = wipe
-local pairs = pairs
-local RegisterAttributeDriver = RegisterAttributeDriver
-local InCombatLockdown = InCombatLockdown
+local tinsert = table.insert
+local tsort = table.sort
+local math_min = math.min
+local math_floor = math.floor
 local GetTime = GetTime
 local GameTooltip = GameTooltip
 local C_UnitAuras = C_UnitAuras
 
--- Update db, used for profile changes
+local pendingFullRefresh = false
+
+local FILTER_NAMES = {
+    "PLAYER", "RAID", "CANCELABLE", "NOT_CANCELABLE",
+    "INCLUDE_NAME_PLATE_ONLY", "EXTERNAL_DEFENSIVE", "CROWD_CONTROL",
+    "RAID_IN_COMBAT", "RAID_PLAYER_DISPELLABLE", "BIG_DEFENSIVE", "IMPORTANT"
+}
+
 function DEBUFFS:UpdateDB()
     self.db = NRSKNUI.db.profile.Skinning.DebuffTracking
+    self:BuildFilterStrings()
+    NRSKNUI:LoadDispelColorsFromDB()
 end
 
--- Module init
 function DEBUFFS:OnInitialize()
     self:UpdateDB()
     self:SetEnabledState(false)
 end
 
--- Tooltip enter
-local function auraOnEnter(button)
-    GameTooltip:SetOwner(button, "ANCHOR_BOTTOMLEFT")
+function DEBUFFS:BuildFilterStrings()
+    self.filterStrings = wipe(self.filterStrings or {})
+    if not self.db.Filters then return end
 
-    local auraIndex = button:GetAttribute("index")
-    if auraIndex then
-        local unit = button:GetParent():GetAttribute("unit")
-        if GameTooltip:SetUnitAura(unit, auraIndex, "HARMFUL") then
-            GameTooltip:Show()
+    for _, name in ipairs(FILTER_NAMES) do
+        if self.db.Filters[name] then
+            tinsert(self.filterStrings, "HARMFUL" .. "|" .. name)
         end
     end
 end
 
--- Tooltip leave
+local function ShouldShowAura(auraInstanceID, aura, db, filterStrings)
+    if not aura then return false end
+
+    local isFilteredOut = C_UnitAuras.IsAuraFilteredOutByInstanceID("player", auraInstanceID, "HARMFUL")
+    if not issecretvalue(isFilteredOut) and isFilteredOut then
+        return false
+    end
+
+    -- Check blocklist filter, this only works for non secret auras
+    local spellId = aura.spellId
+    if spellId and not issecretvalue(spellId) then
+        if db.Blocklist and db.Blocklist[spellId] then
+            return false
+        end
+    end
+
+    -- Check Blizzard filters
+    if filterStrings and #filterStrings > 0 then
+        for _, filter in ipairs(filterStrings) do
+            local filtered = C_UnitAuras.IsAuraFilteredOutByInstanceID("player", auraInstanceID, filter)
+            if not issecretvalue(filtered) and not filtered then
+                return false
+            end
+        end
+    end
+
+    return true
+end
+
+local function GetBorderColor(auraInstanceID, db)
+    if db.BorderColorMode == "dispel" then
+        local colorCurve = NRSKNUI:GetDispelColorCurve()
+        if colorCurve then
+            local color = C_UnitAuras.GetAuraDispelTypeColor("player", auraInstanceID, colorCurve)
+            if not color then color = colorCurve:Evaluate(0) end
+            if color then return { color:GetRGBA() } end
+        end
+    end
+    return db.BorderColor
+end
+
+local function ApplyCooldownTextStyle(cooldown, db)
+    local cooldownText = cooldown:GetRegions()
+    if not cooldownText or not cooldownText.SetFont then return end
+
+    NRSKNUI:ApplyFont(cooldownText, db.FontFace, db.TimerFontSize, db.FontOutline)
+    if cooldownText.SetShadowOffset then cooldownText:SetShadowOffset(0, 0) end
+
+    local pos = db.TimerPosition
+    cooldownText:ClearAllPoints()
+    cooldownText:SetPoint(pos.AnchorFrom, cooldown:GetParent(), pos.AnchorTo, pos.XOffset, pos.YOffset)
+end
+
+local function auraOnEnter(button)
+    if not button.auraInstanceID then return end
+    GameTooltip:SetOwner(button, "ANCHOR_BOTTOMLEFT")
+    GameTooltip:SetUnitAuraByAuraInstanceID("player", button.auraInstanceID)
+    GameTooltip:Show()
+end
+
 local function auraOnLeave()
     GameTooltip:Hide()
 end
 
--- Update debuff button data
-local function auraUpdateDebuff(button, auraIndex)
-    local unit = button:GetParent():GetAttribute("unit")
-    local auraInfo = C_UnitAuras.GetAuraDataByIndex(unit, auraIndex, "HARMFUL")
-    if auraInfo then
-        button.Icon:SetTexture(auraInfo.icon)
-        local instanceID = auraInfo.auraInstanceID
-
-        button.Count:SetText(C_UnitAuras.GetAuraApplicationDisplayCount(unit, instanceID, 2, 999))
-
-        if button.Cooldown then
-            local duration = C_UnitAuras.GetAuraDuration(unit, instanceID)
-            if duration then
-                button.Cooldown:SetCooldownFromDurationObject(duration)
-                button.Cooldown:Show()
-            else
-                button.Cooldown:Hide()
-            end
-        end
-    end
-end
-
--- Attribute changed handler
-local function auraOnAttributeChanged(button, attribute, ...)
-    if attribute == "index" then auraUpdateDebuff(button, ...) end
-end
-
--- Initialize a single aura button
-local function auraButtonInit(button)
-    if button._initialized then return end
-    button._initialized = true
-
-    -- Store reference
-    DEBUFFS.buttons[button] = true
-
+local function CreateAuraButton(parent)
     local db = DEBUFFS.db
 
-    -- Add backdrop/background
+    local button = CreateFrame("Button", nil, parent)
+    button:SetSize(db.IconSize, db.IconSize)
+    button:EnableMouse(true)
+
+    DEBUFFS.buttons[button] = true
+
     button.bg = button:CreateTexture(nil, "BACKGROUND")
     button.bg:SetAllPoints()
-    button.bg:SetColorTexture(unpack(db.BackgroundColor))
+    button.bg:SetColorTexture(0, 0, 0, 0.3)
 
-    -- Add borders
-    NRSKNUI:AddBorders(button, db.BorderColor)
+    NRSKNUI:AddBorders(button, { 0, 0, 0, 1 }, button, 1)
 
-    -- Icon texture
+    button.Overlay = button:CreateTexture(nil, "BORDER")
+    button.Overlay:SetTexture("Interface\\AddOns\\NorskenUI\\Media\\GUITextures\\AuraOverlay.png")
+    button.Overlay:SetPoint("TOPLEFT", button, "TOPLEFT", 1, -1)
+    button.Overlay:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1)
+
     button.Icon = button:CreateTexture(nil, "ARTWORK")
-    button.Icon:SetAllPoints()
+    button.Icon:SetPoint("TOPLEFT", button, "TOPLEFT", 2, -2)
+    button.Icon:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -2, 2)
     NRSKNUI:ApplyZoom(button.Icon, NRSKNUI.GlobalZoom)
 
-    -- Count text
-    button.Count = button:CreateFontString(nil, "OVERLAY")
-    button.Count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1)
-    button.Count:SetJustifyH("RIGHT")
+    button.Cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
+    button.Cooldown:SetAllPoints()
+    button.Cooldown:SetDrawEdge(false)
+    button.Cooldown:SetDrawSwipe(db.Swipe)
+    button.Cooldown:SetReverse(db.Reverse)
+    button.Cooldown:SetDrawBling(false)
+    button.Cooldown:SetHideCountdownNumbers(false)
+    ApplyCooldownTextStyle(button.Cooldown, db)
+
+    button.Count = button.Cooldown:CreateFontString(nil, "OVERLAY")
+    local stackPos = db.StackPosition or
+        { AnchorFrom = "BOTTOMRIGHT", AnchorTo = "BOTTOMRIGHT", XOffset = -1, YOffset = 1 }
+    button.Count:SetPoint(stackPos.AnchorFrom, button, stackPos.AnchorTo, stackPos.XOffset, stackPos.YOffset)
+    button.Count:SetJustifyH(NRSKNUI:GetTextJustifyFromAnchor(stackPos.AnchorFrom))
     NRSKNUI:ApplyFont(button.Count, db.FontFace, db.FontSize, db.FontOutline)
     button.Count:SetShadowOffset(0, 0)
 
-    -- Cooldown frame
-    button.Cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
-    button.Cooldown:SetPoint("CENTER", button, "CENTER", 0, 3)
-    button.Cooldown:SetDrawEdge(false)
-    button.Cooldown:SetDrawSwipe(false)
-    button.Cooldown:SetHideCountdownNumbers(false)
-
-    -- Apply timer font size, position, and remove shadow from cooldown timer text
-    local timerFontSize = db.TimerFontSize or 20
-    local timerPos = db.TimerPosition or {}
-    local cooldownText = button.Cooldown:GetRegions()
-    if cooldownText and cooldownText.SetFont then
-        NRSKNUI:ApplyFont(cooldownText, db.FontFace, timerFontSize, db.FontOutline)
-        if cooldownText.SetShadowOffset then cooldownText:SetShadowOffset(0, 0) end
-        cooldownText:ClearAllPoints()
-        cooldownText:SetPoint(
-            timerPos.AnchorFrom or "CENTER",
-            button,
-            timerPos.AnchorTo or "CENTER",
-            timerPos.XOffset or 0,
-            timerPos.YOffset or 0
-        )
-    end
-
-    -- Script handlers
-    button:HookScript("OnAttributeChanged", auraOnAttributeChanged)
     button:SetScript("OnEnter", auraOnEnter)
     button:SetScript("OnLeave", auraOnLeave)
+    button:Hide()
+
+    return button
 end
 
--- Apply visual settings to a single button
-local function applyButtonSettings(button, db)
-    if button.bg then button.bg:SetColorTexture(unpack(db.BackgroundColor)) end
-    if button.SetBorderColor then button:SetBorderColor(unpack(db.BorderColor)) end
+local function UpdateAuraButton(button, data)
+    if not data then
+        button:Hide()
+        return
+    end
+
+    local db = DEBUFFS.db
+
+    button.auraInstanceID = data.auraInstanceID
+    button.Icon:SetTexture(data.icon)
+
+    local count = C_UnitAuras.GetAuraApplicationDisplayCount("player", data.auraInstanceID, 2, 999)
+    button.Count:SetText(count)
+
+    local duration = C_UnitAuras.GetAuraDuration("player", data.auraInstanceID)
+    if duration then
+        button.Cooldown:SetCooldownFromDurationObject(duration)
+        button.Cooldown:Show()
+    else
+        button.Cooldown:Hide()
+    end
+
+    -- Overlay color by dispel type
+    if button.Overlay then
+        local overlayColor = GetBorderColor(data.auraInstanceID, db)
+        button.Overlay:SetVertexColor(unpack(overlayColor))
+    end
+
+    button:Show()
+end
+
+local function SortAuras(a, b)
+    return a.auraInstanceID < b.auraInstanceID
+end
+
+local function PositionButtons(self)
+    local db = self.db
+    local spacing = db.IconSize + db.IconSpacing
+    local iconsPerRow = db.IconsPerRow
+    local growH = db.GrowHorizontal == "LEFT" and -1 or 1
+    local growV = db.GrowVertical == "DOWN" and -1 or 1
+    local visibleCount = 0
+
+    for _, button in ipairs(self.buttonPool) do
+        if button:IsShown() then
+            visibleCount = visibleCount + 1
+            local col = (visibleCount - 1) % iconsPerRow
+            local row = math_floor((visibleCount - 1) / iconsPerRow)
+            button:ClearAllPoints()
+            button:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", col * spacing * growH, row * spacing * growV)
+        end
+    end
+end
+
+function DEBUFFS:RefreshAllAuras()
+    if not self.frame then return end
+
+    local db = self.db
+    wipe(self.auraCache)
+    wipe(self.activeAuras)
+
+    local auraInstanceIDs = C_UnitAuras.GetUnitAuraInstanceIDs("player", "HARMFUL")
+    if not auraInstanceIDs then return end
+
+    local dataIndex = 0
+    for _, auraInstanceID in ipairs(auraInstanceIDs) do
+        local aura = C_UnitAuras.GetAuraDataByAuraInstanceID("player", auraInstanceID)
+        if aura and ShouldShowAura(auraInstanceID, aura, db, self.filterStrings) then
+            self.activeAuras[auraInstanceID] = true
+            dataIndex = dataIndex + 1
+            self.auraCache[dataIndex] = aura
+        end
+    end
+
+    if dataIndex > 1 then tsort(self.auraCache, SortAuras) end
+
+    local maxVisible = math_min(db.IconsPerRow * db.MaxRows, dataIndex)
+
+    while #self.buttonPool < maxVisible do tinsert(self.buttonPool, CreateAuraButton(self.frame)) end
+
+    for i = 1, #self.buttonPool do
+        if i <= maxVisible and self.auraCache[i] then
+            UpdateAuraButton(self.buttonPool[i], self.auraCache[i])
+        else
+            self.buttonPool[i]:Hide()
+        end
+    end
+
+    PositionButtons(self)
+end
+
+function DEBUFFS:ProcessAuraUpdate(addedAuras, updatedIDs, removedIDs)
+    if not self.frame then return end
+
+    local changed = false
+    local db = self.db
+
+    if removedIDs then
+        for _, auraInstanceID in ipairs(removedIDs) do
+            if self.activeAuras[auraInstanceID] then
+                self.activeAuras[auraInstanceID] = nil
+                changed = true
+            end
+        end
+    end
+
+    if addedAuras then
+        for _, aura in ipairs(addedAuras) do
+            if ShouldShowAura(aura.auraInstanceID, aura, db, self.filterStrings) then
+                self.activeAuras[aura.auraInstanceID] = true
+                changed = true
+            end
+        end
+    end
+
+    if updatedIDs then
+        for _, auraInstanceID in ipairs(updatedIDs) do
+            local aura = C_UnitAuras.GetAuraDataByAuraInstanceID("player", auraInstanceID)
+            local shouldShow = aura and ShouldShowAura(auraInstanceID, aura, db, self.filterStrings)
+            local wasShowing = self.activeAuras[auraInstanceID]
+
+            if shouldShow and not wasShowing then
+                self.activeAuras[auraInstanceID] = true
+                changed = true
+            elseif not shouldShow and wasShowing then
+                self.activeAuras[auraInstanceID] = nil
+                changed = true
+            elseif shouldShow and wasShowing then
+                changed = true
+            end
+        end
+    end
+
+    if changed then self:RefreshAllAuras() end
+end
+
+function DEBUFFS:QueueFullRefresh()
+    if pendingFullRefresh then return end
+    pendingFullRefresh = true
+
+    C_Timer.After(0, function()
+        pendingFullRefresh = false
+        DEBUFFS:RefreshAllAuras()
+    end)
+end
+
+function DEBUFFS:UNIT_AURA(_, unit, updateInfo)
+    if unit ~= "player" then return end
+    if not self.frame then return end
+
+    if not updateInfo or updateInfo.isFullUpdate then
+        self:QueueFullRefresh()
+        return
+    end
+
+    if not updateInfo.addedAuras
+        and not updateInfo.updatedAuraInstanceIDs
+        and not updateInfo.removedAuraInstanceIDs then
+        return
+    end
+
+    self:ProcessAuraUpdate(updateInfo.addedAuras, updateInfo.updatedAuraInstanceIDs, updateInfo.removedAuraInstanceIDs)
+end
+
+function DEBUFFS:PLAYER_ENTERING_WORLD()
+    self:QueueFullRefresh()
+end
+
+local function GetFrameSize(db)
+    local w = db.IconsPerRow * db.IconSize + (db.IconsPerRow - 1) * db.IconSpacing
+    local h = db.MaxRows * db.IconSize + (db.MaxRows - 1) * db.IconSpacing
+    return w, h
+end
+
+local function ApplyButtonSettings(button, db)
+    button:SetSize(db.IconSize, db.IconSize)
     if button.Count then
         NRSKNUI:ApplyFont(button.Count, db.FontFace, db.FontSize, db.FontOutline)
         button.Count:SetShadowOffset(0, 0)
+        local stackPos = db.StackPosition or
+            { AnchorFrom = "BOTTOMRIGHT", AnchorTo = "BOTTOMRIGHT", XOffset = -1, YOffset = 1 }
+        button.Count:ClearAllPoints()
+        button.Count:SetPoint(stackPos.AnchorFrom, button, stackPos.AnchorTo, stackPos.XOffset, stackPos.YOffset)
+        button.Count:SetJustifyH(NRSKNUI:GetTextJustifyFromAnchor(stackPos.AnchorFrom))
     end
     if button.Cooldown then
-        local timerFontSize = db.TimerFontSize or 20
-        local timerPos = db.TimerPosition or {}
-        local cooldownText = button.Cooldown:GetRegions()
-        if cooldownText and cooldownText.SetFont then
-            NRSKNUI:ApplyFont(cooldownText, db.FontFace, timerFontSize, db.FontOutline)
-            if cooldownText.SetShadowOffset then cooldownText:SetShadowOffset(0, 0) end
-            cooldownText:ClearAllPoints()
-            cooldownText:SetPoint(
-                timerPos.AnchorFrom or "CENTER",
-                button,
-                timerPos.AnchorTo or "CENTER",
-                timerPos.XOffset or 0,
-                timerPos.YOffset or 0
-            )
-        end
+        ApplyCooldownTextStyle(button.Cooldown, db)
+        button.Cooldown:SetDrawSwipe(db.Swipe)
+        button.Cooldown:SetReverse(db.Reverse)
     end
     if button.Icon then NRSKNUI:ApplyZoom(button.Icon, NRSKNUI.GlobalZoom) end
 end
 
--- Apply settings to all initialized buttons
 function DEBUFFS:ApplySettings()
     if NRSKNUI:ShouldNotLoadModule() then return end
-    for button in pairs(self.buttons) do applyButtonSettings(button, self.db) end
+
+    self:BuildFilterStrings()
+
+    for button in pairs(self.buttons) do ApplyButtonSettings(button, self.db) end
+
+    if self.frame then
+        self.frame:SetSize(GetFrameSize(self.db))
+        self:RefreshAllAuras()
+    end
+
     if self.previewActive then self:ShowPreview() end
 end
 
--- Create the main debuff frame
-function DEBUFFS:CreateDebuffFrame()
-    if self.debuffs then return end
-    local spacing = self.db.IconSize + self.db.IconSpacing
+function DEBUFFS:CreateFrame()
+    if self.frame then return end
 
-    -- Create secure aura header
-    self.debuffs = CreateFrame("Frame", "NorskenUIDebuffFrame", UIParent, "SecureAuraHeaderTemplate")
-
-    -- Position
-    local anchorFrame = NRSKNUI:ResolveAnchorFrame(self.db.anchorFrameType, self.db.ParentFrame)
-    self.debuffs:SetPoint(
-        self.db.Position.AnchorFrom,
-        anchorFrame,
-        self.db.Position.AnchorTo,
-        self.db.Position.XOffset,
-        self.db.Position.YOffset
-    )
-    NRSKNUI:PixelPerfect(self.debuffs)
-
-    -- Set up templates and filters
-    self.debuffs:SetAttribute("template", "SecureAuraButtonTemplate")
-    self.debuffs:SetAttribute("unit", "player")
-    self.debuffs:SetAttribute("filter", "HARMFUL")
-
-    -- Sorting
-    self.debuffs:SetAttribute("sortMethod", self.db.SortMethod)
-    self.debuffs:SetAttribute("sortDirection", self.db.SortDirection)
-
-    -- Position and size for aura buttons
-    self.debuffs:SetAttribute("point", "TOPRIGHT")
-    self.debuffs:SetAttribute("minWidth", self.db.IconsPerRow * spacing)
-    self.debuffs:SetAttribute("minHeight", self.db.MaxRows * spacing)
-    self.debuffs:SetAttribute("xOffset", -spacing)
-    self.debuffs:SetAttribute("wrapYOffset", -spacing)
-    self.debuffs:SetAttribute("wrapAfter", self.db.IconsPerRow)
-    self.debuffs:SetAttribute("initialConfigFunction", format([[
-        self:SetWidth(%d)
-        self:SetHeight(%d)
-    ]], self.db.IconSize, self.db.IconSize))
-
-    -- Register attribute driver for vehicle support
-    RegisterAttributeDriver(self.debuffs, "unit", "[vehicleui] vehicle; player")
-
-    -- Hook attribute changes so we can skin aura buttons
-    self.debuffs:HookScript("OnAttributeChanged", function(_, attribute, ...)
-        if attribute:sub(1, 5) == "child" then auraButtonInit(...) end
-    end)
-    self.debuffs:Show()
+    self.frame = CreateFrame("Frame", "NorskenUIDebuffFrame", UIParent)
+    self.frame:SetSize(GetFrameSize(self.db))
+    NRSKNUI:ApplyFramePosition(self.frame, self.db.Position, self.db)
+    self.frame:Show()
 end
 
--- Apply position from db settings (called by GUI and EditMode)
 function DEBUFFS:ApplyPosition()
-    if InCombatLockdown() then return end
-    local anchorFrame = NRSKNUI:ResolveAnchorFrame(self.db.anchorFrameType, self.db.ParentFrame)
-
-    -- Update main frame position
-    if self.debuffs then
-        self.debuffs:ClearAllPoints()
-        self.debuffs:SetPoint(
-            self.db.Position.AnchorFrom,
-            anchorFrame,
-            self.db.Position.AnchorTo,
-            self.db.Position.XOffset,
-            self.db.Position.YOffset
-        )
-        self.debuffs:SetFrameStrata(self.db.Strata or "MEDIUM")
-        NRSKNUI:SnapFrameToPixels(self.debuffs)
-    end
-
-    -- Also update preview frame position if active
+    if self.frame then NRSKNUI:ApplyFramePosition(self.frame, self.db.Position, self.db) end
     if self.previewActive and self.previewFrame then
-        self.previewFrame:ClearAllPoints()
-        self.previewFrame:SetPoint(
-            self.db.Position.AnchorFrom,
-            anchorFrame,
-            self.db.Position.AnchorTo,
-            self.db.Position.XOffset,
-            self.db.Position.YOffset
-        )
+        NRSKNUI:ApplyFramePosition(self.previewFrame, self.db.Position,
+            self.db)
     end
 end
 
--- Update position, for drag positioning in edit mode
 function DEBUFFS:UpdatePosition(pos)
-    if InCombatLockdown() then return end
     self.db.Position.AnchorFrom = pos.AnchorFrom
     self.db.Position.AnchorTo = pos.AnchorTo
     self.db.Position.XOffset = pos.XOffset
@@ -271,35 +403,38 @@ function DEBUFFS:UpdatePosition(pos)
     self:ApplyPosition()
 end
 
--- Module OnEnable
 function DEBUFFS:OnEnable()
     if NRSKNUI:ShouldNotLoadModule() then return end
     if not self.db.Enabled then return end
 
-    NRSKNUI:Hide('DebuffFrame') -- Yeet Blizzard's default debuff frame
+    --TODO: Figure out if i want to still have standard non filtered debuff tracking in top right
+    --NRSKNUI:Hide('DebuffFrame')
 
-    self:CreateDebuffFrame()
+    self:CreateFrame()
+    self:RegisterEvent("UNIT_AURA")
+    self:RegisterEvent("PLAYER_ENTERING_WORLD")
+    self:RefreshAllAuras()
 
-    -- Delayed positioning to ensure custom anchor frames exist
     C_Timer.After(0.5, function() self:ApplyPosition() end)
 
     self:RegisterEditMode()
 end
 
--- Register with EditMode system
+function DEBUFFS:OnDisable()
+    self:UnregisterEvent("UNIT_AURA")
+    self:UnregisterEvent("PLAYER_ENTERING_WORLD")
+    if self.frame then self.frame:Hide() end
+end
+
 function DEBUFFS:RegisterEditMode()
-    if not self.debuffs then return end
-    if not NRSKNUI.EditMode then return end
+    if not self.frame or not NRSKNUI.EditMode then return end
+
     NRSKNUI.EditMode:RegisterElement({
         key = "DebuffTracking",
         displayName = "DEBUFFS",
-        frame = self.debuffs,
-        getPosition = function()
-            return self.db.Position
-        end,
-        setPosition = function(pos)
-            self:UpdatePosition(pos)
-        end,
+        frame = self.frame,
+        getPosition = function() return self.db.Position end,
+        setPosition = function(pos) self:UpdatePosition(pos) end,
         getParentFrame = function()
             return NRSKNUI:ResolveAnchorFrame(self.db.anchorFrameType, self.db.ParentFrame)
         end,
@@ -309,151 +444,91 @@ end
 
 -- Preview stuff
 
--- Sample debuff icons for preview
-local PREVIEW_ICONS = {
-    136139, -- Curse of Weakness
-    136188, -- Shadow Word: Pain
-    132090, -- Corruption
-    135849, -- Faerie Fire
-    132095, -- Sunder Armor
-    136197, -- Wound Poison
-}
+local PREVIEW_ICONS = { 136139, 136188, 132090, 135849, 132095, 136197, }
+local PREVIEW_DISPEL_TYPES = { 2, 1, 1, 2, 0, 4 } -- Curse, Magic, Magic, Curse, None, Poison
 
--- Create a single preview button
-local function CreatePreviewButton(parent, index, db)
-    local iconSize = db.IconSize
-
-    local button = CreateFrame("Frame", nil, parent)
-    button:SetSize(iconSize, iconSize)
-
-    -- Add backdrop/background
-    button.bg = button:CreateTexture(nil, "BACKGROUND")
-    button.bg:SetAllPoints()
-    button.bg:SetColorTexture(unpack(db.BackgroundColor))
-
-    -- Add borders
-    NRSKNUI:AddBorders(button, db.BorderColor)
-
-    -- Icon texture
-    button.Icon = button:CreateTexture(nil, "ARTWORK")
-    button.Icon:SetAllPoints()
-    NRSKNUI:ApplyZoom(button.Icon, NRSKNUI.GlobalZoom)
-    local iconIndex = ((index - 1) % #PREVIEW_ICONS) + 1
-    button.Icon:SetTexture(PREVIEW_ICONS[iconIndex])
-
-    -- Count text
-    button.Count = button:CreateFontString(nil, "OVERLAY")
-    button.Count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1)
-    button.Count:SetJustifyH("RIGHT")
-    NRSKNUI:ApplyFont(button.Count, db.FontFace, db.FontSize, db.FontOutline)
-    button.Count:SetShadowOffset(0, 0)
-    -- Show stack count on some icons
-    if index % 4 == 1 then
-        button.Count:SetText(2)
-    elseif index % 4 == 2 then
-        button.Count:SetText(5)
-    end
-
-    -- Cooldown frame
-    button.Cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
-    button.Cooldown:SetAllPoints()
-    button.Cooldown:SetDrawEdge(false)
-    button.Cooldown:SetDrawSwipe(false)
-    button.Cooldown:SetHideCountdownNumbers(false)
-
-    -- Apply timer font size and position
-    local timerFontSize = db.TimerFontSize or 20
-    local timerPos = db.TimerPosition or {}
-    local cooldownText = button.Cooldown:GetRegions()
-    if cooldownText and cooldownText.SetFont then
-        NRSKNUI:ApplyFont(cooldownText, db.FontFace, timerFontSize, db.FontOutline)
-        if cooldownText.SetShadowOffset then cooldownText:SetShadowOffset(0, 0) end
-        cooldownText:ClearAllPoints()
-        cooldownText:SetPoint(
-            timerPos.AnchorFrom or "CENTER",
-            button,
-            timerPos.AnchorTo or "CENTER",
-            timerPos.XOffset or 0,
-            timerPos.YOffset or 0
-        )
-    end
-
-    -- Set a fake cooldown for preview
-    if index % 3 ~= 0 then
-        local duration = 8 + ((index * 5) % 30)
-        local startTime = GetTime() - (duration * (0.2 + (index % 5) * 0.1))
-        button.Cooldown:SetCooldown(startTime, duration)
-        button.Cooldown:Show()
-    else
-        button.Cooldown:Hide()
-    end
-
-    return button
-end
-
--- Show preview with fake debuff icons
 function DEBUFFS:ShowPreview()
-    local spacing = self.db.IconSize + self.db.IconSpacing
-    local previewCount = self.db.IconsPerRow * self.db.MaxRows
+    local db = self.db
+    local spacing = db.IconSize + db.IconSpacing
+    local previewCount = db.IconsPerRow * db.MaxRows
 
-    -- Create preview frame if needed
     if not self.previewFrame then
         self.previewFrame = CreateFrame("Frame", "NorskenUIDebuffPreview", UIParent)
         self.previewButtons = {}
     end
 
-    -- Position preview frame
-    local anchorFrame = NRSKNUI:ResolveAnchorFrame(self.db.anchorFrameType, self.db.ParentFrame)
-    self.previewFrame:ClearAllPoints()
-    self.previewFrame:SetPoint(
-        self.db.Position.AnchorFrom,
-        anchorFrame,
-        self.db.Position.AnchorTo,
-        self.db.Position.XOffset,
-        self.db.Position.YOffset
-    )
-    self.previewFrame:SetSize(self.db.IconsPerRow * spacing, self.db.MaxRows * spacing)
+    NRSKNUI:ApplyFramePosition(self.previewFrame, db.Position, db)
+    self.previewFrame:SetSize(GetFrameSize(db))
 
-    -- Clear old buttons
-    for _, btn in ipairs(self.previewButtons) do
-        btn:Hide()
-        btn:SetParent(nil)
-    end
-    wipe(self.previewButtons)
+    while #self.previewButtons < previewCount do tinsert(self.previewButtons, CreateAuraButton(self.previewFrame)) end
 
-    -- Create preview buttons
-    for i = 1, previewCount do
-        local button = CreatePreviewButton(self.previewFrame, i, self.db)
-        local col = (i - 1) % self.db.IconsPerRow
-        local row = floor((i - 1) / self.db.IconsPerRow)
-        button:SetPoint("TOPRIGHT", self.previewFrame, "TOPRIGHT", -col * spacing, -row * spacing)
-        button:Show()
-        self.previewButtons[i] = button
+    local growH = db.GrowHorizontal == "LEFT" and -1 or 1
+    local growV = db.GrowVertical == "DOWN" and -1 or 1
+
+    for i, button in ipairs(self.previewButtons) do
+        if i <= previewCount then
+            ApplyButtonSettings(button, db)
+
+            local col = (i - 1) % db.IconsPerRow
+            local row = math_floor((i - 1) / db.IconsPerRow)
+            button:ClearAllPoints()
+            button:SetPoint("TOPRIGHT", self.previewFrame, "TOPRIGHT", col * spacing * growH, row * spacing * growV)
+
+            local iconIndex = ((i - 1) % #PREVIEW_ICONS) + 1
+            button.Icon:SetTexture(PREVIEW_ICONS[iconIndex])
+            button.auraInstanceID = nil
+
+            if button.Overlay then
+                if db.BorderColorMode == "dispel" then
+                    local dispelType = PREVIEW_DISPEL_TYPES[iconIndex]
+                    local color = NRSKNUI:GetDispelColor(dispelType)
+                    button.Overlay:SetVertexColor(unpack(color))
+                else
+                    button.Overlay:SetVertexColor(unpack(db.BorderColor))
+                end
+            end
+
+            if i % 4 == 1 then
+                button.Count:SetText(2)
+            elseif i % 4 == 2 then
+                button.Count:SetText(5)
+            else
+                button.Count:SetText("")
+            end
+
+            if i % 3 ~= 0 then
+                local duration = 20 + ((i * 5) % 30)
+                local startTime = GetTime() - (duration * (0.2 + (i % 5) * 0.1))
+                button.Cooldown:SetCooldown(startTime, duration)
+                button.Cooldown:Show()
+            else
+                button.Cooldown:Hide()
+            end
+
+            button:Show()
+        else
+            button:Hide()
+        end
     end
 
     self.previewFrame:Show()
     self.previewActive = true
-    if self.debuffs then self.debuffs:Hide() end
+    if self.frame then self.frame:Hide() end
 end
 
--- Hide preview
 function DEBUFFS:HidePreview()
     if self.previewFrame then self.previewFrame:Hide() end
     self.previewActive = false
-    if self.debuffs and self.db.Enabled then self.debuffs:Show() end
+    if self.frame and self.db.Enabled then self.frame:Show() end
 end
 
--- Toggle preview
 function DEBUFFS:TogglePreview()
     if self.previewActive then
         self:HidePreview()
-    else
         self:ShowPreview()
     end
-    return self.previewActive
 end
 
--- Check if preview is active
 function DEBUFFS:IsPreviewActive()
     return self.previewActive or false
 end

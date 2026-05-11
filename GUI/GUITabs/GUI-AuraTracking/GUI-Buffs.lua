@@ -12,6 +12,8 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
     local BUFFS = NorskenUI and NorskenUI:GetModule("BuffTracking", true)
     local manager = GUIFrame:CreateWidgetStateManager()
 
+    manager:SetCondition("swipeOn", function() return db.Swipe end)
+
     local function ApplySettings()
         if BUFFS and BUFFS:IsEnabled() and BUFFS.ApplySettings then
             BUFFS:ApplySettings()
@@ -23,7 +25,7 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
     -- Card 1
     local card1 = GUIFrame:CreateCard(scrollChild, "Custom Buff Frame", yOffset)
 
-    local row1 = GUIFrame:CreateRow(card1.content, Theme.rowHeight)
+    local row1 = GUIFrame:CreateRow(card1.content, Theme.rowHeightLast)
     local enableCheck = GUIFrame:CreateCheckbox(row1, "Custom Buff Frame", {
         value = db.Enabled,
         callback = function(checked)
@@ -42,20 +44,7 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
         msgPopup = true,
         msgText = "Custom Buff Frame",
     })
-    row1:AddWidget(enableCheck, (2 / 3))
-
-    local previewBtn
-    previewBtn = GUIFrame:CreateButton(row1, "Show Preview", {
-        height = 30,
-        callback = function()
-            if BUFFS and BUFFS.TogglePreview then
-                local isActive = BUFFS:TogglePreview()
-                previewBtn:SetLabel(isActive and "Hide Preview" or "Show Preview")
-            end
-        end
-    })
-    row1:AddWidget(previewBtn, (1 / 3), nil, 0, -6)
-    if BUFFS and BUFFS:IsPreviewActive() then previewBtn:SetLabel("Hide Preview") end
+    row1:AddWidget(enableCheck, 1)
     card1:AddRow(row1, Theme.rowHeightLast, 0)
 
     yOffset = card1:GetNextOffset()
@@ -149,7 +138,7 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
         { key = "UP_RIGHT",   text = "Up, then Right" },
     }
 
-    local row6b = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast)
+    local row6b = GUIFrame:CreateRow(card2.content, Theme.rowHeight)
     local growthDropdown = GUIFrame:CreateDropdown(row6b, "Growth Direction", {
         options = growthOptions,
         value = db.GrowthDirection,
@@ -191,7 +180,33 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
     })
     row6b:AddWidget(sortDirDropdown, (1 / 3))
     manager:Register(sortDirDropdown, "all")
-    card2:AddRow(row6b, Theme.rowHeightLast, 0)
+    card2:AddRow(row6b, Theme.rowHeight)
+
+    local separator3c = GUIFrame:CreateSeparator(card2.content)
+    card2:AddRow(separator3c, Theme.rowHeightSeparator)
+
+    local rowSwipe = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast)
+    local swipeCheck = GUIFrame:CreateCheckbox(rowSwipe, "Enable Swipe", {
+        value = db.Swipe,
+        callback = function(checked)
+            db.Swipe = checked
+            ApplySettings()
+            UpdateAllWidgetStates()
+        end
+    })
+    rowSwipe:AddWidget(swipeCheck, 0.5)
+    manager:Register(swipeCheck, "all")
+
+    local reverseCheck = GUIFrame:CreateCheckbox(rowSwipe, "Reverse Swipe", {
+        value = db.Reverse,
+        callback = function(checked)
+            db.Reverse = checked
+            ApplySettings()
+        end
+    })
+    rowSwipe:AddWidget(reverseCheck, 0.5)
+    manager:Register(reverseCheck, "all", "swipeOn")
+    card2:AddRow(rowSwipe, Theme.rowHeightLast, 0)
 
     yOffset = card2:GetNextOffset()
 
@@ -230,14 +245,14 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
     manager:Register(card5, "all")
 
     local textAnchorOptions = {
-        { key = "TOPLEFT", text = "Top Left" },
-        { key = "TOP", text = "Top" },
-        { key = "TOPRIGHT", text = "Top Right" },
-        { key = "LEFT", text = "Left" },
-        { key = "CENTER", text = "Center" },
-        { key = "RIGHT", text = "Right" },
-        { key = "BOTTOMLEFT", text = "Bottom Left" },
-        { key = "BOTTOM", text = "Bottom" },
+        { key = "TOPLEFT",     text = "Top Left" },
+        { key = "TOP",         text = "Top" },
+        { key = "TOPRIGHT",    text = "Top Right" },
+        { key = "LEFT",        text = "Left" },
+        { key = "CENTER",      text = "Center" },
+        { key = "RIGHT",       text = "Right" },
+        { key = "BOTTOMLEFT",  text = "Bottom Left" },
+        { key = "BOTTOM",      text = "Bottom" },
         { key = "BOTTOMRIGHT", text = "Bottom Right" },
     }
 

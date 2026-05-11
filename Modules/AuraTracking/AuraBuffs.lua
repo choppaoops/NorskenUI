@@ -125,8 +125,10 @@ local function applyTimerStyle(button, db)
     if cooldownText and cooldownText.SetFont then
         NRSKNUI:ApplyFont(cooldownText, db.FontFace, db.TimerFontSize, db.FontOutline)
         if cooldownText.SetShadowOffset then cooldownText:SetShadowOffset(0, 0) end
-        if cooldownText.SetJustifyH then cooldownText:SetJustifyH(NRSKNUI:GetTextJustifyFromAnchor(db.TimerPosition
-            .AnchorFrom)) end
+        if cooldownText.SetJustifyH then
+            cooldownText:SetJustifyH(NRSKNUI:GetTextJustifyFromAnchor(db.TimerPosition
+            .AnchorFrom))
+        end
         cooldownText:ClearAllPoints()
         cooldownText:SetPoint(db.TimerPosition.AnchorFrom, button, db.TimerPosition.AnchorTo, db.TimerPosition.XOffset,
             db.TimerPosition.YOffset)
@@ -148,21 +150,22 @@ local function auraButtonInit(button)
     button.Icon:SetAllPoints()
     NRSKNUI:ApplyZoom(button.Icon, NRSKNUI.GlobalZoom)
 
-    button.Count = button:CreateFontString(nil, "OVERLAY")
+    button.Cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
+    button.Cooldown:SetAllPoints()
+    button.Cooldown:SetDrawEdge(false)
+    button.Cooldown:SetDrawSwipe(BUFFS.db.Swipe)
+    button.Cooldown:SetReverse(BUFFS.db.Reverse)
+    button.Cooldown:SetDrawBling(false)
+    button.Cooldown:SetHideCountdownNumbers(false)
+
+    applyTimerStyle(button, BUFFS.db)
+
+    button.Count = button.Cooldown:CreateFontString(nil, "OVERLAY")
     button.Count:SetPoint(BUFFS.db.StackPosition.AnchorFrom, button, BUFFS.db.StackPosition.AnchorTo,
         BUFFS.db.StackPosition.XOffset, BUFFS.db.StackPosition.YOffset)
     button.Count:SetJustifyH(NRSKNUI:GetTextJustifyFromAnchor(BUFFS.db.StackPosition.AnchorFrom))
     NRSKNUI:ApplyFont(button.Count, BUFFS.db.FontFace, BUFFS.db.FontSize, BUFFS.db.FontOutline)
     button.Count:SetShadowOffset(0, 0)
-
-    button.Cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
-    button.Cooldown:SetAllPoints()
-    button.Cooldown:SetDrawEdge(false)
-    button.Cooldown:SetDrawSwipe(false)
-    button.Cooldown:SetDrawBling(false)
-    button.Cooldown:SetHideCountdownNumbers(false)
-
-    applyTimerStyle(button, BUFFS.db)
 
     button:HookScript("OnAttributeChanged", auraOnAttributeChanged)
     button:SetScript("OnEnter", auraOnEnter)
@@ -180,7 +183,11 @@ local function applyButtonSettings(button, db)
             db.StackPosition.XOffset, db.StackPosition.YOffset)
         button.Count:SetJustifyH(NRSKNUI:GetTextJustifyFromAnchor(db.StackPosition.AnchorFrom))
     end
-    if button.Cooldown then applyTimerStyle(button, db) end
+    if button.Cooldown then
+        applyTimerStyle(button, db)
+        button.Cooldown:SetDrawSwipe(db.Swipe)
+        button.Cooldown:SetReverse(db.Reverse)
+    end
     if button.Icon then NRSKNUI:ApplyZoom(button.Icon, NRSKNUI.GlobalZoom) end
 end
 
@@ -342,7 +349,17 @@ local function CreatePreviewButton(parent, index, db)
     local iconIndex = ((index - 1) % #PREVIEW_ICONS) + 1
     button.Icon:SetTexture(PREVIEW_ICONS[iconIndex])
 
-    button.Count = button:CreateFontString(nil, "OVERLAY")
+    button.Cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
+    button.Cooldown:SetAllPoints()
+    button.Cooldown:SetDrawEdge(false)
+    button.Cooldown:SetDrawSwipe(db.Swipe)
+    button.Cooldown:SetReverse(db.Reverse)
+    button.Cooldown:SetDrawBling(false)
+    button.Cooldown:SetHideCountdownNumbers(false)
+
+    applyTimerStyle(button, db)
+
+    button.Count = button.Cooldown:CreateFontString(nil, "OVERLAY")
     button.Count:SetPoint(db.StackPosition.AnchorFrom, button, db.StackPosition.AnchorTo,
         db.StackPosition.XOffset, db.StackPosition.YOffset)
     button.Count:SetJustifyH(NRSKNUI:GetTextJustifyFromAnchor(db.StackPosition.AnchorFrom))
@@ -353,15 +370,6 @@ local function CreatePreviewButton(parent, index, db)
     elseif index % 4 == 2 then
         button.Count:SetText("3")
     end
-
-    button.Cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
-    button.Cooldown:SetAllPoints()
-    button.Cooldown:SetDrawEdge(false)
-    button.Cooldown:SetDrawSwipe(false)
-    button.Cooldown:SetDrawBling(false)
-    button.Cooldown:SetHideCountdownNumbers(false)
-
-    applyTimerStyle(button, db)
 
     if index % 3 ~= 0 then
         local duration = 15 + ((index * 7) % 45)
@@ -442,10 +450,8 @@ end
 function BUFFS:TogglePreview()
     if self.previewActive then
         self:HidePreview()
-    else
         self:ShowPreview()
     end
-    return self.previewActive
 end
 
 function BUFFS:IsPreviewActive()

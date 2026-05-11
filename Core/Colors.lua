@@ -206,3 +206,114 @@ function NRSKNUI:ColorText(text, color)
         text
     )
 end
+
+local DispelType = NRSKNUI.Enum.DispelType
+
+local defaultDispelColors = {
+    [DispelType.None] = _G.DEBUFF_TYPE_NONE_COLOR,
+    [DispelType.Magic] = _G.DEBUFF_TYPE_MAGIC_COLOR,
+    [DispelType.Curse] = _G.DEBUFF_TYPE_CURSE_COLOR,
+    [DispelType.Disease] = _G.DEBUFF_TYPE_DISEASE_COLOR,
+    [DispelType.Poison] = _G.DEBUFF_TYPE_POISON_COLOR,
+    [DispelType.Bleed] = _G.DEBUFF_TYPE_BLEED_COLOR,
+    [DispelType.Enrage] = NRSKNUI:CreateColor(243, 95, 245),
+}
+
+local colors = {
+    dispel = {},
+}
+
+for k, v in pairs(defaultDispelColors) do
+    colors.dispel[k] = v
+end
+
+NRSKNUI.colors = colors
+
+local dispelColorCurve
+local dispelColorGeneration = 0
+local curveGeneration = -1
+
+function NRSKNUI:GetDispelColorCurve()
+    if dispelColorCurve and curveGeneration == dispelColorGeneration then
+        return dispelColorCurve
+    end
+
+    if not dispelColorCurve then
+        dispelColorCurve = C_CurveUtil.CreateColorCurve()
+        dispelColorCurve:SetType(Enum.LuaCurveType.Step)
+    else
+        dispelColorCurve:ClearPoints()
+    end
+
+    for _, dispelIndex in next, DispelType do
+        local color = colors.dispel[dispelIndex]
+        if color then
+            dispelColorCurve:AddPoint(dispelIndex, color)
+        end
+    end
+
+    curveGeneration = dispelColorGeneration
+    return dispelColorCurve
+end
+
+function NRSKNUI:GetDispelColor(dispelType)
+    local color = colors.dispel[dispelType]
+    if color then
+        return { color:GetRGBA() }
+    end
+    local fallback = colors.dispel[DispelType.None]
+    if fallback then
+        return { fallback:GetRGBA() }
+    end
+    return { 0.8, 0, 0, 1 }
+end
+
+function NRSKNUI:GetDefaultDispelColor(dispelType)
+    local color = defaultDispelColors[dispelType]
+    if color then
+        return { color:GetRGBA() }
+    end
+    return { 0.8, 0, 0, 1 }
+end
+
+local dispelTypeNameToIndex = {
+    None = DispelType.None,
+    Magic = DispelType.Magic,
+    Curse = DispelType.Curse,
+    Disease = DispelType.Disease,
+    Poison = DispelType.Poison,
+    Bleed = DispelType.Bleed,
+    Enrage = DispelType.Enrage,
+}
+NRSKNUI.DispelTypeNameToIndex = dispelTypeNameToIndex
+
+function NRSKNUI:SetDispelColor(dispelTypeName, r, g, b, a)
+    local index = dispelTypeNameToIndex[dispelTypeName]
+    if not index then return end
+
+    if r and g and b then
+        colors.dispel[index] = self:CreateColor(r, g, b, a or 1)
+    else
+        colors.dispel[index] = defaultDispelColors[index]
+    end
+    dispelColorGeneration = dispelColorGeneration + 1
+end
+
+function NRSKNUI:LoadDispelColorsFromDB()
+    local db = self.db and self.db.profile.Skinning.DebuffTracking
+    if not db or not db.DispelColors then return end
+
+    for name, index in pairs(dispelTypeNameToIndex) do
+        local customColor = db.DispelColors[name]
+        if customColor and type(customColor) == "table" and customColor[1] then
+            colors.dispel[index] = self:CreateColor(customColor[1], customColor[2], customColor[3], customColor[4] or 1)
+        else
+            colors.dispel[index] = defaultDispelColors[index]
+        end
+    end
+    dispelColorGeneration = dispelColorGeneration + 1
+end
+
+function NRSKNUI:GetDispelColorGeneration()
+    return dispelColorGeneration
+end

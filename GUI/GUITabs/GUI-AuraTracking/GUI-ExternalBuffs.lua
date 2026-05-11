@@ -17,7 +17,8 @@ GUIFrame:RegisterContent("CustomSkin_Externals", function(scrollChild, yOffset)
     local manager = GUIFrame:CreateWidgetStateManager()
     local postUpdateCallbacks = {}
     local allCards = {}
-    local SwipeWidgets = {}
+
+    manager:SetCondition("swipeOn", function() return db.Swipe end)
 
     local function RelayoutCards()
         local y = allCards[1] and allCards[1]:GetNextOffset() or yOffset
@@ -43,13 +44,6 @@ GUIFrame:RegisterContent("CustomSkin_Externals", function(scrollChild, yOffset)
             for _, callback in ipairs(postUpdateCallbacks) do
                 callback()
             end
-        end
-    end
-
-    local function UpdateSwipeState()
-        local swipeEnabled = db.Swipe
-        for _, widget in ipairs(SwipeWidgets) do
-            if widget.SetEnabled then widget:SetEnabled(swipeEnabled) end
         end
     end
 
@@ -190,14 +184,13 @@ GUIFrame:RegisterContent("CustomSkin_Externals", function(scrollChild, yOffset)
     local separator3 = GUIFrame:CreateSeparator(card2.content)
     card2:AddRow(separator3, Theme.rowHeightSeparator)
 
-    table_insert(postUpdateCallbacks, UpdateSwipeState)
     local rowSwipe = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast)
     local swipeCheck = GUIFrame:CreateCheckbox(rowSwipe, "Enable Swipe", {
         value = db.Swipe,
         callback = function(checked)
             db.Swipe = checked
             ApplySettings()
-            UpdateSwipeState()
+            UpdateAllWidgetStates()
             if EXTERNALS then EXTERNALS:TogglePreview() end
         end
     })
@@ -213,8 +206,7 @@ GUIFrame:RegisterContent("CustomSkin_Externals", function(scrollChild, yOffset)
         end
     })
     rowSwipe:AddWidget(reverseCheck, 0.5)
-    manager:Register(reverseCheck, "all")
-    table_insert(SwipeWidgets, reverseCheck)
+    manager:Register(reverseCheck, "all", "swipeOn")
     card2:AddRow(rowSwipe, Theme.rowHeightLast, 0)
 
     yOffset = card2:GetNextOffset()

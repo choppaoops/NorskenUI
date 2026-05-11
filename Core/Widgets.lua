@@ -44,11 +44,13 @@ frame:SetBorderColor(r, g, b, a)
 ---@param frame Frame
 ---@param color table?
 ---@param borderParent Frame?
+---@param size number?
 -- Helper function to create pixel-perfect borders on any frame
-function NRSKNUI:AddBorders(frame, color, borderParent)
+function NRSKNUI:AddBorders(frame, color, borderParent, size)
     if not frame then return end
     color = color or { 0, 0, 0, 1 }
     borderParent = borderParent or frame
+    local borderSize = size or 1
 
     frame.borders = frame.borders or {}
 
@@ -70,20 +72,20 @@ function NRSKNUI:AddBorders(frame, color, borderParent)
         return tex
     end
 
-    frame.borders.top = CreateBorder("TOPLEFT", "TOPRIGHT", nil, 1)
+    frame.borders.top = CreateBorder("TOPLEFT", "TOPRIGHT", nil, borderSize)
 
     frame.borders.bottom = borderParent:CreateTexture(nil, "OVERLAY", nil, 7)
-    frame.borders.bottom:SetHeight(1)
+    frame.borders.bottom:SetHeight(borderSize)
     frame.borders.bottom:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 0)
     frame.borders.bottom:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
     frame.borders.bottom:SetColorTexture(unpack(color))
     frame.borders.bottom:SetTexelSnappingBias(0)
     frame.borders.bottom:SetSnapToPixelGrid(false)
 
-    frame.borders.left = CreateBorder("TOPLEFT", "BOTTOMLEFT", 1, nil)
+    frame.borders.left = CreateBorder("TOPLEFT", "BOTTOMLEFT", borderSize, nil)
 
     frame.borders.right = borderParent:CreateTexture(nil, "OVERLAY", nil, 7)
-    frame.borders.right:SetWidth(1)
+    frame.borders.right:SetWidth(borderSize)
     frame.borders.right:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
     frame.borders.right:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
     frame.borders.right:SetColorTexture(unpack(color))
