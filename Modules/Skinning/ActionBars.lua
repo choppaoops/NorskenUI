@@ -4,6 +4,9 @@ local NRSKNUI = select(2, ...)
 
 --TODO: Flyout buttons are not properly part of the mouseover system, so if you mouseover the flyout bar, it will fade out
 --TODO: Flyout buttonbar growth direction
+--TODO: Fix bug with pet bar on classes that temporarily spawn their pet, in this case if u spawn the pet and pet times out/dies in combat, the pet bar is shown until you leave combat
+--TODO: Add hide keybind, macro and charge/stack text support as a global and also per par gobal override
+--TODO: Hide non active actionbars from the editmode.
 
 -- Check for addon object
 if not NorskenUI then
