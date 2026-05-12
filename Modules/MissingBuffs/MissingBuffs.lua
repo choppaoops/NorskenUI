@@ -103,7 +103,7 @@ local groupSatisfiedCache = {}
 local groupMissingBuffCache = {}
 
 local checkContext = {
-    trackingMode = "personal",
+    trackingMode = "smart",
     groupSize = 0,
     isInRaid = false,
     inGroup = false,
@@ -155,7 +155,7 @@ local function UpdateCheckContext()
     checkContext.isInRaid = IsInRaid()
     checkContext.inGroup = checkContext.groupSize > 0
     checkContext.canCrossFaction = cachedIsInInstance
-    checkContext.trackingMode = MBUFFS.db and MBUFFS.db.TrackingMode or "personal"
+    checkContext.trackingMode = MBUFFS.db and MBUFFS.db.TrackingMode or "smart"
     checkContext.showOtherClass = true
     checkContext.checkGroup = true
     checkContext.units = checkContext.isInRaid and UNIT_STRINGS.raid or UNIT_STRINGS.party
@@ -309,14 +309,16 @@ local function PlayerHasBuff(spellId, extraSpellIds)
 
     local auraData = C_UnitAuras.GetPlayerAuraBySpellID(spellId)
     if auraData then
-        return true, auraData.expirationTime
+        local expTime = not issecretvalue(auraData.expirationTime) and auraData.expirationTime or nil
+        return true, expTime
     end
 
     if extraSpellIds then
         for _, extraId in ipairs(extraSpellIds) do
             auraData = C_UnitAuras.GetPlayerAuraBySpellID(extraId)
             if auraData then
-                return true, auraData.expirationTime
+                local expTime = not issecretvalue(auraData.expirationTime) and auraData.expirationTime or nil
+                return true, expTime
             end
         end
     end
@@ -831,7 +833,7 @@ local function CheckRestrictedBuffs()
     wipe(categoryExpiringCache)
     wipe(categoryExpTimeCache)
     if not MBUFFS.db then return restrictedMissingCache end
-    if InCombatLockdown() or C_ChallengeMode.IsChallengeModeActive() or isEncounterInProgress then
+    if NRSKNUI:IsFullyRestricted() or InCombatLockdown() or C_ChallengeMode.IsChallengeModeActive() or isEncounterInProgress then
         return restrictedMissingCache
     end
     if UnitLevel("player") < GetMaxLevelForLatestExpansion() then
@@ -1113,7 +1115,7 @@ local function CheckPresenceBuffs()
     if not MBUFFS.db then return presenceMissingCache end
 
     if not checkContext.isInRaid then return presenceMissingCache end
-    if checkContext.trackingMode == "personal" then return presenceMissingCache end
+    if checkContext.trackingMode ~= "all" then return presenceMissingCache end
 
     local presenceBuffsDb = MBUFFS.db.PresenceBuffs or {}
     local showOtherClass = checkContext.showOtherClass

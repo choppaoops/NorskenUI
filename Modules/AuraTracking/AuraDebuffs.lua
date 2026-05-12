@@ -29,10 +29,30 @@ local C_UnitAuras = C_UnitAuras
 
 local pendingFullRefresh = false
 
+local DISPEL_ICON_ATLASES = {
+    [NRSKNUI.Enum.DispelType.Magic] = "RaidFrame-Icon-DebuffMagic",
+    [NRSKNUI.Enum.DispelType.Curse] = "RaidFrame-Icon-DebuffCurse",
+    [NRSKNUI.Enum.DispelType.Disease] = "RaidFrame-Icon-DebuffDisease",
+    [NRSKNUI.Enum.DispelType.Poison] = "RaidFrame-Icon-DebuffPoison",
+    [NRSKNUI.Enum.DispelType.Bleed] = "RaidFrame-Icon-DebuffBleed",
+}
+
+local DISPEL_CURVE_NAMES = {
+    [NRSKNUI.Enum.DispelType.Magic] = "Magic",
+    [NRSKNUI.Enum.DispelType.Curse] = "Curse",
+    [NRSKNUI.Enum.DispelType.Disease] = "Disease",
+    [NRSKNUI.Enum.DispelType.Poison] = "Poison",
+    [NRSKNUI.Enum.DispelType.Bleed] = "Bleed",
+}
+
 local FILTER_NAMES = {
-    "PLAYER", "RAID", "CANCELABLE", "NOT_CANCELABLE",
-    "INCLUDE_NAME_PLATE_ONLY", "EXTERNAL_DEFENSIVE", "CROWD_CONTROL",
-    "RAID_IN_COMBAT", "RAID_PLAYER_DISPELLABLE", "BIG_DEFENSIVE", "IMPORTANT"
+    "PLAYER",
+    "RAID",
+    "INCLUDE_NAME_PLATE_ONLY",
+    "CROWD_CONTROL",
+    "RAID_IN_COMBAT",
+    "RAID_PLAYER_DISPELLABLE",
+    "IMPORTANT"
 }
 
 function DEBUFFS:UpdateDB()
@@ -168,6 +188,20 @@ local function CreateAuraButton(parent)
     button:SetScript("OnLeave", auraOnLeave)
     button:Hide()
 
+    button.DispelOverlay = CreateFrame("Frame", nil, button)
+    button.DispelOverlay:SetAllPoints()
+    button.DispelOverlay:SetFrameLevel(button.Cooldown:GetFrameLevel() + 1)
+
+    button.DispelIcons = {}
+    for dispelIndex, atlas in pairs(DISPEL_ICON_ATLASES) do
+        local icon = button.DispelOverlay:CreateTexture(nil, "OVERLAY")
+        icon:SetSize(16, 16)
+        icon:SetPoint("TOPRIGHT", button, "TOPRIGHT", 0, 0)
+        icon:SetAtlas(atlas)
+        icon:SetAlpha(0)
+        button.DispelIcons[dispelIndex] = icon
+    end
+
     return button
 end
 
@@ -197,6 +231,24 @@ local function UpdateAuraButton(button, data)
     if button.Overlay then
         local overlayColor = GetBorderColor(data.auraInstanceID, db)
         button.Overlay:SetVertexColor(unpack(overlayColor))
+    end
+
+    -- Dispel icons visibility based on dispel type
+    if button.DispelIcons then
+        local dispelAlphaCurves = NRSKNUI.curves.DispelAlpha
+        for dispelIndex, icon in pairs(button.DispelIcons) do
+            local curveName = DISPEL_CURVE_NAMES[dispelIndex]
+            local curve = curveName and dispelAlphaCurves[curveName]
+            if curve then
+                local color = C_UnitAuras.GetAuraDispelTypeColor("player", data.auraInstanceID, curve)
+                if color then
+                    local _, _, _, a = color:GetRGBA()
+                    icon:SetAlpha(a)
+                else
+                    icon:SetAlpha(0)
+                end
+            end
+        end
     end
 
     button:Show()
@@ -446,7 +498,7 @@ end
 -- Preview stuff
 
 local PREVIEW_ICONS = { 136139, 136188, 132090, 135849, 132095, 136197, }
-local PREVIEW_DISPEL_TYPES = { 2, 1, 1, 2, 0, 4 } -- Curse, Magic, Magic, Curse, None, Poison
+local PREVIEW_DISPEL_TYPES = { 0, 1, 2, 3, 4, 11 } -- None, Magic, Curse, Disease, Poison, Bleed
 
 function DEBUFFS:ShowPreview()
     local db = self.db
@@ -486,6 +538,13 @@ function DEBUFFS:ShowPreview()
                     button.Overlay:SetVertexColor(unpack(color))
                 else
                     button.Overlay:SetVertexColor(unpack(db.BorderColor))
+                end
+            end
+
+            if button.DispelIcons then
+                local dispelType = PREVIEW_DISPEL_TYPES[iconIndex]
+                for dispelIndex, icon in pairs(button.DispelIcons) do
+                    icon:SetAlpha(dispelIndex == dispelType and 1 or 0)
                 end
             end
 

@@ -30,3 +30,27 @@ NRSKNUI.curves.HealthMissingAlpha:SetType(Enum.LuaCurveType.Step)
 NRSKNUI.curves.HealthMissingAlpha:AddPoint(0, 1)
 NRSKNUI.curves.HealthMissingAlpha:AddPoint(0.999, 1)
 NRSKNUI.curves.HealthMissingAlpha:AddPoint(1, 0)
+
+-- Dispel type alpha curves (for showing/hiding dispel icons based on aura dispel type)
+-- Each curve returns alpha 1 for its dispel type, 0 for all others
+local DispelType = NRSKNUI.Enum.DispelType
+local transparent = CreateColor(1, 1, 1, 0)
+local visible = CreateColor(1, 1, 1, 1)
+
+local function CreateDispelAlphaCurve(targetDispelType)
+    local curve = C_CurveUtil.CreateColorCurve()
+    curve:SetType(Enum.LuaCurveType.Step)
+    for _, dispelIndex in next, DispelType do
+        curve:AddPoint(dispelIndex, dispelIndex == targetDispelType and visible or transparent)
+    end
+    return curve
+end
+
+NRSKNUI.curves.DispelAlpha = {
+    Magic = CreateDispelAlphaCurve(DispelType.Magic),
+    Curse = CreateDispelAlphaCurve(DispelType.Curse),
+    Disease = CreateDispelAlphaCurve(DispelType.Disease),
+    Poison = CreateDispelAlphaCurve(DispelType.Poison),
+    Enrage = CreateDispelAlphaCurve(DispelType.Enrage),
+    Bleed = CreateDispelAlphaCurve(DispelType.Bleed),
+}

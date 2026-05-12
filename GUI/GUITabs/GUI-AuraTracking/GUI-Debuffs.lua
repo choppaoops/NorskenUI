@@ -344,28 +344,6 @@ GUIFrame:RegisterContent("CustomSkin_Debuffs", function(scrollChild, yOffset)
     manager:Register(raidFilterCheck, "all")
     card4:AddRow(row4b, Theme.rowHeight)
 
-    local row4c = GUIFrame:CreateRow(card4.content, Theme.rowHeight)
-    local cancelableCheck = GUIFrame:CreateCheckbox(row4c, "CANCELABLE", {
-        value = db.Filters.CANCELABLE == true,
-        callback = function(checked)
-            db.Filters.CANCELABLE = checked
-            ApplySettings()
-        end
-    })
-    row4c:AddWidget(cancelableCheck, 0.5)
-    manager:Register(cancelableCheck, "all")
-
-    local notCancelableCheck = GUIFrame:CreateCheckbox(row4c, "NOT_CANCELABLE", {
-        value = db.Filters.NOT_CANCELABLE == true,
-        callback = function(checked)
-            db.Filters.NOT_CANCELABLE = checked
-            ApplySettings()
-        end
-    })
-    row4c:AddWidget(notCancelableCheck, 0.5)
-    manager:Register(notCancelableCheck, "all")
-    card4:AddRow(row4c, Theme.rowHeight)
-
     local row4d = GUIFrame:CreateRow(card4.content, Theme.rowHeight)
     local ccCheck = GUIFrame:CreateCheckbox(row4d, "CROWD_CONTROL", {
         value = db.Filters.CROWD_CONTROL == true,
