@@ -14,13 +14,6 @@ local LCG = LibStub("LibCustomGlow-1.0", true)
 local CreateFrame = CreateFrame
 local UIParent = UIParent
 
-local WARLOCK_SPECS = { [265] = true, [266] = true, [267] = true }
-
-local function IsWarlock()
-    local specID = NRSKNUI.MySpec and NRSKNUI.MySpec.id
-    return specID and WARLOCK_SPECS[specID]
-end
-
 local SPELL_ID = 111400
 local ICON_TEXTURE = 538043
 
@@ -198,7 +191,9 @@ function BURN:IsPreviewActive()
 end
 
 function BURN:OnEnable()
-    if not IsWarlock() then return end
+    local className = select(2, UnitClass("player"))
+    local isKnown = IsSpellKnown(111400)
+    if not className == "WARLOCK" or not isKnown then return end
     if not self.db or not self.db.Enabled then return end
 
     self:CreateFrame()
