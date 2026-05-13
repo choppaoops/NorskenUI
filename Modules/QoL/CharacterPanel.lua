@@ -12,6 +12,7 @@ local CHAR = NorskenUI:NewModule("CharacterPanel", "AceEvent-3.0", "AceHook-3.0"
 
 local GetAverageItemLevel = GetAverageItemLevel
 local GetInventoryItemLink = GetInventoryItemLink
+local GetDetailedItemLevelInfo = GetDetailedItemLevelInfo
 local C_Item = C_Item
 local C_Container = C_Container
 local CreateFrame = CreateFrame
@@ -57,6 +58,12 @@ local ITEM_TRACKS = {
     { keyword = "Champion",   letter = "C", color = { 0.00, 0.70, 1.00 } },
     { keyword = "Veteran",    letter = "V", color = { 0.00, 0.80, 0.00 } },
     { keyword = "Adventurer", letter = "A", color = { 0.70, 0.70, 0.70 } },
+}
+
+local CRAFTED_TRACKS = {
+    { minIlvl = 285, letter = "C", color = { 1.00, 0.50, 0.00 } }, -- Mythic Crafted
+    { minIlvl = 272, letter = "C", color = { 0.78, 0.30, 0.78 } }, -- Heroic Crafted
+    { minIlvl = 259, letter = "C", color = { 0.00, 0.70, 1.00 } }, -- Normal Crafted
 }
 
 local qualityAtlasPattern = "|A:(Professions%-ChatIcon%-Quality%-[^:]+):%d+:%d+"
@@ -186,16 +193,27 @@ function CHAR:GetItemTrack(slotID)
     local data = C_TooltipInfo.GetInventoryItem("player", slotID)
     if not data or not data.lines then return nil end
 
+    local isCrafted = false
     for _, line in ipairs(data.lines) do
         local text = line.leftText
-        if text and text:find("Upgrade Level:") then
-            for _, track in ipairs(ITEM_TRACKS) do
-                if text:find(track.keyword) then
-                    return track
-                end
+        if text then
+            if text:find("Upgrade Level:") then
+                for _, track in ipairs(ITEM_TRACKS) do if text:find(track.keyword) then return track end end
+            end
+            if text:find("Crafted") then isCrafted = true end
+        end
+    end
+
+    if isCrafted then
+        local itemLink = GetInventoryItemLink("player", slotID)
+        if itemLink then
+            local ilvl = GetDetailedItemLevelInfo(itemLink)
+            if ilvl then
+                for _, track in ipairs(CRAFTED_TRACKS) do if ilvl >= track.minIlvl then return track end end
             end
         end
     end
+
     return nil
 end
 
@@ -226,13 +244,14 @@ function CHAR:CreateTrackOverlay(slotFrame, slotID)
     end
 
     overlay.text = overlay:CreateFontString(nil, "OVERLAY")
-    overlay.text:SetAllPoints()
     NRSKNUI:ApplyFontToText(overlay.text, "Expressway", 12, "OUTLINE", {})
     overlay.text:SetShadowColor(0, 0, 0, 0)
 
     if isRight then
+        overlay.text:SetPoint("BOTTOMRIGHT", overlay, "BOTTOMRIGHT", 0, 0)
         overlay.text:SetJustifyH("RIGHT")
     else
+        overlay.text:SetPoint("BOTTOMLEFT", overlay, "BOTTOMLEFT", 0, 0)
         overlay.text:SetJustifyH("LEFT")
     end
 
