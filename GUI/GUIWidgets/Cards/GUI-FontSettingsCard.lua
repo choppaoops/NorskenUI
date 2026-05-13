@@ -29,6 +29,7 @@ local ipairs = ipairs
 ---    fontSizes = {                -- Multiple font sizes (optional, overrides dbKeys.fontSize)
 ---        { label = string, dbKey = string },
 ---    },
+---    hideFontSize = boolean,      -- Hide font size slider entirely (default: false)
 ---    searchable = boolean,        -- Enable font search (default: true)
 ---    includeSoftOutline = boolean,-- Include SOFTOUTLINE option (default: false)
 ---    shadowOffsetRange = {min, max}, -- Shadow offset range (default: {-5, 5})
@@ -48,6 +49,7 @@ function GUIFrame:CreateFontSettingsCard(scrollChild, yOffset, config)
     local onChange = config.onChangeCallback
     local fontSizeRange = config.fontSizeRange or { 8, 72 }
     local fontSizes = config.fontSizes
+    local hideFontSize = config.hideFontSize == true
     local searchable = config.searchable ~= false
     local includeSoftOutline = config.includeSoftOutline == true
     local shadowOffsetRange = config.shadowOffsetRange or { -5, 5 }
@@ -166,43 +168,45 @@ function GUIFrame:CreateFontSettingsCard(scrollChild, yOffset, config)
     table_insert(widgets, outlineDropdown)
     card:AddRow(row1, Theme.rowHeight)
 
-    if fontSizes and #fontSizes > 0 then
-        local maxPerRow = 2
-        for i = 1, #fontSizes, maxPerRow do
-            local row = GUIFrame:CreateRow(card.content, Theme.rowHeight)
-            local countInRow = math.min(maxPerRow, #fontSizes - i + 1)
-            local widthPct = 1 / countInRow
-            for j = i, math.min(i + maxPerRow - 1, #fontSizes) do
-                local sizeConfig = fontSizes[j]
-                local sizeSlider = GUIFrame:CreateSlider(row, sizeConfig.label or "Size", {
-                    min = fontSizeRange[1],
-                    max = fontSizeRange[2],
-                    step = 1,
-                    value = getValue(sizeConfig.dbKey, 18),
-                    callback = function(val)
-                        setValue(sizeConfig.dbKey, val)
-                    end
-                })
-                row:AddWidget(sizeSlider, widthPct)
-                table_insert(widgets, sizeSlider)
+    if not hideFontSize then
+        if fontSizes and #fontSizes > 0 then
+            local maxPerRow = 2
+            for i = 1, #fontSizes, maxPerRow do
+                local row = GUIFrame:CreateRow(card.content, Theme.rowHeight)
+                local countInRow = math.min(maxPerRow, #fontSizes - i + 1)
+                local widthPct = 1 / countInRow
+                for j = i, math.min(i + maxPerRow - 1, #fontSizes) do
+                    local sizeConfig = fontSizes[j]
+                    local sizeSlider = GUIFrame:CreateSlider(row, sizeConfig.label or "Size", {
+                        min = fontSizeRange[1],
+                        max = fontSizeRange[2],
+                        step = 1,
+                        value = getValue(sizeConfig.dbKey, 18),
+                        callback = function(val)
+                            setValue(sizeConfig.dbKey, val)
+                        end
+                    })
+                    row:AddWidget(sizeSlider, widthPct)
+                    table_insert(widgets, sizeSlider)
+                end
+                card:AddRow(row, Theme.rowHeight)
             end
-            card:AddRow(row, Theme.rowHeight)
+        else
+            local row2 = GUIFrame:CreateRow(card.content, Theme.rowHeight)
+            local fontSizeSlider = GUIFrame:CreateSlider(row2, "Font Size", {
+                min = fontSizeRange[1],
+                max = fontSizeRange[2],
+                step = 1,
+                value = getValue(keys.fontSize, 18),
+                labelWidth = 60,
+                callback = function(val)
+                    setValue(keys.fontSize, val)
+                end
+            })
+            row2:AddWidget(fontSizeSlider, 1)
+            table_insert(widgets, fontSizeSlider)
+            card:AddRow(row2, Theme.rowHeight)
         end
-    else
-        local row2 = GUIFrame:CreateRow(card.content, Theme.rowHeight)
-        local fontSizeSlider = GUIFrame:CreateSlider(row2, "Font Size", {
-            min = fontSizeRange[1],
-            max = fontSizeRange[2],
-            step = 1,
-            value = getValue(keys.fontSize, 18),
-            labelWidth = 60,
-            callback = function(val)
-                setValue(keys.fontSize, val)
-            end
-        })
-        row2:AddWidget(fontSizeSlider, 1)
-        table_insert(widgets, fontSizeSlider)
-        card:AddRow(row2, Theme.rowHeight)
     end
 
     local rowSep = GUIFrame:CreateRow(card.content, Theme.rowHeightSeparator)

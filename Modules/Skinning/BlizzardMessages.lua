@@ -1,42 +1,30 @@
--- NorskenUI namespace
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
 
--- Check for addon object
 if not NorskenUI then
     error("BlizzardMessages: Addon object not initialized. Check file load order!")
     return
 end
 
--- Create module
 ---@class BlizzardMessages: AceModule, AceEvent-3.0
 local BM = NorskenUI:NewModule("BlizzardMessages", "AceEvent-3.0")
 
--- Localization
 local GetTime = GetTime
-local UIErrorsFrame = UIErrorsFrame
-local ActionStatus = ActionStatus
-local ChatBubbleFont = ChatBubbleFont
-local ObjectiveTrackerLineFont = ObjectiveTrackerLineFont
-local ObjectiveTrackerHeaderFont = ObjectiveTrackerHeaderFont
 local C_Timer = C_Timer
 local UIParent = UIParent
 local _G = _G
 
--- Update db, used for profile changes
 function BM:UpdateDB()
     self.db = NRSKNUI.db.profile.Skinning.BlizzardMessages
 end
 
--- Module init
 function BM:OnInitialize()
     self:UpdateDB()
     self:SetEnabledState(false)
 end
 
--- Module OnEnable
 function BM:OnEnable()
-    if NRSKNUI:ShouldNotLoadModule() then return end -- Skip if ElvUI is loaded, to avoid conflicts
+    if NRSKNUI:ShouldNotLoadModule() then return end
     if not self.db.Enabled then return end
     C_Timer.After(1.0, function()
         if self:IsEnabled() then
@@ -45,156 +33,137 @@ function BM:OnEnable()
     end)
 end
 
--- Zone Texts styling
+function BM:ApplyFont(fontObject, size)
+    if not fontObject then return end
+
+    local fontPath = NRSKNUI:GetFontPath(self.db.Font)
+    local outline = NRSKNUI:GetFontOutline(self.db.FontOutline)
+    fontObject:SetFont(fontPath, size, outline)
+
+    if fontObject.SetShadowColor and fontObject.SetShadowOffset then
+        local shadowDb = self.db.FontShadow
+        if shadowDb and shadowDb.Enabled then
+            local c = shadowDb.Color
+            fontObject:SetShadowColor(c[1], c[2], c[3], c[4])
+            fontObject:SetShadowOffset(shadowDb.OffsetX, shadowDb.OffsetY)
+        else
+            fontObject:SetShadowColor(0, 0, 0, 0)
+            fontObject:SetShadowOffset(0, 0)
+        end
+    end
+end
+
 function BM:ZoneTextStyling()
     local zoneDB = self.db.ZoneText
     if zoneDB.Hide then
         _G.ZoneTextFrame:UnregisterAllEvents()
     else
-        -- Apply font styling
-        local fontPath = NRSKNUI:GetFontPath(self.db.Font)
-        local outline = self.db.FontOutline == "NONE" and "" or (self.db.FontOutline or "OUTLINE")
-        ZoneTextString:SetFont(fontPath, zoneDB.MainZone.Size, outline)
-        ZoneTextString:SetShadowColor(0, 0, 0, 0)
-        ZoneTextString:SetShadowOffset(0, 0)
-        SubZoneTextString:SetFont(fontPath, zoneDB.SubZone.Size, outline)
-        SubZoneTextString:SetShadowColor(0, 0, 0, 0)
-        SubZoneTextString:SetShadowOffset(0, 0)
-
-        PVPArenaTextString:SetFont(fontPath, zoneDB.SubZone.Size, outline)
-        PVPArenaTextString:SetShadowColor(0, 0, 0, 0)
-        PVPArenaTextString:SetShadowOffset(0, 0)
-
-        PVPInfoTextString:SetFont(fontPath, zoneDB.SubZone.Size, outline)
-        PVPInfoTextString:SetShadowColor(0, 0, 0, 0)
-        PVPInfoTextString:SetShadowOffset(0, 0)
+        self:ApplyFont(_G.ZoneTextString, zoneDB.MainZone.Size)
+        self:ApplyFont(_G.SubZoneTextString, zoneDB.SubZone.Size)
+        self:ApplyFont(_G.PVPArenaTextString, zoneDB.SubZone.Size)
+        self:ApplyFont(_G.PVPInfoTextString, zoneDB.SubZone.Size)
 
         _G.ZoneTextFrame:ClearAllPoints()
-        _G.ZoneTextFrame:SetPoint(zoneDB.MainZone.Anchor, UIParent, zoneDB.MainZone.Anchor,
-            zoneDB.MainZone.X, zoneDB.MainZone.Y)
-        _G.ZoneTextFrame:RegisterEvent('ZONE_CHANGED')
-        _G.ZoneTextFrame:RegisterEvent('ZONE_CHANGED_INDOORS')
-        _G.ZoneTextFrame:RegisterEvent('ZONE_CHANGED_NEW_AREA')
+        _G.ZoneTextFrame:SetPoint(zoneDB.MainZone.Anchor, UIParent, zoneDB.MainZone.Anchor, zoneDB.MainZone.X,
+        zoneDB.MainZone.Y)
+        _G.ZoneTextFrame:RegisterEvent("ZONE_CHANGED")
+        _G.ZoneTextFrame:RegisterEvent("ZONE_CHANGED_INDOORS")
+        _G.ZoneTextFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
     end
 end
 
--- UI Error text styling
 function BM:StyleUIErrorsFrame()
     local errorsDB = self.db.UIErrorsFrame
-    if not errorsDB or not UIErrorsFrame then return end
+    local frame = _G.UIErrorsFrame
+    if not errorsDB or not frame then return end
 
-    -- Apply hide/show
     if errorsDB.Hide then
-        UIErrorsFrame:Hide()
-        UIErrorsFrame:SetAlpha(0)
+        frame:Hide()
+        frame:SetAlpha(0)
     else
-        UIErrorsFrame:Show()
-        UIErrorsFrame:SetAlpha(1)
+        frame:Show()
+        frame:SetAlpha(1)
 
-        -- Apply font
-        local fontPath = NRSKNUI:GetFontPath(self.db.Font)
-        local outline = self.db.FontOutline == "NONE" and "" or (self.db.FontOutline or "OUTLINE")
-        UIErrorsFrame:SetFont(fontPath, errorsDB.Size, outline)
+        self:ApplyFont(frame, errorsDB.Size)
 
-        -- Apply position
         if errorsDB.Position then
-            UIErrorsFrame:ClearAllPoints()
+            frame:ClearAllPoints()
             local anchor = errorsDB.Position.Anchor or "TOP"
             local x = errorsDB.Position.X or 0
             local y = errorsDB.Position.Y or -100
-            UIErrorsFrame:SetPoint(anchor, UIParent, anchor, x, y)
+            frame:SetPoint(anchor, UIParent, anchor, x, y)
         end
-
-        -- Remove shadow
-        UIErrorsFrame:SetShadowColor(0, 0, 0, 0)
     end
 end
 
--- Action status text styling
 function BM:StyleActionStatusText()
     local statusDB = self.db.ActionStatusText
-    if not statusDB or not ActionStatus or not ActionStatus.Text then return end
+    local frame = _G.ActionStatus
+    if not statusDB or not frame or not frame.Text then return end
 
-    -- Apply hide/show
     if statusDB.Hide then
-        ActionStatus.Text:Hide()
-        ActionStatus.Text:SetAlpha(0)
+        frame.Text:Hide()
+        frame.Text:SetAlpha(0)
     else
-        ActionStatus.Text:Show()
-        ActionStatus.Text:SetAlpha(1)
+        frame.Text:Show()
+        frame.Text:SetAlpha(1)
 
-        -- Apply font
-        local fontPath = NRSKNUI:GetFontPath(self.db.Font)
-        local outline = self.db.FontOutline == "NONE" and "" or (self.db.FontOutline or "OUTLINE")
-        ActionStatus.Text:SetFont(fontPath, statusDB.Size, outline)
+        self:ApplyFont(frame.Text, statusDB.Size)
 
-        -- Apply position
         if statusDB.Position then
-            ActionStatus.Text:ClearAllPoints()
+            frame.Text:ClearAllPoints()
             local anchor = statusDB.Position.Anchor or "TOP"
             local x = statusDB.Position.X or 0
             local y = statusDB.Position.Y or -150
-            ActionStatus.Text:SetPoint(anchor, UIParent, anchor, x, y)
+            frame.Text:SetPoint(anchor, UIParent, anchor, x, y)
         end
-
-        -- Remove shadow
-        ActionStatus.Text:SetShadowColor(0, 0, 0, 0)
     end
 end
 
--- Chat bubble styling
 function BM:StyleChatBubbles()
     local bubblesDB = self.db.ChatBubbles
-    if not bubblesDB or not bubblesDB.Enabled or not ChatBubbleFont then return end
+    local font = _G.ChatBubbleFont
+    if not bubblesDB or not bubblesDB.Enabled or not font then return end
 
-    -- Apply font
-    local fontPath = NRSKNUI:GetFontPath(self.db.Font)
-    local outline = self.db.FontOutline == "NONE" and "" or (self.db.FontOutline or "OUTLINE")
-    ChatBubbleFont:SetFont(fontPath, bubblesDB.Size, outline)
+    self:ApplyFont(font, bubblesDB.Size)
 end
 
--- Objective tracker styling
 function BM:StyleObjectiveTracker()
     local trackerDB = self.db.ObjectiveTracker
     if not trackerDB or not trackerDB.Enabled then return end
-    local fontPath = NRSKNUI:GetFontPath(self.db.Font)
-    local outline = self.db.FontOutline == "NONE" and "" or (self.db.FontOutline or "OUTLINE")
 
-    -- Style quest text font
-    if ObjectiveTrackerLineFont then
-        ObjectiveTrackerLineFont:SetFont(fontPath, trackerDB.QuestTextSize, outline)
-        ObjectiveTrackerLineFont:SetShadowColor(0, 0, 0, 0)
-        ObjectiveTrackerLineFont:SetShadowOffset(0, 0)
-    end
-
-    -- Style header font
-    if ObjectiveTrackerHeaderFont then
-        ObjectiveTrackerHeaderFont:SetFont(fontPath, trackerDB.QuestTitleSize, outline)
-        ObjectiveTrackerHeaderFont:SetShadowColor(0, 0, 0, 0)
-        ObjectiveTrackerHeaderFont:SetShadowOffset(0, 0)
-    end
+    self:ApplyFont(_G.ObjectiveTrackerLineFont, trackerDB.QuestTextSize)
+    self:ApplyFont(_G.ObjectiveTrackerHeaderFont, trackerDB.QuestTitleSize)
 end
 
--- Reset to blizzard default
 function BM:ResetUIErrorsFrame()
-    if not UIErrorsFrame then return end
-    UIErrorsFrame:Show()
-    UIErrorsFrame:SetAlpha(1)
-    UIErrorsFrame:SetFont("Fonts\\FRIZQT__.TTF", 16, "OUTLINE")
-    UIErrorsFrame:ClearAllPoints()
-    UIErrorsFrame:SetPoint("TOP", UIParent, "TOP", 0, -100)
+    local frame = _G.UIErrorsFrame
+    if not frame then return end
+    frame:Show()
+    frame:SetAlpha(1)
+    frame:SetFont("Fonts\\FRIZQT__.TTF", 16, "OUTLINE")
+    frame:ClearAllPoints()
+    frame:SetPoint("TOP", UIParent, "TOP", 0, -100)
 end
 
 function BM:ResetActionStatusText()
-    if not ActionStatus or not ActionStatus.Text then return end
-    ActionStatus.Text:Show()
-    ActionStatus.Text:SetAlpha(1)
-    ActionStatus.Text:SetFont("Fonts\\FRIZQT__.TTF", 16, "OUTLINE")
-    ActionStatus.Text:ClearAllPoints()
-    ActionStatus.Text:SetPoint("TOP", UIParent, "TOP", 0, -150)
+    local frame = _G.ActionStatus
+    if not frame or not frame.Text then return end
+    frame.Text:Show()
+    frame.Text:SetAlpha(1)
+    frame.Text:SetFont("Fonts\\FRIZQT__.TTF", 16, "OUTLINE")
+    frame.Text:ClearAllPoints()
+    frame.Text:SetPoint("TOP", UIParent, "TOP", 0, -150)
 end
 
--- Apply all styles
+function BM:ResetZoneText()
+    if _G.ZoneTextFrame then
+        _G.ZoneTextFrame:RegisterEvent("ZONE_CHANGED")
+        _G.ZoneTextFrame:RegisterEvent("ZONE_CHANGED_INDOORS")
+        _G.ZoneTextFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+    end
+end
+
 function BM:ApplySettings()
     if NRSKNUI:ShouldNotLoadModule() then return end
     if not self.db or not self.db.Enabled then
@@ -208,69 +177,67 @@ function BM:ApplySettings()
     self:ZoneTextStyling()
 end
 
--- Reset all styled elements to default
 function BM:Reset()
     self:ResetUIErrorsFrame()
     self:ResetActionStatusText()
+    self:ResetZoneText()
 end
 
--- Preview functions for GUI
 function BM:PreviewUIErrors()
-    if UIErrorsFrame then
-        UIErrorsFrame:Clear()
-        UIErrorsFrame:AddMessage("Error Message Text", 1, 0.1, 0.1, 1.0, 5)
+    local frame = _G.UIErrorsFrame
+    if frame then
+        frame:Clear()
+        frame:AddMessage("Error Message Text", 1, 0.1, 0.1, 1.0, 5)
     end
 end
 
 function BM:PreviewActionStatus()
-    if ActionStatus and ActionStatus.Text then
-        ActionStatus.Text:SetText("Action Status Text")
-        ActionStatus:Show()
-        ActionStatus.startTime = GetTime()
-        ActionStatus.holdTime = 5
-        ActionStatus.fadeTime = 1
+    local frame = _G.ActionStatus
+    if frame and frame.Text then
+        frame.Text:SetText("Action Status Text")
+        frame:Show()
+        frame.startTime = GetTime()
+        frame.holdTime = 5
+        frame.fadeTime = 1
     end
 end
 
--- Preview functions for GUI
 function BM:PreviewZone()
-    -- Main zone text
-    if ZoneTextFrame and ZoneTextString then
-        ZoneTextString:SetText("Main Zone Text")
-        ZoneTextFrame:Show()
-        ZoneTextFrame.fadingOut = false
-        ZoneTextFrame.startTime = GetTime()
+    local zoneFrame = _G.ZoneTextFrame
+    local zoneText = _G.ZoneTextString
+    if zoneFrame and zoneText then
+        zoneText:SetText("Main Zone Text")
+        zoneFrame:Show()
+        zoneFrame.fadingOut = false
+        zoneFrame.startTime = GetTime()
     end
 
-    -- Sub zone text
-    if SubZoneTextFrame and SubZoneTextString then
-        SubZoneTextString:SetText("Sub Zone Text")
-        SubZoneTextFrame:Show()
-        SubZoneTextFrame.fadingOut = false
-        SubZoneTextFrame.startTime = GetTime()
+    local subFrame = _G.SubZoneTextFrame
+    local subText = _G.SubZoneTextString
+    if subFrame and subText then
+        subText:SetText("Sub Zone Text")
+        subFrame:Show()
+        subFrame.fadingOut = false
+        subFrame.startTime = GetTime()
     end
 
-    -- PvP Arena text
-    if PVPArenaTextString then
-        PVPArenaTextString:SetText("(PVP Arena Text)")
-        PVPArenaTextString:Show()
-        PVPArenaTextString.fadingOut = false
-        PVPArenaTextString.startTime = GetTime()
+    local pvpArena = _G.PVPArenaTextString
+    if pvpArena then
+        pvpArena:SetText("(PVP Arena Text)")
+        pvpArena:Show()
+        pvpArena.fadingOut = false
+        pvpArena.startTime = GetTime()
     end
 
-    -- PvP Arena text
-    if PVPInfoTextString then
-        PVPInfoTextString:SetText("(PVP Info Text)")
-        PVPInfoTextString:Show()
-        PVPInfoTextString.fadingOut = false
-        PVPInfoTextString.startTime = GetTime()
+    local pvpInfo = _G.PVPInfoTextString
+    if pvpInfo then
+        pvpInfo:SetText("(PVP Info Text)")
+        pvpInfo:Show()
+        pvpInfo.fadingOut = false
+        pvpInfo.startTime = GetTime()
     end
-
-    BM:PreviewUIErrors()
-    BM:PreviewActionStatus()
 end
 
--- On Module disable, reset to blizzar defaults
 function BM:OnDisable()
     self:Reset()
 end

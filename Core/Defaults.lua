@@ -1520,6 +1520,12 @@ local Defaults = {
                 -- Global font settings
                 Font = "Expressway",     -- Font face
                 FontOutline = "OUTLINE", -- Font outline
+                FontShadow = {
+                    Enabled = false,
+                    Color = { 0, 0, 0, 1 },
+                    OffsetX = 1,
+                    OffsetY = -1,
+                },
                 -- UIErrorsFrame (red error messages at top of screen)
                 UIErrorsFrame = {
                     Hide = false, -- Show/hide error messages
