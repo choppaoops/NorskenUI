@@ -39,8 +39,7 @@ function DBG:UpdateDB()
     self.db = NRSKNUI.db.profile.Skinning.DetailsBackdrop
 
     -- Migration from old backDropOne/backDropTwo format
-    if self.db.backDropOne and not self.db.backdrops then
-        self.db.backdrops = {}
+    if self.db.backDropOne then
         self.db.backdrops[1] = self.db.backDropOne
         self.db.backdrops[2] = self.db.backDropTwo
         self.db.backDropOne = nil
