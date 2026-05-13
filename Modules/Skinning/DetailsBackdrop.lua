@@ -1,480 +1,266 @@
--- NorskenUI namespace
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
 
 -- Credit to unhalted for the idea of this module, not a copy of his code but liked his cook
 
--- Check for addon object
 if not NorskenUI then
     error("DetailsBackdrop: Addon object not initialized. Check file load order!")
     return
 end
 
--- Create module
 ---@class DetailsBackdrop: AceModule, AceEvent-3.0
 local DBG = NorskenUI:NewModule("DetailsBackdrop", "AceEvent-3.0")
 
--- Localization
-local CreateFrame = CreateFrame
 local unpack = unpack
-local pairs = pairs
 local _G = _G
 local C_AddOns = C_AddOns
 
--- Module locals
-local backdropOneInitialized = false
-local backdropTwoInitialized = false
-local DetailsBase1 = _G["DetailsBaseFrame1"]
-local DetailsWindow1 = _G["Details_WindowFrame1"]
-local DetailsBase2 = _G["DetailsBaseFrame2"]
-local DetailsWindow2 = _G["Details_WindowFrame2"]
+local MAX_BACKDROPS = 5
+local backdropInitialized = {}
 
--- Update db, used for profile changes
-function DBG:UpdateDB()
-    self.db = NRSKNUI.db.profile.Skinning.DetailsBackdrop
+---@param instanceNum number
+---@return table|nil
+local function GetDetailsInstanceSettings(instanceNum)
+    local Details = _G.Details
+    if not Details then return nil end
+
+    local instance = Details:GetInstance(instanceNum)
+    if not instance or not instance.row_info then return nil end
+
+    return {
+        barHeight = instance.row_info.height or 14,
+        spacing = instance.row_info.space and instance.row_info.space.between or 1,
+        titlebarHeight = instance.titlebar_height or 16,
+        width = instance.baseframe and instance.baseframe:GetWidth() or 200,
+    }
 end
 
--- Module init
+function DBG:UpdateDB()
+    self.db = NRSKNUI.db.profile.Skinning.DetailsBackdrop
+
+    -- Migration from old backDropOne/backDropTwo format
+    if self.db.backDropOne and not self.db.backdrops then
+        self.db.backdrops = {}
+        self.db.backdrops[1] = self.db.backDropOne
+        self.db.backdrops[2] = self.db.backDropTwo
+        self.db.backDropOne = nil
+        self.db.backDropTwo = nil
+
+        if self.db.currentEdit == "bgOne" then
+            self.db.currentEdit = 1
+        elseif self.db.currentEdit == "bgTwo" then
+            self.db.currentEdit = 2
+        end
+    end
+end
+
 function DBG:OnInitialize()
     self:UpdateDB()
-    self.backdropOne = nil
-    self.bordersOne = {}
-    self.backdropTwo = nil
-    self.bordersTwo = {}
+    self.backdrops = {}
     self:SetEnabledState(false)
 end
 
--- Module OnEnable
 function DBG:OnEnable()
-    if NRSKNUI:ShouldNotLoadModule() then return end         -- Skip if ElvUI is loaded, to avoid conflicts
-    if not C_AddOns.IsAddOnLoaded("Details") then return end -- Make sure we only enable this module if Details is enabled
+    if NRSKNUI:ShouldNotLoadModule() then return end
+    if not C_AddOns.IsAddOnLoaded("Details") then return end
     if not self.db.Enabled then return end
-    if not backdropOneInitialized then
-        DBG:CreateBackdropOne()
-    else
-        self.backdropOne:Show()
+
+    local Details = _G.Details
+    if Details then
+        local function OnDetailsEvent()
+            for i = 1, MAX_BACKDROPS do
+                local bgDB = self.db.backdrops[i]
+                if bgDB and bgDB.autoSize then self:UpdateBackdrop(i) end
+            end
+        end
+        self.Enabled = true
+        self.__enabled = true
+        self._detailsEventCallback = OnDetailsEvent
+        Details:RegisterEvent(self, "DETAILS_INSTANCE_SIZECHANGED", OnDetailsEvent)
+        Details:RegisterEvent(self, "DETAILS_INSTANCE_ENDRESIZE", OnDetailsEvent)
+        Details:RegisterEvent(self, "DETAILS_OPTIONS_MODIFIED", OnDetailsEvent)
     end
 
-    -- Define the registration config for backdrop one
-    if self.backdropOne then
-        local config = {
-            key = "DetailsBackdropOne",
-            displayName = "Details Backdrop: 1",
-            frame = self.backdropOne,
-            getPosition = function()
-                -- When autoSize is ON, we always use BOTTOMRIGHT anchor
-                local bgOneDB = self.db.backDropOne
-                if bgOneDB.autoSize then
-                    return {
-                        AnchorFrom = "BOTTOMRIGHT",
-                        AnchorTo = "BOTTOMRIGHT",
-                        XOffset = bgOneDB.Position.XOffset,
-                        YOffset = bgOneDB.Position.YOffset,
-                    }
-                end
-                return bgOneDB.Position
-            end,
-            setPosition = function(pos)
-                local bgOneDB = self.db.backDropOne
-                -- Only save X/Y offset - autoSize mode ignores anchor changes
-                bgOneDB.Position.XOffset = pos.XOffset
-                bgOneDB.Position.YOffset = pos.YOffset
-                if not bgOneDB.autoSize then
-                    bgOneDB.Position.AnchorFrom = pos.AnchorFrom
-                    bgOneDB.Position.AnchorTo = pos.AnchorTo
-                end
-                -- Call update function to properly handle autoSize mode
-                DBG:UpdateDetailsBackdropOne()
-            end,
-            getParentFrame = function()
-                -- autoSize always anchors to UIParent
-                return UIParent
-            end,
-            guiPath = "DetailsBackdrop",
-            guiContext = "bgOne", -- Pass the backdrop key for granular navigation
-        }
-        NRSKNUI.EditMode:RegisterElement(config)
-    end
+    for i = 1, MAX_BACKDROPS do
+        if not backdropInitialized[i] then
+            self:CreateBackdrop(i)
+        elseif self.backdrops[i] then
+            self.backdrops[i]:Show()
+        end
 
-    if not backdropTwoInitialized then
-        DBG:CreateBackdropTwo()
-    else
-        self.backdropTwo:Show()
-    end
-
-    -- Define the registration config for backdrop two
-    if self.backdropTwo then
-        local config = {
-            key = "DetailsBackdropTwo",
-            displayName = "Details Backdrop: 2",
-            frame = self.backdropTwo,
-            getPosition = function()
-                -- When autoSize is ON, we always use BOTTOMRIGHT anchor
-                local bgTwoDB = self.db.backDropTwo
-                if bgTwoDB.autoSize then
-                    return {
-                        AnchorFrom = "BOTTOMRIGHT",
-                        AnchorTo = "BOTTOMRIGHT",
-                        XOffset = bgTwoDB.Position.XOffset,
-                        YOffset = bgTwoDB.Position.YOffset,
-                    }
-                end
-                return bgTwoDB.Position
-            end,
-            setPosition = function(pos)
-                local bgTwoDB = self.db.backDropTwo
-                -- Only save X/Y offset - autoSize mode ignores anchor changes
-                bgTwoDB.Position.XOffset = pos.XOffset
-                bgTwoDB.Position.YOffset = pos.YOffset
-                if not bgTwoDB.autoSize then
-                    bgTwoDB.Position.AnchorFrom = pos.AnchorFrom
-                    bgTwoDB.Position.AnchorTo = pos.AnchorTo
-                end
-                -- Call update function to properly handle autoSize mode
-                DBG:UpdateDetailsBackdropTwo()
-            end,
-            getParentFrame = function()
-                -- autoSize always anchors to UIParent
-                return UIParent
-            end,
-            guiPath = "DetailsBackdrop",
-            guiContext = "bgTwo", -- Pass the backdrop key for granular navigation
-        }
-        NRSKNUI.EditMode:RegisterElement(config)
+        self:RegisterBackdropWithEditMode(i)
     end
 end
 
--- Create backdrop One
-function DBG:CreateBackdropOne()
+---@param index number
+function DBG:CreateBackdrop(index)
     if not self.db.Enabled then return end
-    if not self.db.backDropOne.Enabled then return end
-    if backdropOneInitialized then return end
-    local bgOneDB = self.db.backDropOne
+    local bgDB = self.db.backdrops[index]
+    if not bgDB or not bgDB.Enabled then return end
+    if backdropInitialized[index] then return end
 
-    -- Refresh Details frame references
-    DetailsBase1 = _G["DetailsBaseFrame1"]
-    DetailsWindow1 = _G["Details_WindowFrame1"]
+    local detailsBase = _G["DetailsBaseFrame" .. index]
+    local detailsWindow = _G["Details_WindowFrame" .. index]
 
-    local backdrop = CreateFrame("Frame", "NRSKNUI_DetailsBgOne", UIParent, "BackdropTemplate")
-    backdrop:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8x8",
-    })
-    backdrop:SetBackdropColor(unpack(bgOneDB.BackgroundColor))
+    local backdrop = NRSKNUI:CreateStandardBackdrop(UIParent, "NRSKNUI_DetailsBg" .. index, 1, bgDB.BackgroundColor,
+        bgDB.BorderColor)
 
-    -- Create border container
-    local borderFrame = CreateFrame("Frame", nil, backdrop)
-    borderFrame:SetAllPoints(backdrop)
-    borderFrame:SetFrameLevel(backdrop:GetFrameLevel() + 1)
+    local detailsBars = bgDB.detailsBars
+    if bgDB.autoSize and detailsBase and detailsWindow then
+        local detailsSettings = GetDetailsInstanceSettings(index)
+        local barH = detailsSettings and detailsSettings.barHeight or 14
+        local titleH = detailsSettings and detailsSettings.titlebarHeight or 16
+        local spacing = detailsSettings and detailsSettings.spacing or 1
+        local detailsWidth = detailsSettings and detailsSettings.width or 200
 
-    -- Create top border
-    local borderTop = borderFrame:CreateTexture(nil, "OVERLAY", nil, 7)
-    borderTop:SetHeight(1)
-    borderTop:SetPoint("TOPLEFT", backdrop, "TOPLEFT", 0, 0)
-    borderTop:SetPoint("TOPRIGHT", backdrop, "TOPRIGHT", 0, 0)
-    borderTop:SetColorTexture(unpack(bgOneDB.BorderColor))
-    borderTop:SetTexelSnappingBias(0)
-    borderTop:SetSnapToPixelGrid(false)
-
-    -- Create bottom border
-    local borderBottom = borderFrame:CreateTexture(nil, "OVERLAY", nil, 7)
-    borderBottom:SetHeight(1)
-    borderBottom:SetPoint("BOTTOMLEFT", backdrop, "BOTTOMLEFT", 0, 0)
-    borderBottom:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", 0, 0)
-    borderBottom:SetColorTexture(unpack(bgOneDB.BorderColor))
-    borderBottom:SetTexelSnappingBias(0)
-    borderBottom:SetSnapToPixelGrid(false)
-
-    -- Create left border
-    local borderLeft = borderFrame:CreateTexture(nil, "OVERLAY", nil, 7)
-    borderLeft:SetWidth(1)
-    borderLeft:SetPoint("TOPLEFT", backdrop, "TOPLEFT", 0, 0)
-    borderLeft:SetPoint("BOTTOMLEFT", backdrop, "BOTTOMLEFT", 0, 0)
-    borderLeft:SetColorTexture(unpack(bgOneDB.BorderColor))
-    borderLeft:SetTexelSnappingBias(0)
-    borderLeft:SetSnapToPixelGrid(false)
-
-    -- Create right border
-    local borderRight = borderFrame:CreateTexture(nil, "OVERLAY", nil, 7)
-    borderRight:SetWidth(1)
-    borderRight:SetPoint("TOPRIGHT", backdrop, "TOPRIGHT", 0, 0)
-    borderRight:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", 0, 0)
-    borderRight:SetColorTexture(unpack(bgOneDB.BorderColor))
-    borderRight:SetTexelSnappingBias(0)
-    borderRight:SetSnapToPixelGrid(false)
-
-    -- Update Details stuff
-    local detailsBars = bgOneDB.detailsBars or self.db.detailsBars or 7
-    if bgOneDB.autoSize and DetailsBase1 and DetailsWindow1 then
         backdrop:SetFrameStrata("LOW")
-        DetailsBase1:ClearAllPoints()
-        DetailsWindow1:ClearAllPoints()
+        detailsBase:ClearAllPoints()
+        detailsWindow:ClearAllPoints()
 
-        local detailHeight = self.db.detailsTitelH + (self.db.detailsBarH * detailsBars) +
-            (self.db.detailsSpacing * detailsBars) + 2
-        backdrop:SetWidth(self.db.detailsWidth)
-        backdrop:SetHeight(detailHeight)
+        local detailHeight = titleH + (barH * detailsBars) + (spacing * detailsBars) + 2
+        backdrop:SetSize(detailsWidth + 2, detailHeight)
+        backdrop:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", bgDB.Position.XOffset, bgDB.Position.YOffset)
 
-        backdrop:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT",
-            bgOneDB.Position.XOffset, bgOneDB.Position.YOffset)
-
-        DetailsBase1:SetSize(backdrop:GetWidth() - 2, backdrop:GetHeight() - self.db.detailsTitelH)
-        DetailsWindow1:SetSize(backdrop:GetWidth() - 2, backdrop:GetHeight() - self.db.detailsTitelH)
-        DetailsBase1:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", -1, -1)
-        DetailsWindow1:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", -1, -1)
+        detailsBase:SetSize(backdrop:GetWidth() - 2, backdrop:GetHeight() - titleH)
+        detailsWindow:SetSize(backdrop:GetWidth() - 2, backdrop:GetHeight() - titleH)
+        detailsBase:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", -1, -1)
+        detailsWindow:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", -1, -1)
     else
-        backdrop:SetWidth(bgOneDB.width)
-        backdrop:SetHeight(bgOneDB.height)
-        backdrop:SetFrameStrata(bgOneDB.Strata)
-        backdrop:SetPoint(bgOneDB.Position.AnchorFrom, UIParent, bgOneDB.Position.AnchorTo,
-            bgOneDB.Position.XOffset, bgOneDB.Position.YOffset)
+        backdrop:SetSize(bgDB.width, bgDB.height)
+        backdrop:SetFrameStrata(bgDB.Strata)
+        backdrop:SetPoint(bgDB.Position.AnchorFrom, UIParent, bgDB.Position.AnchorTo,
+            bgDB.Position.XOffset, bgDB.Position.YOffset)
     end
 
-    -- Store references
-    self.backdropOne = backdrop
-    self.bordersOne = {
-        top = borderTop,
-        bottom = borderBottom,
-        left = borderLeft,
-        right = borderRight
-    }
-    backdropOneInitialized = true
+    self.backdrops[index] = backdrop
+    backdropInitialized[index] = true
+    self:RegisterBackdropWithEditMode(index)
 end
 
-function DBG:UpdateDetailsBackdropOne()
-    if not self.backdropOne then return end
-    local bgOneDB = self.db.backDropOne
+---@param index number
+function DBG:UpdateBackdrop(index)
+    local backdrop = self.backdrops[index]
+    if not backdrop then return end
+    local bgDB = self.db.backdrops[index]
+    if not bgDB then return end
 
-    -- Refresh Details frame references
-    DetailsBase1 = _G["DetailsBaseFrame1"]
-    DetailsWindow1 = _G["Details_WindowFrame1"]
+    local detailsBase = _G["DetailsBaseFrame" .. index]
+    local detailsWindow = _G["Details_WindowFrame" .. index]
 
-    -- Update Details stuff
-    local detailsBars = bgOneDB.detailsBars or self.db.detailsBars or 7
-    if bgOneDB.autoSize and DetailsBase1 and DetailsWindow1 then
-        DetailsBase1:ClearAllPoints()
-        DetailsWindow1:ClearAllPoints()
-        self.backdropOne:ClearAllPoints()
+    local detailsBars = bgDB.detailsBars
+    if bgDB.autoSize and detailsBase and detailsWindow then
+        local detailsSettings = GetDetailsInstanceSettings(index)
+        local barH = detailsSettings and detailsSettings.barHeight or 14
+        local titleH = detailsSettings and detailsSettings.titlebarHeight or 16
+        local spacing = detailsSettings and detailsSettings.spacing or 1
+        local detailsWidth = detailsSettings and detailsSettings.width or 200
 
-        local detailHeight = self.db.detailsTitelH + (self.db.detailsBarH * detailsBars) +
-            (self.db.detailsSpacing * detailsBars) + 2
-        self.backdropOne:SetWidth(self.db.detailsWidth)
-        self.backdropOne:SetHeight(detailHeight)
-
-        self.backdropOne:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT",
-            bgOneDB.Position.XOffset, bgOneDB.Position.YOffset)
-        self.backdropOne:SetFrameStrata("LOW")
-
-        DetailsBase1:SetSize(self.backdropOne:GetWidth() - 2, self.backdropOne:GetHeight() - self.db.detailsTitelH)
-        DetailsWindow1:SetSize(self.backdropOne:GetWidth() - 2, self.backdropOne:GetHeight() - self.db.detailsTitelH)
-        DetailsBase1:SetPoint("BOTTOMRIGHT", self.backdropOne, "BOTTOMRIGHT", -1, -1)
-        DetailsWindow1:SetPoint("BOTTOMRIGHT", self.backdropOne, "BOTTOMRIGHT", -1, -1)
-    elseif not bgOneDB.autoSize then
-        self.backdropOne:ClearAllPoints()
-        self.backdropOne:SetWidth(bgOneDB.width)
-        self.backdropOne:SetHeight(bgOneDB.height)
-        self.backdropOne:SetFrameStrata(bgOneDB.Strata)
-        self.backdropOne:SetPoint(bgOneDB.Position.AnchorFrom, UIParent, bgOneDB.Position.AnchorTo,
-            bgOneDB.Position.XOffset, bgOneDB.Position.YOffset)
-    end
-
-    -- Update background color
-    self.backdropOne:SetBackdropColor(unpack(bgOneDB.BackgroundColor))
-    -- Update border colors
-    for _, borderOne in pairs(self.bordersOne) do
-        borderOne:SetColorTexture(unpack(bgOneDB.BorderColor))
-    end
-end
-
--- Create backdrop Two
-function DBG:CreateBackdropTwo()
-    if not self.db.Enabled then return end
-    if not self.db.backDropTwo.Enabled then return end
-    if backdropTwoInitialized then return end
-    local bgTwoDB = self.db.backDropTwo
-
-    -- Refresh Details frame references
-    DetailsBase2 = _G["DetailsBaseFrame2"]
-    DetailsWindow2 = _G["Details_WindowFrame2"]
-
-    local backdrop = CreateFrame("Frame", "NRSKNUI_DetailsBgTwo", UIParent, "BackdropTemplate")
-    backdrop:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8x8",
-    })
-    backdrop:SetBackdropColor(unpack(bgTwoDB.BackgroundColor))
-
-    -- Create border container
-    local borderFrame = CreateFrame("Frame", nil, backdrop)
-    borderFrame:SetAllPoints(backdrop)
-    borderFrame:SetFrameLevel(backdrop:GetFrameLevel() + 1)
-
-    -- Create top border
-    local borderTop = borderFrame:CreateTexture(nil, "OVERLAY", nil, 7)
-    borderTop:SetHeight(1)
-    borderTop:SetPoint("TOPLEFT", backdrop, "TOPLEFT", 0, 0)
-    borderTop:SetPoint("TOPRIGHT", backdrop, "TOPRIGHT", 0, 0)
-    borderTop:SetColorTexture(unpack(bgTwoDB.BorderColor))
-    borderTop:SetTexelSnappingBias(0)
-    borderTop:SetSnapToPixelGrid(false)
-
-    -- Create bottom border
-    local borderBottom = borderFrame:CreateTexture(nil, "OVERLAY", nil, 7)
-    borderBottom:SetHeight(1)
-    borderBottom:SetPoint("BOTTOMLEFT", backdrop, "BOTTOMLEFT", 0, 0)
-    borderBottom:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", 0, 0)
-    borderBottom:SetColorTexture(unpack(bgTwoDB.BorderColor))
-    borderBottom:SetTexelSnappingBias(0)
-    borderBottom:SetSnapToPixelGrid(false)
-
-    -- Create left border
-    local borderLeft = borderFrame:CreateTexture(nil, "OVERLAY", nil, 7)
-    borderLeft:SetWidth(1)
-    borderLeft:SetPoint("TOPLEFT", backdrop, "TOPLEFT", 0, 0)
-    borderLeft:SetPoint("BOTTOMLEFT", backdrop, "BOTTOMLEFT", 0, 0)
-    borderLeft:SetColorTexture(unpack(bgTwoDB.BorderColor))
-    borderLeft:SetTexelSnappingBias(0)
-    borderLeft:SetSnapToPixelGrid(false)
-
-    -- Create right border
-    local borderRight = borderFrame:CreateTexture(nil, "OVERLAY", nil, 7)
-    borderRight:SetWidth(1)
-    borderRight:SetPoint("TOPRIGHT", backdrop, "TOPRIGHT", 0, 0)
-    borderRight:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", 0, 0)
-    borderRight:SetColorTexture(unpack(bgTwoDB.BorderColor))
-    borderRight:SetTexelSnappingBias(0)
-    borderRight:SetSnapToPixelGrid(false)
-
-    -- Update Details stuff
-    local detailsBars = bgTwoDB.detailsBars or self.db.detailsBars or 7
-    if bgTwoDB.autoSize and DetailsBase2 and DetailsWindow2 then
-        backdrop:SetFrameStrata("LOW")
-        DetailsBase2:ClearAllPoints()
-        DetailsWindow2:ClearAllPoints()
-
-        local detailHeight = self.db.detailsTitelH + (self.db.detailsBarH * detailsBars) +
-            (self.db.detailsSpacing * detailsBars) + 2
-        backdrop:SetWidth(self.db.detailsWidth)
-        backdrop:SetHeight(detailHeight)
-
-        backdrop:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT",
-            bgTwoDB.Position.XOffset, bgTwoDB.Position.YOffset)
-
-        DetailsBase2:SetSize(backdrop:GetWidth() - 2, backdrop:GetHeight() - self.db.detailsTitelH)
-        DetailsWindow2:SetSize(backdrop:GetWidth() - 2, backdrop:GetHeight() - self.db.detailsTitelH)
-        DetailsBase2:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", -1, -1)
-        DetailsWindow2:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", -1, -1)
-    else
+        detailsBase:ClearAllPoints()
+        detailsWindow:ClearAllPoints()
         backdrop:ClearAllPoints()
-        backdrop:SetWidth(bgTwoDB.width)
-        backdrop:SetHeight(bgTwoDB.height)
-        backdrop:SetFrameStrata(bgTwoDB.Strata)
-        backdrop:SetPoint(bgTwoDB.Position.AnchorFrom, UIParent, bgTwoDB.Position.AnchorTo,
-            bgTwoDB.Position.XOffset, bgTwoDB.Position.YOffset)
+
+        local detailHeight = titleH + (barH * detailsBars) + (spacing * detailsBars) + 2
+        backdrop:SetSize(detailsWidth + 2, detailHeight)
+        backdrop:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", bgDB.Position.XOffset, bgDB.Position.YOffset)
+        backdrop:SetFrameStrata("LOW")
+
+        detailsBase:SetSize(backdrop:GetWidth() - 2, backdrop:GetHeight() - titleH)
+        detailsWindow:SetSize(backdrop:GetWidth() - 2, backdrop:GetHeight() - titleH)
+        detailsBase:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", -1, -1)
+        detailsWindow:SetPoint("BOTTOMRIGHT", backdrop, "BOTTOMRIGHT", -1, -1)
+    elseif not bgDB.autoSize then
+        backdrop:ClearAllPoints()
+        backdrop:SetSize(bgDB.width, bgDB.height)
+        backdrop:SetFrameStrata(bgDB.Strata)
+        backdrop:SetPoint(bgDB.Position.AnchorFrom, UIParent, bgDB.Position.AnchorTo,
+            bgDB.Position.XOffset, bgDB.Position.YOffset)
     end
 
-    -- Store references
-    self.backdropTwo = backdrop
-    self.bordersTwo = {
-        top = borderTop,
-        bottom = borderBottom,
-        left = borderLeft,
-        right = borderRight
-    }
-    backdropTwoInitialized = true
+    backdrop:SetBackgroundColor(unpack(bgDB.BackgroundColor))
+    backdrop:SetBorderColor(unpack(bgDB.BorderColor))
 end
 
-function DBG:UpdateDetailsBackdropTwo()
-    if not self.backdropTwo then return end
-    local bgTwoDB = self.db.backDropTwo
+---@param index number
+function DBG:RegisterBackdropWithEditMode(index)
+    local backdrop = self.backdrops[index]
+    if not backdrop then return end
 
-    -- Refresh Details frame references
-    DetailsBase2 = _G["DetailsBaseFrame2"]
-    DetailsWindow2 = _G["Details_WindowFrame2"]
-
-    -- Update Details stuff
-    local detailsBars = bgTwoDB.detailsBars or self.db.detailsBars or 7
-    if bgTwoDB.autoSize and DetailsBase2 and DetailsWindow2 then
-        self.backdropTwo:SetFrameStrata("LOW")
-        self.backdropTwo:ClearAllPoints()
-        DetailsBase2:ClearAllPoints()
-        DetailsWindow2:ClearAllPoints()
-
-        local detailHeight = self.db.detailsTitelH + (self.db.detailsBarH * detailsBars) +
-            (self.db.detailsSpacing * detailsBars) + 2
-        self.backdropTwo:SetWidth(self.db.detailsWidth)
-        self.backdropTwo:SetHeight(detailHeight)
-        self.backdropTwo:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT",
-            bgTwoDB.Position.XOffset, bgTwoDB.Position.YOffset)
-
-        DetailsBase2:SetSize(self.backdropTwo:GetWidth() - 2, self.backdropTwo:GetHeight() - self.db.detailsTitelH)
-        DetailsWindow2:SetSize(self.backdropTwo:GetWidth() - 2, self.backdropTwo:GetHeight() - self.db.detailsTitelH)
-        DetailsBase2:SetPoint("BOTTOMRIGHT", self.backdropTwo, "BOTTOMRIGHT", -1, -1)
-        DetailsWindow2:SetPoint("BOTTOMRIGHT", self.backdropTwo, "BOTTOMRIGHT", -1, -1)
-    elseif not bgTwoDB.autoSize then
-        self.backdropTwo:ClearAllPoints()
-        self.backdropTwo:SetWidth(bgTwoDB.width)
-        self.backdropTwo:SetHeight(bgTwoDB.height)
-        self.backdropTwo:SetFrameStrata(bgTwoDB.Strata)
-        self.backdropTwo:SetPoint(bgTwoDB.Position.AnchorFrom, UIParent, bgTwoDB.Position.AnchorTo,
-            bgTwoDB.Position.XOffset, bgTwoDB.Position.YOffset)
-    end
-
-    -- Update background color
-    self.backdropTwo:SetBackdropColor(unpack(bgTwoDB.BackgroundColor))
-    -- Update border colors
-    for _, borderTwo in pairs(self.bordersTwo) do
-        borderTwo:SetColorTexture(unpack(bgTwoDB.BorderColor))
-    end
+    local config = {
+        key = "DetailsBackdrop" .. index,
+        displayName = "Details Backdrop: " .. index,
+        frame = backdrop,
+        getPosition = function()
+            local bgDB = self.db.backdrops[index]
+            if bgDB.autoSize then
+                return {
+                    AnchorFrom = "BOTTOMRIGHT",
+                    AnchorTo = "BOTTOMRIGHT",
+                    XOffset = bgDB.Position.XOffset,
+                    YOffset = bgDB.Position.YOffset,
+                }
+            end
+            return bgDB.Position
+        end,
+        setPosition = function(pos)
+            local bgDB = self.db.backdrops[index]
+            bgDB.Position.XOffset = pos.XOffset
+            bgDB.Position.YOffset = pos.YOffset
+            if not bgDB.autoSize then
+                bgDB.Position.AnchorFrom = pos.AnchorFrom
+                bgDB.Position.AnchorTo = pos.AnchorTo
+            end
+            DBG:UpdateBackdrop(index)
+        end,
+        getParentFrame = function()
+            return UIParent
+        end,
+        guiPath = "DetailsBackdrop",
+        guiContext = index,
+    }
+    NRSKNUI.EditMode:RegisterElement(config)
 end
 
 function DBG:ApplySettings()
     if NRSKNUI:ShouldNotLoadModule() then return end
 
-    -- Main toggle disabled - hide everything
     if not self.db.Enabled then
-        if self.backdropOne then
-            self.backdropOne:Hide()
-        end
-        if self.backdropTwo then
-            self.backdropTwo:Hide()
+        for i = 1, MAX_BACKDROPS do
+            if self.backdrops[i] then self.backdrops[i]:Hide() end
+            NRSKNUI.EditMode:UnregisterElement("DetailsBackdrop" .. i)
         end
         return
     end
 
-    -- Backdrop One: check individual toggle
-    if self.db.backDropOne.Enabled then
-        if self.backdropOne then
-            self:UpdateDetailsBackdropOne()
-            self.backdropOne:Show()
+    for i = 1, MAX_BACKDROPS do
+        local bgDB = self.db.backdrops[i]
+        if bgDB and bgDB.Enabled then
+            if self.backdrops[i] then
+                self:UpdateBackdrop(i)
+                self.backdrops[i]:Show()
+                self:RegisterBackdropWithEditMode(i)
+            else
+                self:CreateBackdrop(i)
+            end
         else
-            self:CreateBackdropOne()
-        end
-    else
-        if self.backdropOne then
-            self.backdropOne:Hide()
-        end
-    end
-
-    -- Backdrop Two: check individual toggle
-    if self.db.backDropTwo.Enabled then
-        if self.backdropTwo then
-            self:UpdateDetailsBackdropTwo()
-            self.backdropTwo:Show()
-        else
-            self:CreateBackdropTwo()
-        end
-    else
-        if self.backdropTwo then
-            self.backdropTwo:Hide()
+            if self.backdrops[i] then self.backdrops[i]:Hide() end
+            NRSKNUI.EditMode:UnregisterElement("DetailsBackdrop" .. i)
         end
     end
 end
 
--- Module OnDisable
 function DBG:OnDisable()
-    if self.backdropOne then
-        self.backdropOne:Hide()
+    self.Enabled = false
+    self.__enabled = false
+
+    local Details = _G.Details
+    if Details then
+        Details:UnregisterEvent(self, "DETAILS_INSTANCE_SIZECHANGED")
+        Details:UnregisterEvent(self, "DETAILS_INSTANCE_ENDRESIZE")
+        Details:UnregisterEvent(self, "DETAILS_OPTIONS_MODIFIED")
     end
-    if self.backdropTwo then
-        self.backdropTwo:Hide()
+
+    for i = 1, MAX_BACKDROPS do
+        if self.backdrops[i] then self.backdrops[i]:Hide() end
+        NRSKNUI.EditMode:UnregisterElement("DetailsBackdrop" .. i)
     end
 end

@@ -12,14 +12,10 @@ GUIFrame:RegisterContent("Battlenet", function(scrollChild, yOffset)
     ---@type Battlenet?
     local BNET = NorskenUI:GetModule("Battlenet", true)
     local function UpdateAllWidgetStates() manager:UpdateAll(db.Enabled) end
+    local function ApplySettings() if BNET then BNET:ApplySettings() end end
 
     -- Card 1: Toggle
     local card1 = GUIFrame:CreateCard(scrollChild, "Battlenet Popup Skin", yOffset)
-
-    local function ApplySettings()
-        if not BNET then return end
-        BNET:ApplySettings()
-    end
 
     local row1 = GUIFrame:CreateRow(card1.content, Theme.rowHeightLast)
     local enableCheck = GUIFrame:CreateCheckbox(row1, "Enable Battlenet Popup Skin", {

@@ -293,12 +293,29 @@ function HUNTMARK:ShowPreview()
     self.frame:SetAlpha(1)
     self.frame:Show()
     self:ApplySettings()
+
+    NRSKNUI.EditMode:RegisterModuleElement(self, {
+        key = "HuntersMark",
+        displayName = "Hunters Mark Warning",
+        frame = self.frame,
+        getPosition = function() return self.db.Position end,
+        setPosition = function(pos)
+            self.db.Position.AnchorFrom = pos.AnchorFrom
+            self.db.Position.AnchorTo = pos.AnchorTo
+            self.db.Position.XOffset = pos.XOffset
+            self.db.Position.YOffset = pos.YOffset
+            self:ApplySettings()
+        end,
+        guiPath = "HuntersMark",
+    })
 end
 
 function HUNTMARK:HidePreview()
     self.isPreview = false
     if not self.frame then return end
     self.frame:Hide()
+
+    NRSKNUI.EditMode:UnregisterModuleElement("HuntersMark")
 
     if not self.db.Enabled then return end
 

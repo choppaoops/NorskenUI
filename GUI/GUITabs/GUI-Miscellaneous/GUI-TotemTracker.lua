@@ -13,13 +13,8 @@ GUIFrame:RegisterContent("TotemTracker", function(scrollChild, yOffset)
 
     manager:SetCondition("swipeOn", function() return db.Swipe end)
 
-    local function ApplySettings()
-        if TT and TT.ApplySettings then TT:ApplySettings() end
-    end
-
-    local function UpdateAllWidgetStates()
-        manager:UpdateAll(db.Enabled)
-    end
+    local function ApplySettings() if TT then TT:ApplySettings() end end
+    local function UpdateAllWidgetStates() manager:UpdateAll(db.Enabled) end
 
     -- Card 1: Enable
     local card1 = GUIFrame:CreateCard(scrollChild, "Totem Tracker", yOffset)

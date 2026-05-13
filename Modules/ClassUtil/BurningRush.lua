@@ -12,6 +12,9 @@ local BURN = NorskenUI:NewModule("BurningRush", "AceEvent-3.0")
 local LCG = LibStub("LibCustomGlow-1.0", true)
 
 local CreateFrame = CreateFrame
+local UnitClass = UnitClass
+local select = select
+local IsSpellKnown = IsSpellKnown
 local UIParent = UIParent
 
 local SPELL_ID = 111400
@@ -168,6 +171,26 @@ function BURN:ShowPreview()
     self:ApplySettings()
     self:StartGlow()
     if iconFrame then iconFrame:Show() end
+
+    NRSKNUI.EditMode:RegisterModuleElement(self, {
+        key = "BurningRush",
+        displayName = "Burning Rush",
+        frame = iconFrame,
+        getPosition = function()
+            return self.db.Position
+        end,
+        setPosition = function(pos)
+            self.db.Position.AnchorFrom = pos.AnchorFrom
+            self.db.Position.AnchorTo = pos.AnchorTo
+            self.db.Position.XOffset = pos.XOffset
+            self.db.Position.YOffset = pos.YOffset
+            self:ApplyPosition()
+        end,
+        getParentFrame = function()
+            return NRSKNUI:ResolveAnchorFrame(self.db.anchorFrameType, self.db.ParentFrame)
+        end,
+        guiPath = "BurningRush",
+    })
 end
 
 function BURN:HidePreview()
@@ -175,6 +198,8 @@ function BURN:HidePreview()
     self:StopGlow()
     if iconFrame then iconFrame:Hide() end
     if self.BurningRushActive then self:ShowDisplay() end
+
+    NRSKNUI.EditMode:UnregisterModuleElement("BurningRush")
 end
 
 function BURN:TogglePreview()

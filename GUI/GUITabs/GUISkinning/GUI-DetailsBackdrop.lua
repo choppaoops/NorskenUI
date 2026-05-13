@@ -1,212 +1,99 @@
--- NorskenUI namespace
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
 local GUIFrame = NRSKNUI.GUIFrame
 local Theme = NRSKNUI.Theme
 
---TODO: Update
-
--- Localization Setup
-local table_insert = table.insert
+local tonumber = tonumber
 local ipairs = ipairs
 
--- Helper to get details backdrop module
-local function GetDetailsBackdropModule()
-    if NorskenUI then
-        return NorskenUI:GetModule("DetailsBackdrop", true)
-    end
-    return nil
-end
-
--- Combat Message Tab Content
 GUIFrame:RegisterContent("DetailsBackdrop", function(scrollChild, yOffset)
-    if NRSKNUI:ShouldNotLoadModule() then return end
     local db = NRSKNUI.db and NRSKNUI.db.profile.Skinning.DetailsBackdrop
-    if not db then
-        local errorCard = GUIFrame:CreateCard(scrollChild, "Error", yOffset)
-        errorCard:AddLabel("Database not available")
-        return yOffset + errorCard:GetContentHeight() + Theme.paddingMedium
-    end
+    if not db or NRSKNUI:ShouldNotLoadModule() then return GUIFrame:ShowDBError(scrollChild, yOffset) end
 
-    -- Check for pending context from EditMode navigation
     if GUIFrame.pendingContext then
-        local contextBackdrop = GUIFrame.pendingContext
-        -- Validate that the context is a valid backdrop key
-        if contextBackdrop == "bgOne" or contextBackdrop == "bgTwo" then
-            db.currentEdit = contextBackdrop
-        end
-        -- Clear the pending context so it doesn't persist
+        local contextBackdrop = tonumber(GUIFrame.pendingContext)
+        if contextBackdrop and contextBackdrop >= 1 and contextBackdrop <= 5 then db.currentEdit = contextBackdrop end
         GUIFrame.pendingContext = nil
     end
 
-    -- Get Combat Message module
-    local DBG = GetDetailsBackdropModule()
+    local DBG = NorskenUI:GetModule("DetailsBackdrop", true)
+    local manager = GUIFrame:CreateWidgetStateManager()
 
-    -- Track widgets for enable/disable logic
-    local allWidgets = {}          -- All widgets (except main toggle)
-    local autoSizeOnlyWidgets = {} -- Widgets that only work when autoSize is ON
-    local manualSizeWidgets = {}   -- Widgets that only work when autoSize is OFF
-    local card3
+    local curEdit = db.currentEdit or 1
+    local backdropName = "Backdrop " .. curEdit
 
-    -- Initialize current edit selection
-    local curEdit = db.currentEdit or "bgOne"
+    local function GetCurrentBackdropDB() return db.backdrops[curEdit] end
 
-    -- Helper to get current backdrop DB
-    local function GetCurrentBackdropDB()
-        if curEdit == "bgTwo" then
-            return db.backDropTwo
-        else
-            return db.backDropOne
-        end
-    end
+    manager:SetCondition("autoSizeWidgets", function() return GetCurrentBackdropDB().autoSize end)
+    manager:SetCondition("manualSizeWidgets", function() return not GetCurrentBackdropDB().autoSize end)
+    manager:SetCondition("backdropEnabled", function() return GetCurrentBackdropDB().Enabled end)
 
-    local function ApplyAll()
-        if DBG then
-            DBG:UpdateDetailsBackdropOne()
-            DBG:UpdateDetailsBackdropTwo()
-        end
-    end
+    local function ApplySettings() if DBG then DBG:UpdateBackdrop(curEdit) end end
+    local function UpdateAllWidgetStates() manager:UpdateAll(db.Enabled ~= false) end
 
-    -- Helper to apply settings
-    local function ApplySettings()
-        if DBG then
-            if curEdit == "bgOne" then
-                DBG:UpdateDetailsBackdropOne()
-            else
-                DBG:UpdateDetailsBackdropTwo()
-            end
-        end
-    end
-
-    -- Helper to apply new state
-    local function ApplyDetailsBackdropState(enabled)
-        if not DBG then return end
-        DBG.db.Enabled = enabled
-        if enabled then
-            NorskenUI:EnableModule("DetailsBackdrop")
-        else
-            NorskenUI:DisableModule("DetailsBackdrop")
-        end
-    end
-
-    -- Comprehensive widget state update
-    local function UpdateAllWidgetStates()
-        local mainEnabled = db.Enabled ~= false
-        local currentDB = GetCurrentBackdropDB()
-        local backdropEnabled = currentDB.Enabled ~= false
-        local autoSizeEnabled = currentDB.autoSize
-
-        -- Combined enabled state: main toggle AND individual backdrop toggle
-        local fullyEnabled = mainEnabled and backdropEnabled
-
-        -- First: Apply main enable state to ALL widgets
-        for _, widget in ipairs(allWidgets) do
-            if widget.SetEnabled then
-                widget:SetEnabled(mainEnabled)
-            end
-        end
-
-        if card3 and card3.SetAnchorsOnlyEnabled then
-            local shouldAnchorsWork = fullyEnabled and (not autoSizeEnabled)
-            card3:SetAnchorsOnlyEnabled(shouldAnchorsWork)
-        end
-
-        -- Second: Auto-size widgets only enabled when autoSize is ON and backdrop is enabled
-        for _, widget in ipairs(autoSizeOnlyWidgets) do
-            if widget.SetEnabled then
-                widget:SetEnabled(fullyEnabled and autoSizeEnabled)
-            end
-        end
-
-        -- Third: Manual size widgets only enabled when autoSize is OFF and backdrop is enabled
-        for _, widget in ipairs(manualSizeWidgets) do
-            if widget.SetEnabled then
-                widget:SetEnabled(fullyEnabled and not autoSizeEnabled)
-            end
-        end
-    end
-
-    ----------------------------------------------------------------
-    -- Card 1: Details Backdrop Enable
-    ----------------------------------------------------------------
+    -- Card 1
     local card1 = GUIFrame:CreateCard(scrollChild, "Details Backdrop", yOffset)
 
-    -- Main Enable Checkbox
-    local row1 = GUIFrame:CreateRow(card1.content, 40)
+    local row1 = GUIFrame:CreateRow(card1.content, Theme.rowHeight)
     local enableCheck = GUIFrame:CreateCheckbox(row1, "Enable Details Backdrop", {
         value = db.Enabled ~= false,
         callback = function(checked)
             db.Enabled = checked
-            ApplyDetailsBackdropState(checked)
+            if checked then
+                NorskenUI:EnableModule("DetailsBackdrop")
+            else
+                NorskenUI:DisableModule("DetailsBackdrop")
+            end
             UpdateAllWidgetStates()
         end,
         msgPopup = true,
         msgText = "Details Backdrop",
-        msgOn = "On",
-        msgOff = "Off"
     })
     row1:AddWidget(enableCheck, 0.5)
 
-    -- Select Backdrop Dropdown
-    local editList = { ["bgOne"] = "Backdrop One", ["bgTwo"] = "Backdrop Two" }
+    local editList = {
+        { key = 1, text = "Backdrop 1" },
+        { key = 2, text = "Backdrop 2" },
+        { key = 3, text = "Backdrop 3" },
+        { key = 4, text = "Backdrop 4" },
+        { key = 5, text = "Backdrop 5" },
+    }
     local editDropdown = GUIFrame:CreateDropdown(row1, "Select Backdrop To Edit", {
         options = editList,
         value = curEdit,
         callback = function(key)
-            curEdit = key
             db.currentEdit = key
             GUIFrame:RefreshContent()
         end
     })
     row1:AddWidget(editDropdown, 0.5)
-    table_insert(allWidgets, editDropdown)
+    manager:Register(editDropdown, "all")
+    card1:AddRow(row1, Theme.rowHeight)
 
-    card1:AddRow(row1, 40)
-
-    -- Individual backdrop enable toggles
-    local row1b = GUIFrame:CreateRow(card1.content, 36)
-
-    local enableBackdropOne = GUIFrame:CreateCheckbox(row1b, "Enable Backdrop One", {
-        value = db.backDropOne.Enabled ~= false,
+    local row1b = GUIFrame:CreateRow(card1.content, Theme.rowHeightLast)
+    local enableBackdrop = GUIFrame:CreateCheckbox(row1b, "Enable " .. backdropName, {
+        value = db.backdrops[curEdit].Enabled ~= false,
         callback = function(checked)
-            db.backDropOne.Enabled = checked
-            if DBG then
-                DBG:ApplySettings()
-            end
+            db.backdrops[curEdit].Enabled = checked
+            if DBG then DBG:ApplySettings() end
             UpdateAllWidgetStates()
         end
     })
-    row1b:AddWidget(enableBackdropOne, 0.5)
-    table_insert(allWidgets, enableBackdropOne)
+    row1b:AddWidget(enableBackdrop, 1)
+    manager:Register(enableBackdrop, "all")
+    card1:AddRow(row1b, Theme.rowHeightLast, 0)
 
-    local enableBackdropTwo = GUIFrame:CreateCheckbox(row1b, "Enable Backdrop Two", {
-        value = db.backDropTwo.Enabled ~= false,
-        callback = function(checked)
-            db.backDropTwo.Enabled = checked
-            if DBG then
-                DBG:ApplySettings()
-            end
-            UpdateAllWidgetStates()
-        end
-    })
-    row1b:AddWidget(enableBackdropTwo, 0.5)
-    table_insert(allWidgets, enableBackdropTwo)
+    yOffset = card1:GetNextOffset()
 
-    card1:AddRow(row1b, 36)
-
-    yOffset = yOffset + card1:GetContentHeight() + Theme.paddingSmall
-
-    ----------------------------------------------------------------
-    -- Card 2: Auto Size Toggle
-    ----------------------------------------------------------------
-    local card2 = GUIFrame:CreateCard(scrollChild, "Size Mode", yOffset)
+    -- Card 2
     local currentDB = GetCurrentBackdropDB()
+    local card2 = GUIFrame:CreateCard(scrollChild, "Size Mode - " .. backdropName, yOffset)
+    manager:Register(card2, "all")
 
-    local row2 = GUIFrame:CreateRow(card2.content, 40)
+    local row2 = GUIFrame:CreateRow(card2.content, Theme.rowHeight)
     local autoSizeCheck = GUIFrame:CreateCheckbox(row2, "Auto Size to Parent Frame", {
         value = currentDB.autoSize,
         callback = function(checked, revert)
-            -- If already enabled, dont show promt
             if not checked then
                 GetCurrentBackdropDB().autoSize = checked
                 ApplySettings()
@@ -214,10 +101,9 @@ GUIFrame:RegisterContent("DetailsBackdrop", function(scrollChild, yOffset)
                 return
             end
 
-            -- If not enabled, show promt so user knows wassup
             NRSKNUI:CreatePrompt({
                 title = "Details Override",
-                text = "This will override your current details sizing, are you sure you want to use this feature?",
+                text = "This will override your current Details sizing. Are you sure?",
                 onAccept = function()
                     GetCurrentBackdropDB().autoSize = checked
                     ApplySettings()
@@ -232,166 +118,44 @@ GUIFrame:RegisterContent("DetailsBackdrop", function(scrollChild, yOffset)
         end
     })
     row2:AddWidget(autoSizeCheck, 1)
-    table_insert(allWidgets, autoSizeCheck)
-    card2:AddRow(row2, 40)
+    manager:Register(autoSizeCheck, "all", "backdropEnabled")
+    card2:AddRow(row2, Theme.rowHeight)
 
-    -- Details Bars (per-backdrop)
-    local row2b = GUIFrame:CreateRow(card2.content, 40)
+    local helpText = GUIFrame:CreateText(card2.content, NRSKNUI:ColorTextByTheme("Auto-Size Information"), {
+        text = {
+            "Automatically sizes the backdrop to fit your Details bars",
+            "Bar height, spacing, and width are read from Details settings",
+            "Anchor points are locked to BOTTOMRIGHT when enabled",
+        },
+        height = 70,
+        bgMode = "hide"
+    })
+    card2:AddRow(helpText, 70)
+    manager:Register(helpText, "all", "backdropEnabled")
+
+    local sepRow2 = GUIFrame:CreateSeparator(card2.content)
+    card2:AddRow(sepRow2, Theme.rowHeightSeparator)
+
+    local row2b = GUIFrame:CreateRow(card2.content, Theme.rowHeight)
     local detailsBars = GUIFrame:CreateSlider(row2b, "Amount of bars to show", {
         min = 1,
         max = 25,
         step = 1,
-        value = currentDB.detailsBars or db.detailsBars or 7,
+        value = currentDB.detailsBars,
         callback = function(val)
             GetCurrentBackdropDB().detailsBars = val
             ApplySettings()
         end
     })
-    row2b:AddWidget(detailsBars, 0.5)
-    table_insert(allWidgets, detailsBars)
-    table_insert(autoSizeOnlyWidgets, detailsBars)
+    row2b:AddWidget(detailsBars, 1)
+    manager:Register(detailsBars, "all", "backdropEnabled", "autoSizeWidgets")
+    card2:AddRow(row2b, Theme.rowHeight)
 
-    -- Bar Height
-    local detailsBarH = GUIFrame:CreateSlider(row2b, "Your current Details bar height", {
-        min = 1,
-        max = 50,
-        step = 1,
-        value = db.detailsBarH,
-        callback = function(val)
-            db.detailsBarH = val
-            ApplyAll()
-        end
-    })
-    row2b:AddWidget(detailsBarH, 0.5)
-    table_insert(allWidgets, detailsBarH)
-    table_insert(autoSizeOnlyWidgets, detailsBarH)
-    card2:AddRow(row2b, 40)
+    local sepRow3 = GUIFrame:CreateSeparator(card2.content)
+    card2:AddRow(sepRow3, Theme.rowHeightSeparator)
 
-    local row2c = GUIFrame:CreateRow(card2.content, 40)
-    local detailsTitelH = GUIFrame:CreateSlider(row2c, "Your current Details titlebar height", {
-        min = 1,
-        max = 25,
-        step = 1,
-        value = db.detailsTitelH,
-        callback = function(val)
-            db.detailsTitelH = val
-            ApplyAll()
-        end
-    })
-    row2c:AddWidget(detailsTitelH, 0.5)
-    table_insert(allWidgets, detailsTitelH)
-    table_insert(autoSizeOnlyWidgets, detailsTitelH)
-
-    -- Spacing
-    local detailsSpacing = GUIFrame:CreateSlider(row2c, "Your current Details spacing", {
-        min = 1,
-        max = 50,
-        step = 1,
-        value = db.detailsSpacing,
-        callback = function(val)
-            db.detailsSpacing = val
-            ApplyAll()
-        end
-    })
-    row2c:AddWidget(detailsSpacing, 0.5)
-    table_insert(allWidgets, detailsSpacing)
-    table_insert(autoSizeOnlyWidgets, detailsSpacing)
-    card2:AddRow(row2c, 40)
-
-    -- Width
-    local row2d = GUIFrame:CreateRow(card2.content, 36)
-    local detailsWidth = GUIFrame:CreateSlider(row2d, "Details Width", {
-        min = 50,
-        max = 1000,
-        step = 1,
-        value = db.detailsWidth,
-        callback = function(val)
-            db.detailsWidth = val
-            ApplyAll()
-        end
-    })
-    row2d:AddWidget(detailsWidth, 1)
-    table_insert(allWidgets, detailsWidth)
-    table_insert(autoSizeOnlyWidgets, detailsWidth)
-    card2:AddRow(row2d, 36)
-
-    yOffset = yOffset + card2:GetContentHeight() + Theme.paddingSmall
-
-    ----------------------------------------------------------------
-    -- Card 5: Backdrop Color Settings
-    ----------------------------------------------------------------
-    local card5 = GUIFrame:CreateCard(scrollChild, "Backdrop Color", yOffset)
-    table_insert(allWidgets, card5)
-
-    -- Backdrop coloring
-    local row4 = GUIFrame:CreateRow(card5.content, 40)
-    local BackdropColor = GUIFrame:CreateColorPicker(row4, "Backdrop Color", {
-        color = GetCurrentBackdropDB().BackgroundColor,
-        callback = function(r, g, b, a)
-            GetCurrentBackdropDB().BackgroundColor = { r, g, b, a }
-            ApplySettings()
-        end
-    })
-    row4:AddWidget(BackdropColor, 1)
-    table_insert(allWidgets, BackdropColor)
-    card5:AddRow(row4, 40)
-
-    -- Backdrop Border coloring
-    local row5 = GUIFrame:CreateRow(card5.content, 34)
-    local BorderColor = GUIFrame:CreateColorPicker(row5, "Backdrop Border Color", {
-        color = GetCurrentBackdropDB().BorderColor,
-        callback = function(r, g, b, a)
-            GetCurrentBackdropDB().BorderColor = { r, g, b, a }
-            ApplySettings()
-        end
-    })
-    row5:AddWidget(BorderColor, 1)
-    table_insert(allWidgets, BorderColor)
-    card5:AddRow(row5, 34)
-
-    yOffset = yOffset + card5:GetContentHeight() + Theme.paddingSmall
-
-    ----------------------------------------------------------------
-    -- Card 3: Position Settings (using reusable position card)
-    ----------------------------------------------------------------
-    local newOffset
-    card3, newOffset = GUIFrame:CreatePositionCard(scrollChild, yOffset, {
-        db = GetCurrentBackdropDB(),
-        anchorToggleKey = true,
-        showAnchorFrameType = false,
-        showStrata = true,
-        onChangeCallback = ApplySettings,
-    })
-    -- Add position card widgets to allWidgets for enable/disable
-    -- When autoSize is ON, anchor widgets should be disabled, always uses BOTTOMRIGHT
-    if card3.positionWidgets then
-        for _, widget in ipairs(card3.positionWidgets) do
-            table_insert(allWidgets, widget)
-
-            local isAnchorBtn = false
-            for _, abWidget in ipairs(card3.AnchorButtonWidgets) do
-                if widget == abWidget then
-                    isAnchorBtn = true
-                    break
-                end
-            end
-            if not isAnchorBtn then
-            end
-        end
-    end
-    table_insert(allWidgets, card3)
-    yOffset = newOffset
-
-    ----------------------------------------------------------------
-    -- Card 4: Backdrop Size Settings (Manual Size - only when autoSize is OFF)
-    ----------------------------------------------------------------
-    local card4 = GUIFrame:CreateCard(scrollChild, "Backdrop Size (Manual)", yOffset)
-    table_insert(allWidgets, card4)
-    table_insert(manualSizeWidgets, card4)
-
-    -- Backdrop Width
-    local row3 = GUIFrame:CreateRow(card4.content, 36)
-    local BackdropWidth = GUIFrame:CreateSlider(card4.content, "Backdrop Width", {
+    local row2e = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast)
+    local BackdropWidth = GUIFrame:CreateSlider(row2e, "Backdrop Width (Manual)", {
         min = 10,
         max = 1000,
         step = 1,
@@ -401,12 +165,10 @@ GUIFrame:RegisterContent("DetailsBackdrop", function(scrollChild, yOffset)
             ApplySettings()
         end
     })
-    row3:AddWidget(BackdropWidth, 0.5)
-    table_insert(allWidgets, BackdropWidth)
-    table_insert(manualSizeWidgets, BackdropWidth)
+    row2e:AddWidget(BackdropWidth, 0.5)
+    manager:Register(BackdropWidth, "all", "backdropEnabled", "manualSizeWidgets")
 
-    -- Backdrop Height
-    local BackdropHeight = GUIFrame:CreateSlider(card4.content, "Backdrop Height", {
+    local BackdropHeight = GUIFrame:CreateSlider(row2e, "Backdrop Height (Manual)", {
         min = 10,
         max = 1000,
         step = 1,
@@ -416,15 +178,65 @@ GUIFrame:RegisterContent("DetailsBackdrop", function(scrollChild, yOffset)
             ApplySettings()
         end
     })
-    row3:AddWidget(BackdropHeight, 0.5)
-    table_insert(allWidgets, BackdropHeight)
-    table_insert(manualSizeWidgets, BackdropHeight)
-    card4:AddRow(row3, 36)
+    row2e:AddWidget(BackdropHeight, 0.5)
+    manager:Register(BackdropHeight, "all", "backdropEnabled", "manualSizeWidgets")
+    card2:AddRow(row2e, Theme.rowHeightLast, 0)
 
-    yOffset = yOffset + card4:GetContentHeight() + Theme.paddingSmall
+    yOffset = card2:GetNextOffset()
 
-    -- Apply initial widget states
+    -- Card 3
+    local card3 = GUIFrame:CreateCard(scrollChild, "Backdrop Color - " .. backdropName, yOffset)
+    manager:Register(card3, "all")
+
+    local row3 = GUIFrame:CreateRow(card3.content, Theme.rowHeight)
+    local BackdropColor = GUIFrame:CreateColorPicker(row3, "Backdrop Color", {
+        color = GetCurrentBackdropDB().BackgroundColor,
+        callback = function(r, g, b, a)
+            GetCurrentBackdropDB().BackgroundColor = { r, g, b, a }
+            ApplySettings()
+        end
+    })
+    row3:AddWidget(BackdropColor, 1)
+    manager:Register(BackdropColor, "all", "backdropEnabled")
+    card3:AddRow(row3, Theme.rowHeight)
+
+    local row3b = GUIFrame:CreateRow(card3.content, Theme.rowHeightLast)
+    local BorderColor = GUIFrame:CreateColorPicker(row3b, "Backdrop Border Color", {
+        color = GetCurrentBackdropDB().BorderColor,
+        callback = function(r, g, b, a)
+            GetCurrentBackdropDB().BorderColor = { r, g, b, a }
+            ApplySettings()
+        end
+    })
+    row3b:AddWidget(BorderColor, 1)
+    manager:Register(BorderColor, "all", "backdropEnabled")
+    card3:AddRow(row3b, Theme.rowHeightLast, 0)
+
+    yOffset = card3:GetNextOffset()
+
+    -- Card 4
+    local posCard, posOffset = GUIFrame:CreatePositionCard(scrollChild, yOffset, {
+        title = "Position - " .. backdropName,
+        db = GetCurrentBackdropDB(),
+        showAnchorFrameType = false,
+        showStrata = true,
+        onChangeCallback = ApplySettings,
+    })
+    manager:Register(posCard, "all", "backdropEnabled")
+
+    if posCard.AnchorButtonWidgets then
+        for _, widget in ipairs(posCard.AnchorButtonWidgets) do
+            local origSetEnabled = widget.SetEnabled
+            widget.SetEnabled = function(self, enabled)
+                local shouldDisable = GetCurrentBackdropDB().autoSize
+                origSetEnabled(self, enabled and not shouldDisable)
+            end
+        end
+    end
+
+    yOffset = posOffset
+
     UpdateAllWidgetStates()
-    yOffset = yOffset - (Theme.paddingSmall * 3)
+
     return yOffset
 end)

@@ -102,6 +102,22 @@ function EditMode:UnregisterElement(key)
     self.registeredElements[key] = nil
 end
 
+-- Register an element tied to a module (handles db.Enabled check)
+function EditMode:RegisterModuleElement(module, config)
+    if not config or not config.key then return end
+    if not module or not module.db or not module.db.Enabled then return end
+    config.module = module
+    self:RegisterElement(config)
+end
+
+-- Unregister a module element (only if module isn't handling its own cleanup via OnEnable)
+function EditMode:UnregisterModuleElement(key)
+    local element = self.registeredElements[key]
+    if not element then return end
+    if element.module and element.module:IsEnabled() then return end
+    self:UnregisterElement(key)
+end
+
 -- Resolve frame reference for an element
 function EditMode:GetElementFrame(element)
     if element.frame then

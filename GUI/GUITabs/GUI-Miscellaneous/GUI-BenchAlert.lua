@@ -3,9 +3,6 @@ local NRSKNUI = select(2, ...)
 local GUIFrame = NRSKNUI.GUIFrame
 local Theme = NRSKNUI.Theme
 
-local table_insert = table.insert
-local ipairs = ipairs
-
 GUIFrame:RegisterContent("BenchAlert", function(scrollChild, yOffset)
     local db = NRSKNUI.db and NRSKNUI.db.profile.Miscellaneous.BenchAlert
     if not db then return GUIFrame:ShowDBError(scrollChild, yOffset) end
@@ -13,20 +10,9 @@ GUIFrame:RegisterContent("BenchAlert", function(scrollChild, yOffset)
     ---@type BenchAlert?
     local BA = NorskenUI and NorskenUI:GetModule("BenchAlert", true)
     local manager = GUIFrame:CreateWidgetStateManager()
-    local postUpdateCallbacks = {}
 
-    local function ApplySettings()
-        if BA and BA.ApplySettings then BA:ApplySettings() end
-    end
-
-    local function UpdateAllWidgetStates()
-        manager:UpdateAll(db.Enabled)
-        if db.Enabled then
-            for _, callback in ipairs(postUpdateCallbacks) do
-                callback()
-            end
-        end
-    end
+    local function ApplySettings() if BA then BA:ApplySettings() end end
+    local function UpdateAllWidgetStates() manager:UpdateAll(db.Enabled) end
 
     -- Card 1: Enable
     local card1 = GUIFrame:CreateCard(scrollChild, "Bench Alert", yOffset)
@@ -103,7 +89,6 @@ GUIFrame:RegisterContent("BenchAlert", function(scrollChild, yOffset)
     })
     manager:Register(fontCard, "all")
     manager:RegisterGroup(fontWidgets, "all")
-    if fontCard.UpdateShadowState then table_insert(postUpdateCallbacks, fontCard.UpdateShadowState) end
 
     yOffset = fontOffset
 

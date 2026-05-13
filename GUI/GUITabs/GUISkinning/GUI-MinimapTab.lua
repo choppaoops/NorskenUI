@@ -35,7 +35,6 @@ GUIFrame:RegisterContent("Minimap", function(scrollChild, yOffset)
         msgText = "Minimap",
     })
     row1:AddWidget(enableCheck, 1)
-
     card1:AddRow(row1, Theme.rowHeightLast, 0)
 
     yOffset = card1:GetNextOffset()
