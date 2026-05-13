@@ -13,23 +13,45 @@ local CreateFrame = CreateFrame
 local ipairs = ipairs
 local GetTotemInfo = GetTotemInfo
 local GetTime = GetTime
-local InCombatLockdown = InCombatLockdown
 local UIParent = UIParent
 local GetTotemDuration = GetTotemDuration
 
-local MAX_TOTEMS = GetNumTotemSlots()
+local MAX_TOTEMS = MAX_TOTEMS
+local TOTEM_PRIORITIES = STANDARD_TOTEM_PRIORITIES
 
 local containerFrame = nil
 local totemButtons = {}
 local isPreviewActive = false
-local updateTicker = nil
+local destroyButtons = {}
+
+local PREVIEW_ICONS = {
+    [1] = 136098, -- Healing Stream Totem
+    [2] = 136024, -- Capacitor Totem
+    [3] = 136114, -- Tremor Totem
+    [4] = 136013, -- Earthbind Totem
+}
 
 function TT:UpdateDB()
     self.db = NRSKNUI.db.profile.TotemTracker
 end
 
+function TT:CreateDestroyButtons()
+    if destroyButtons[1] then return end
+
+    for slot = 1, MAX_TOTEMS do
+        local btn = CreateFrame("Button", "NRSKNUI_DestroyTotem" .. slot, UIParent, "SecureActionButtonTemplate")
+        btn:SetAttribute("type", "destroytotem")
+        btn:SetAttribute("typerelease", "destroytotem")
+        btn:SetAttribute("totem-slot", slot)
+        btn:SetAttribute("pressAndHoldAction", 1)
+        btn:RegisterForClicks("AnyUp", "AnyDown")
+        destroyButtons[slot] = btn
+    end
+end
+
 function TT:OnInitialize()
     self:UpdateDB()
+    self:CreateDestroyButtons()
     self:SetEnabledState(false)
 end
 
@@ -49,18 +71,14 @@ end
 function TT:CreateTotemButton(slot)
     local db = self.db
 
-    local btn = CreateFrame("Button", "NRSKNUI_TotemButton" .. slot, containerFrame, "SecureActionButtonTemplate")
+    local btn = CreateFrame("Button", "NRSKNUI_TotemButton" .. slot, containerFrame)
     btn:SetSize(db.IconSize, db.IconSize)
     btn:SetID(slot)
 
-    btn:SetAttribute("type2", "destroytotem")
-    btn:SetAttribute("totem-slot2", slot)
-    btn:RegisterForClicks("AnyUp", "AnyDown")
-
-    btn:SetScript("OnEnter", function(self)
-        if GameTooltip:IsForbidden() or not self:IsVisible() then return end
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetTotem(self:GetID())
+    btn:SetScript("OnEnter", function(frame)
+        if GameTooltip:IsForbidden() or not frame:IsVisible() then return end
+        GameTooltip:SetOwner(frame, "ANCHOR_RIGHT")
+        GameTooltip:SetTotem(frame:GetID())
         GameTooltip:Show()
     end)
     btn:SetScript("OnLeave", function()
@@ -88,7 +106,6 @@ function TT:CreateTotemButton(slot)
     btn.cooldown:SetDrawBling(false)
     btn.cooldown:SetHideCountdownNumbers(false)
 
-    btn:SetAlpha(0)
     btn:Hide()
 
     return btn
@@ -140,7 +157,7 @@ function TT:UpdateButtonSettings(btn)
     ApplyCooldownTextStyle(btn.cooldown, db)
 end
 
-function TT:LayoutButtons()
+function TT:LayoutButtons(visibleButtons)
     if not containerFrame then return end
 
     local db = self.db
@@ -148,17 +165,21 @@ function TT:LayoutButtons()
     local spacing = db.IconSpacing
     local size = db.IconSize
 
+    local numVisible = visibleButtons and #visibleButtons or MAX_TOTEMS
+    if numVisible == 0 then numVisible = 1 end
+
     local totalWidth, totalHeight
     if direction == "RIGHT" or direction == "LEFT" then
-        totalWidth = (size * MAX_TOTEMS) + (spacing * (MAX_TOTEMS - 1))
+        totalWidth = (size * numVisible) + (spacing * (numVisible - 1))
         totalHeight = size
     else
         totalWidth = size
-        totalHeight = (size * MAX_TOTEMS) + (spacing * (MAX_TOTEMS - 1))
+        totalHeight = (size * numVisible) + (spacing * (numVisible - 1))
     end
     containerFrame:SetSize(totalWidth, totalHeight)
 
-    for i, btn in ipairs(totemButtons) do
+    local buttonsToLayout = visibleButtons or totemButtons
+    for i, btn in ipairs(buttonsToLayout) do
         btn:ClearAllPoints()
 
         if direction == "RIGHT" then
@@ -179,60 +200,65 @@ function TT:LayoutButtons()
     NRSKNUI:SnapFrameToPixels(containerFrame, db.ForcePixelPerfect)
 end
 
+---@param btn table
+---@param totem table
+function TT:UpdateButton(btn, totem)
+    if not (btn and totem) then return end
+
+    local slot = totem.slot
+    local _, _, startTime, _, icon = GetTotemInfo(slot)
+
+    if startTime then
+        btn.icon:SetTexture(icon)
+        btn.cooldown:SetCooldownFromDurationObject(GetTotemDuration(slot))
+        btn:Show()
+    else
+        btn.cooldown:Clear()
+        btn:Hide()
+    end
+end
+
 function TT:UpdateTotems()
     if not self.db or not self.db.Enabled then return end
 
-    local currentTime = GetTime()
-
     if isPreviewActive then
+        local currentTime = GetTime()
+        local visibleButtons = {}
         for slot = 1, MAX_TOTEMS do
             local btn = totemButtons[slot]
             if btn then
-                btn.icon:SetTexture("Interface\\Icons\\Spell_Nature_StoneSkinTotem")
-                btn.cooldown:SetCooldown(currentTime - 30, 120)
-                btn:SetAlpha(1)
+                btn.icon:SetTexture(PREVIEW_ICONS[slot] or PREVIEW_ICONS[1])
+                btn.cooldown:SetCooldown(currentTime - (slot * 10), 120)
+                btn:Show()
+                visibleButtons[#visibleButtons + 1] = btn
             end
         end
+        self:LayoutButtons(visibleButtons)
         return
     end
 
-    local inCombat = InCombatLockdown()
+    for i = 1, MAX_TOTEMS do
+        local btn = totemButtons[i]
+        if btn then btn:Hide() end
+    end
 
-    for slot = 1, MAX_TOTEMS do
-        local btn = totemButtons[slot]
-        if btn then
-            local _, _, _, _, icon = GetTotemInfo(slot)
-            local duration = GetTotemDuration(slot)
-
-            btn.icon:SetTexture(icon)
-
-            -- If a totem exists, duration returns a DurationObject
-            -- We can use this as a very scuffed way of only showing frames that have a totem when not in combat.
-            if duration then
-                btn.cooldown:SetCooldownFromDurationObject(duration)
-                btn:SetAlpha(1)
-                if not inCombat then btn:Show() end
-            else
-                btn.cooldown:Clear()
-                btn:SetAlpha(0)
-                if not inCombat then btn:Hide() end
+    local visibleButtons = {}
+    if TotemFrame and TotemFrame.totemPool then
+        for totem in TotemFrame.totemPool:EnumerateActive() do
+            local priorityIndex = TOTEM_PRIORITIES[totem.layoutIndex]
+            if priorityIndex then
+                local btn = totemButtons[priorityIndex]
+                self:UpdateButton(btn, totem)
+                if btn and btn:IsShown() then visibleButtons[#visibleButtons + 1] = btn end
             end
         end
     end
+
+    self:LayoutButtons(visibleButtons)
 end
 
-function TT:StartUpdateTicker()
-    if updateTicker then return end
-    updateTicker = C_Timer.NewTicker(0.1, function()
-        if self.db and self.db.Enabled then self:UpdateTotems() end
-    end)
-end
-
-function TT:StopUpdateTicker()
-    if updateTicker then
-        updateTicker:Cancel()
-        updateTicker = nil
-    end
+function TT:OnTotemUpdate()
+    if self.db and self.db.Enabled then self:UpdateTotems() end
 end
 
 function TT:ApplySettings()
@@ -287,17 +313,6 @@ function TT:IsPreviewActive()
     return isPreviewActive
 end
 
-function TT:OnCombatStart()
-    for slot = 1, MAX_TOTEMS do
-        local btn = totemButtons[slot]
-        if btn then btn:Show() end
-    end
-end
-
-function TT:OnCombatEnd()
-    self:UpdateTotems()
-end
-
 function TT:OnEnable()
     if not self.db or not self.db.Enabled then return end
 
@@ -311,12 +326,10 @@ function TT:OnEnable()
 
     if containerFrame then containerFrame:Show() end
 
-    self:RegisterEvent("PLAYER_REGEN_DISABLED", "OnCombatStart")
-    self:RegisterEvent("PLAYER_REGEN_ENABLED", "OnCombatEnd")
-
-    self:StartUpdateTicker()
-
-    C_Timer.After(0.5, function() self:UpdateTotems() end)
+    self:RegisterEvent("PLAYER_TOTEM_UPDATE", "OnTotemUpdate")
+    self:RegisterEvent("PLAYER_ENTERING_WORLD", "OnTotemUpdate")
+    self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED", "OnTotemUpdate")
+    C_Timer.After(0.1, function() self:UpdateTotems() end)
 
     if NRSKNUI.EditMode then
         NRSKNUI.EditMode:RegisterElement({
@@ -345,7 +358,6 @@ function TT:OnDisable()
     isPreviewActive = false
 
     self:UnregisterAllEvents()
-    self:StopUpdateTicker()
 
     for slot = 1, MAX_TOTEMS do
         local btn = totemButtons[slot]

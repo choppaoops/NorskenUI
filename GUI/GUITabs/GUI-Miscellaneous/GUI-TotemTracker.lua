@@ -3,6 +3,11 @@ local NRSKNUI = select(2, ...)
 local GUIFrame = NRSKNUI.GUIFrame
 local Theme = NRSKNUI.Theme
 
+local InCombatLockdown = InCombatLockdown
+local GetMacroIndexByName = GetMacroIndexByName
+local GetNumMacros = GetNumMacros
+local CreateMacro = CreateMacro
+
 GUIFrame:RegisterContent("TotemTracker", function(scrollChild, yOffset)
     local db = NRSKNUI.db and NRSKNUI.db.profile.TotemTracker
     if not db then return GUIFrame:ShowDBError(scrollChild, yOffset) end
@@ -55,6 +60,57 @@ GUIFrame:RegisterContent("TotemTracker", function(scrollChild, yOffset)
     card1:AddRow(row1, Theme.rowHeight)
 
     yOffset = card1:GetNextOffset()
+
+    -- Card 5: Destroy Totems Macro
+    local macroCard = GUIFrame:CreateCard(scrollChild, "Destroy All Totems", yOffset)
+
+    local macroName = "!NUIDestroyTotem"
+    local macroIcon = "Boss_odunrunes_orange"
+    local macroText =
+    "/click NRSKNUI_DestroyTotem1\n/click NRSKNUI_DestroyTotem2\n/click NRSKNUI_DestroyTotem3\n/click NRSKNUI_DestroyTotem4\n/click NRSKNUI_DestroyTotem5"
+
+    local infoHeight = 36
+    local infoRow = GUIFrame:CreateRow(macroCard.content, infoHeight)
+    local infoText = GUIFrame:CreateText(infoRow, NRSKNUI:ColorTextByTheme("Macro Info"), {
+        text = "Click the button below to create a macro that instantly destroys all active totems.",
+        height = infoHeight,
+        bgMode = "hide",
+    })
+    infoRow:AddWidget(infoText, 1)
+    macroCard:AddRow(infoRow, infoHeight)
+
+    local infoRowSep = GUIFrame:CreateSeparator(macroCard.content)
+    macroCard:AddRow(infoRowSep, Theme.rowHeightSeparator)
+
+    local btnRow = GUIFrame:CreateRow(macroCard.content, Theme.rowHeightLast)
+    local createBtn = GUIFrame:CreateButton(btnRow, "Create Macro", {
+        height = 30,
+        callback = function()
+            if InCombatLockdown() then
+                NRSKNUI:Print("Cannot create macros during combat.")
+                return
+            end
+
+            local existingIndex = GetMacroIndexByName(macroName)
+            if existingIndex and existingIndex > 0 then
+                NRSKNUI:Print("Macro '" .. macroName .. "' already exists.")
+                return
+            end
+
+            local numGlobal = GetNumMacros()
+            if numGlobal >= MAX_ACCOUNT_MACROS then
+                NRSKNUI:Print("No free macro slots available.")
+                return
+            end
+
+            CreateMacro(macroName, macroIcon, macroText, false)
+            NRSKNUI:Print("Macro '" .. macroName .. "' created! Drag it to your action bar.")
+        end,
+    })
+    btnRow:AddWidget(createBtn, 1)
+    macroCard:AddRow(btnRow, Theme.rowHeightLast - 8, 0)
+
+    yOffset = macroCard:GetNextOffset()
 
     -- Card 2: Display Settings
     local card2 = GUIFrame:CreateCard(scrollChild, "Display Settings", yOffset)
