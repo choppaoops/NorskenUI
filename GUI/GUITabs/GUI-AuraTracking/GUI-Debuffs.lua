@@ -3,6 +3,14 @@ local NRSKNUI = select(2, ...)
 local GUIFrame = NRSKNUI.GUIFrame
 local Theme = NRSKNUI.Theme
 
+local pairs = pairs
+local type = type
+local tostring = tostring
+local tinsert = tinsert
+local tonumber = tonumber
+local CreateFrame = CreateFrame
+local unpack = unpack
+
 GUIFrame:RegisterContent("CustomSkin_Debuffs", function(scrollChild, yOffset)
     if NRSKNUI:ShouldNotLoadModule() then return yOffset end
     local db = NRSKNUI.db and NRSKNUI.db.profile.Skinning.DebuffTracking
@@ -322,8 +330,24 @@ GUIFrame:RegisterContent("CustomSkin_Debuffs", function(scrollChild, yOffset)
 
     db.Filters = db.Filters or {}
 
+    local filterRowSize = 34
+    local infoFilterRow = GUIFrame:CreateRow(card4.content, filterRowSize)
+    local infoTextFilter = GUIFrame:CreateText(infoFilterRow, NRSKNUI:ColorTextByTheme("Filter Info"), {
+        text = NRSKNUI:ColorTextByTheme("• ") ..
+            "Select filter(s) that you want to remove from tracking.",
+        height = filterRowSize,
+        bgMode = "hide"
+    })
+    infoFilterRow:AddWidget(infoTextFilter, 1)
+    manager:Register(infoTextFilter, "all")
+    card4:AddRow(infoFilterRow, filterRowSize)
+
+    local filtersep1 = GUIFrame:CreateSeparator(card4.content)
+    card4:AddRow(filtersep1, Theme.rowHeightSeparator)
+
     local row4b = GUIFrame:CreateRow(card4.content, Theme.rowHeight)
     local playerFilterCheck = GUIFrame:CreateCheckbox(row4b, "PLAYER", {
+        tooltip = "Filters out debuffs applied by the player, for example Brewmaster Stagger and cheat death effects.",
         value = db.Filters.PLAYER == true,
         callback = function(checked)
             db.Filters.PLAYER = checked
@@ -334,6 +358,8 @@ GUIFrame:RegisterContent("CustomSkin_Debuffs", function(scrollChild, yOffset)
     manager:Register(playerFilterCheck, "all")
 
     local raidFilterCheck = GUIFrame:CreateCheckbox(row4b, "RAID", {
+        tooltip =
+        "Filters out certain debuffs that only show up on raid frames, e.g. most debuffs that are relevant in a raid context.",
         value = db.Filters.RAID == true,
         callback = function(checked)
             db.Filters.RAID = checked
@@ -346,6 +372,7 @@ GUIFrame:RegisterContent("CustomSkin_Debuffs", function(scrollChild, yOffset)
 
     local row4d = GUIFrame:CreateRow(card4.content, Theme.rowHeight)
     local ccCheck = GUIFrame:CreateCheckbox(row4d, "CROWD_CONTROL", {
+        tooltip = "Filters out crowd control effects.",
         value = db.Filters.CROWD_CONTROL == true,
         callback = function(checked)
             db.Filters.CROWD_CONTROL = checked
@@ -356,6 +383,7 @@ GUIFrame:RegisterContent("CustomSkin_Debuffs", function(scrollChild, yOffset)
     manager:Register(ccCheck, "all")
 
     local importantCheck = GUIFrame:CreateCheckbox(row4d, "IMPORTANT", {
+        tooltip = "Filters out debuffs that pass the IsSpellImportant check.",
         value = db.Filters.IMPORTANT == true,
         callback = function(checked)
             db.Filters.IMPORTANT = checked
@@ -368,6 +396,7 @@ GUIFrame:RegisterContent("CustomSkin_Debuffs", function(scrollChild, yOffset)
 
     local row4e = GUIFrame:CreateRow(card4.content, Theme.rowHeightLast)
     local dispellableCheck = GUIFrame:CreateCheckbox(row4e, "RAID_PLAYER_DISPELLABLE", {
+        tooltip = "Filters out auras with a dispel type the player can dispel.",
         value = db.Filters.RAID_PLAYER_DISPELLABLE == true,
         callback = function(checked)
             db.Filters.RAID_PLAYER_DISPELLABLE = checked
@@ -378,6 +407,7 @@ GUIFrame:RegisterContent("CustomSkin_Debuffs", function(scrollChild, yOffset)
     manager:Register(dispellableCheck, "all")
 
     local nameplateCheck = GUIFrame:CreateCheckbox(row4e, "INCLUDE_NAME_PLATE_ONLY", {
+        tooltip = "Filters out auras that should be shown on nameplates.",
         value = db.Filters.INCLUDE_NAME_PLATE_ONLY == true,
         callback = function(checked)
             db.Filters.INCLUDE_NAME_PLATE_ONLY = checked
@@ -396,18 +426,92 @@ GUIFrame:RegisterContent("CustomSkin_Debuffs", function(scrollChild, yOffset)
 
     db.Blocklist = db.Blocklist or {}
 
-    local function BuildBlocklistOptions()
+    local selectedSpellId = nil
+    local blocklistDropdown, spellIdInput, labelInput
+    local spellIconFrame, spellIconTexture, spellIconBorder, spellNameLabel
+    local enabledToggle, deleteBtn
+
+    local function GetSortedBlocklist()
+        local sorted = {}
+        for spellId, entry in pairs(db.Blocklist) do
+            local label
+            if type(entry) == "table" then
+                label = entry.label or tostring(spellId)
+            elseif type(entry) == "string" then
+                label = entry
+            else
+                label = tostring(spellId)
+            end
+            tinsert(sorted, { spellId = spellId, label = label, entry = entry })
+        end
+        table.sort(sorted, function(a, b) return a.label < b.label end)
+        return sorted
+    end
+
+    local function BuildDropdownOptions()
         local options = {}
-        for spellId, label in pairs(db.Blocklist) do
-            local text = type(label) == "string" and label or tostring(spellId)
-            options[tostring(spellId)] = text .. " (" .. spellId .. ")"
+        for spellId, entry in pairs(db.Blocklist) do
+            local label
+            if type(entry) == "table" then
+                label = entry.label or tostring(spellId)
+            elseif type(entry) == "string" then
+                label = entry
+            else
+                label = tostring(spellId)
+            end
+            local isDisabled = type(entry) == "table" and not entry.enabled
+            local text = label .. " (" .. spellId .. ")"
+            if isDisabled then
+                text = "|cff666666" .. text .. "|r"
+            end
+            options[tostring(spellId)] = text
         end
         return options
     end
 
-    local blocklistDropdown
-    local spellIdInput
-    local labelInput
+    local function GetFirstSpellId()
+        local sorted = GetSortedBlocklist()
+        if #sorted > 0 then
+            return sorted[1].spellId
+        end
+        return nil
+    end
+
+    local function UpdateSpellDisplay()
+        if not selectedSpellId or not db.Blocklist[selectedSpellId] then
+            spellIconFrame:Hide()
+            spellNameLabel:SetText("")
+            return
+        end
+
+        spellIconFrame:Show()
+
+        local entry = db.Blocklist[selectedSpellId]
+        local isDefault = type(entry) == "table" and entry.default
+        local isEnabled = type(entry) == "table" and entry.enabled ~= false or entry == true or type(entry) == "string"
+        local label = type(entry) == "table" and entry.label or (type(entry) == "string" and entry or "")
+
+        local spellInfo = C_Spell.GetSpellInfo(selectedSpellId)
+        local spellName = spellInfo and spellInfo.name or "Unknown Spell"
+        local spellIcon = spellInfo and spellInfo.iconID or 134400
+
+        spellIconTexture:SetTexture(spellIcon)
+        spellNameLabel:SetText(spellName)
+        spellIdInput:SetValue(tostring(selectedSpellId))
+        labelInput:SetValue(label)
+        enabledToggle.toggle:SetValue(isEnabled)
+
+        if isDefault then
+            deleteBtn:SetEnabled(false)
+        else
+            deleteBtn:SetEnabled(true)
+        end
+    end
+
+    local function SelectSpell(spellId)
+        selectedSpellId = spellId
+        UpdateSpellDisplay()
+    end
 
     local textRowSize = 34
     local infoRow = GUIFrame:CreateRow(card5.content, textRowSize)
@@ -421,71 +525,196 @@ GUIFrame:RegisterContent("CustomSkin_Debuffs", function(scrollChild, yOffset)
     manager:Register(infoText, "all")
     card5:AddRow(infoRow, textRowSize)
 
-    local sep1blocklist = GUIFrame:CreateSeparator(card5.content)
-    card5:AddRow(sep1blocklist, Theme.rowHeightSeparator)
+    local sep1 = GUIFrame:CreateSeparator(card5.content)
+    card5:AddRow(sep1, Theme.rowHeightSeparator)
 
-    local row5a = GUIFrame:CreateRow(card5.content, Theme.rowHeight)
-    blocklistDropdown = GUIFrame:CreateDropdown(row5a, "Blocked Spells", {
-        options = BuildBlocklistOptions(),
-        value = nil,
+    local selectRow = GUIFrame:CreateRow(card5.content, Theme.rowHeight)
+
+    blocklistDropdown = GUIFrame:CreateDropdown(selectRow, "Select Entry", {
+        options = BuildDropdownOptions(),
+        value = tostring(GetFirstSpellId()),
         callback = function(key)
             if key then
-                spellIdInput:SetValue(key)
-                local lbl = db.Blocklist[tonumber(key)]
-                labelInput:SetValue(type(lbl) == "string" and lbl or "")
+                SelectSpell(tonumber(key))
             end
         end
     })
-    row5a:AddWidget(blocklistDropdown, 0.5)
+    selectRow:AddWidget(blocklistDropdown, 0.5)
     manager:Register(blocklistDropdown, "all")
 
-    labelInput = GUIFrame:CreateEditBox(row5a, "Label", {
-        value = "",
-        callback = function() end
+    enabledToggle = GUIFrame:CreateCheckbox(selectRow, "Enabled", {
+        value = true,
+        callback = function(checked)
+            if selectedSpellId and db.Blocklist[selectedSpellId] then
+                local entry = db.Blocklist[selectedSpellId]
+                if type(entry) == "table" then
+                    entry.enabled = checked
+                else
+                    db.Blocklist[selectedSpellId] = { label = type(entry) == "string" and entry or nil, enabled = checked }
+                end
+                blocklistDropdown:SetOptions(BuildDropdownOptions())
+                blocklistDropdown:SetValue(tostring(selectedSpellId))
+                ApplySettings()
+            end
+        end
     })
-    row5a:AddWidget(labelInput, 0.5)
-    manager:Register(labelInput, "all")
-    card5:AddRow(row5a, Theme.rowHeight)
+    selectRow:AddWidget(enabledToggle, 0.5)
+    manager:Register(enabledToggle, "all")
+    card5:AddRow(selectRow, Theme.rowHeight)
 
-    local row5b = GUIFrame:CreateRow(card5.content, Theme.rowHeightLast)
-    spellIdInput = GUIFrame:CreateEditBox(row5b, "Spell ID", {
+    local sep2a = GUIFrame:CreateSeparator(card5.content)
+    card5:AddRow(sep2a, Theme.rowHeightSeparator)
+
+    local detailRow = GUIFrame:CreateRow(card5.content, Theme.rowHeight)
+    local spellInfoContainer = CreateFrame("Frame", nil, detailRow)
+    spellInfoContainer:SetHeight(Theme.rowHeight)
+    detailRow:AddWidget(spellInfoContainer, 0.5)
+
+    spellIconFrame = CreateFrame("Frame", nil, spellInfoContainer)
+    spellIconFrame:SetSize(34, 34)
+    spellIconFrame:SetPoint("LEFT", spellInfoContainer, "LEFT", 0, 0)
+    spellIconFrame:EnableMouse(true)
+
+    spellIconTexture = spellIconFrame:CreateTexture(nil, "ARTWORK")
+    spellIconTexture:SetPoint("TOPLEFT", 1, -1)
+    spellIconTexture:SetPoint("BOTTOMRIGHT", -1, 1)
+    spellIconTexture:SetTexture(134400)
+    NRSKNUI:ApplyZoom(spellIconTexture, NRSKNUI.GlobalZoom)
+
+    spellIconBorder = CreateFrame("Frame", nil, spellIconFrame, "BackdropTemplate")
+    spellIconBorder:SetAllPoints()
+    spellIconBorder:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+    spellIconBorder:SetBackdropBorderColor(1, 0, 0, 1)
+
+    spellIconFrame:SetScript("OnEnter", function(self)
+        if selectedSpellId then
+            GameTooltip:SetOwner(self, "ANCHOR_CURSOR_RIGHT", 30, 0)
+            GameTooltip:SetSpellByID(selectedSpellId)
+            GameTooltip:Show()
+        end
+    end)
+    spellIconFrame:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+
+    spellNameLabel = spellInfoContainer:CreateFontString(nil, "OVERLAY")
+    spellNameLabel:SetPoint("LEFT", spellIconFrame, "RIGHT", 6, 0)
+    spellNameLabel:SetPoint("RIGHT", spellInfoContainer, "RIGHT", -4, 0)
+    spellNameLabel:SetJustifyH("LEFT")
+    NRSKNUI:ApplyThemeFont(spellNameLabel, "normal")
+    spellNameLabel:SetTextColor(Theme.textSecondary[1], Theme.textSecondary[2], Theme.textSecondary[3], 1)
+
+    spellIdInput = GUIFrame:CreateEditBox(detailRow, "Spell ID", {
         value = "",
-        callback = function() end
+        callback = function(text)
+            local newSpellId = tonumber(text)
+            if newSpellId and selectedSpellId and newSpellId ~= selectedSpellId then
+                local entry = db.Blocklist[selectedSpellId]
+                if entry then
+                    db.Blocklist[newSpellId] = entry
+                    db.Blocklist[selectedSpellId] = nil
+                    selectedSpellId = newSpellId
+                    blocklistDropdown:SetOptions(BuildDropdownOptions())
+                    blocklistDropdown:SetValue(tostring(newSpellId))
+                    UpdateSpellDisplay()
+                    ApplySettings()
+                end
+            end
+        end
     })
-    row5b:AddWidget(spellIdInput, 0.5)
+    detailRow:AddWidget(spellIdInput, 0.25)
     manager:Register(spellIdInput, "all")
 
-    local addBtn = GUIFrame:CreateButton(row5b, "New", {
-        height = 24,
-        callback = function()
-            local spellId = tonumber(spellIdInput:GetValue())
-            if spellId then
-                local label = labelInput:GetValue()
-                db.Blocklist[spellId] = (label and label ~= "") and label or true
-                blocklistDropdown:SetOptions(BuildBlocklistOptions())
-                spellIdInput:SetValue("")
-                labelInput:SetValue("")
-                ApplySettings()
+    labelInput = GUIFrame:CreateEditBox(detailRow, "Label", {
+        value = "",
+        callback = function(text)
+            if selectedSpellId and db.Blocklist[selectedSpellId] then
+                local entry = db.Blocklist[selectedSpellId]
+                if type(entry) == "table" then
+                    entry.label = (text and text ~= "") and text or nil
+                else
+                    db.Blocklist[selectedSpellId] = { label = (text and text ~= "") and text or nil, enabled = true }
+                end
+                blocklistDropdown:SetOptions(BuildDropdownOptions())
+                blocklistDropdown:SetValue(tostring(selectedSpellId))
             end
         end
     })
-    row5b:AddWidget(addBtn, 0.25, nil, 0, -14)
+    detailRow:AddWidget(labelInput, 0.25)
+    manager:Register(labelInput, "all")
+    card5:AddRow(detailRow, Theme.rowHeight)
 
-    local removeBtn = GUIFrame:CreateButton(row5b, "Delete", {
+    local buttonSep = GUIFrame:CreateSeparator(card5.content)
+    card5:AddRow(buttonSep, Theme.rowHeightSeparator)
+
+    local buttonRow = GUIFrame:CreateRow(card5.content, Theme.rowHeightLast)
+    local addBtn = GUIFrame:CreateButton(buttonRow, "Add New Entry", {
         height = 24,
         callback = function()
-            local spellId = tonumber(spellIdInput:GetValue())
-            if spellId and db.Blocklist[spellId] then
-                db.Blocklist[spellId] = nil
-                blocklistDropdown:SetOptions(BuildBlocklistOptions())
-                spellIdInput:SetValue("")
-                labelInput:SetValue("")
+            local entryNum = 1
+            local function labelExists(num)
+                local testLabel = "Entry " .. num
+                for _, entry in pairs(db.Blocklist) do
+                    local lbl = type(entry) == "table" and entry.label or (type(entry) == "string" and entry)
+                    if lbl == testLabel then return true end
+                end
+                return false
+            end
+            while labelExists(entryNum) do
+                entryNum = entryNum + 1
+            end
+            local newLabel = "Entry " .. entryNum
+            local newSpellId = -1
+            while db.Blocklist[newSpellId] do
+                newSpellId = newSpellId - 1
+            end
+
+            db.Blocklist[newSpellId] = {
+                label = newLabel,
+                enabled = true
+            }
+
+            blocklistDropdown:SetOptions(BuildDropdownOptions())
+            blocklistDropdown:SetValue(tostring(newSpellId))
+            SelectSpell(newSpellId)
+            ApplySettings()
+        end
+    })
+    buttonRow:AddWidget(addBtn, 0.5)
+
+    deleteBtn = GUIFrame:CreateButton(buttonRow, "Delete Entry", {
+        height = 24,
+        callback = function()
+            if selectedSpellId and db.Blocklist[selectedSpellId] then
+                local entry = db.Blocklist[selectedSpellId]
+                if type(entry) == "table" and entry.default then
+                    return
+                end
+                db.Blocklist[selectedSpellId] = nil
+                blocklistDropdown:SetOptions(BuildDropdownOptions())
+                local nextSpell = GetFirstSpellId()
+                if nextSpell then
+                    blocklistDropdown:SetValue(tostring(nextSpell))
+                    SelectSpell(nextSpell)
+                else
+                    selectedSpellId = nil
+                    spellIdInput:SetValue("")
+                    labelInput:SetValue("")
+                    UpdateSpellDisplay()
+                end
                 ApplySettings()
             end
         end
     })
-    row5b:AddWidget(removeBtn, 0.25, nil, 0, -14)
-    card5:AddRow(row5b, Theme.rowHeightLast, 0)
+    buttonRow:AddWidget(deleteBtn, 0.5)
+    card5:AddRow(buttonRow, Theme.rowHeightLast - 14, 0)
+
+    local firstSpell = GetFirstSpellId()
+    if firstSpell then
+        SelectSpell(firstSpell)
+    else
+        spellIconFrame:Hide()
+    end
 
     yOffset = card5:GetNextOffset()
 

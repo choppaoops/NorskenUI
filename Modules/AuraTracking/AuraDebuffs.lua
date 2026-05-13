@@ -55,6 +55,17 @@ local FILTER_NAMES = {
     "IMPORTANT"
 }
 
+local DEFAULT_BLOCKLIST = {
+    [390435] = { label = "BL (Hunter)", enabled = true, default = true },
+    [57723] = { label = "BL (Drums)", enabled = true, default = true },
+    [95809] = { label = "BL (Hunter)", enabled = true, default = true },
+    [80354] = { label = "BL (Mage)", enabled = true, default = true },
+    [308312] = { label = "Time Trial", enabled = true, default = true },
+    [57724] = { label = "BL (Shaman)", enabled = true, default = true },
+    [160455] = { label = "BL (Hunter)", enabled = true, default = true },
+    [264689] = { label = "BL (Hunter)", enabled = true, default = true },
+}
+
 function DEBUFFS:UpdateDB()
     self.db = NRSKNUI.db.profile.Skinning.DebuffTracking
     self:BuildFilterStrings()
@@ -63,7 +74,19 @@ end
 
 function DEBUFFS:OnInitialize()
     self:UpdateDB()
+    self:ApplyDefaultBlocklist()
     self:SetEnabledState(false)
+end
+
+function DEBUFFS:ApplyDefaultBlocklist()
+    if not self.db.Blocklist then
+        self.db.Blocklist = {}
+    end
+    for spellId, entry in pairs(DEFAULT_BLOCKLIST) do
+        if self.db.Blocklist[spellId] == nil then
+            self.db.Blocklist[spellId] = { label = entry.label, enabled = entry.enabled, default = true }
+        end
+    end
 end
 
 function DEBUFFS:BuildFilterStrings()
@@ -88,7 +111,8 @@ local function ShouldShowAura(auraInstanceID, aura, db, filterStrings)
     -- Check blocklist filter, this only works for non secret auras
     local spellId = aura.spellId
     if spellId and not issecretvalue(spellId) then
-        if db.Blocklist and db.Blocklist[spellId] then
+        local entry = db.Blocklist and db.Blocklist[spellId]
+        if entry and (entry == true or (type(entry) == "table" and entry.enabled)) then
             return false
         end
     end
