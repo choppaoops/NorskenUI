@@ -107,14 +107,17 @@ function GUIFrame:CreateFontSettingsCard(scrollChild, yOffset, config)
     local shadowSubWidgets = {}
 
     local function UpdateShadowState()
-        local usingSoftOutline = getValue(keys.fontOutline, "OUTLINE") == "SOFTOUTLINE"
+        local outline = getValue(keys.fontOutline, "OUTLINE")
+        local noShadowOutline = outline == "SOFTOUTLINE"
+            or outline == "SLUG"
+            or outline == "SLUG,OUTLINE"
         local shadowEnabled = shadowDb[shadowKeys.enabled] == true
 
         if shadowEnableCheck and shadowEnableCheck.SetEnabled then
-            shadowEnableCheck:SetEnabled(not usingSoftOutline)
+            shadowEnableCheck:SetEnabled(not noShadowOutline)
         end
 
-        local subEnabled = not usingSoftOutline and shadowEnabled
+        local subEnabled = not noShadowOutline and shadowEnabled
         for _, widget in ipairs(shadowSubWidgets) do
             if widget.SetEnabled then
                 widget:SetEnabled(subEnabled)
@@ -154,6 +157,8 @@ function GUIFrame:CreateFontSettingsCard(scrollChild, yOffset, config)
     }
     if includeSoftOutline then
         table_insert(outlineOptions, { key = "SOFTOUTLINE", text = "Soft" })
+        table_insert(outlineOptions, { key = "SLUG", text = "Slug" })
+        table_insert(outlineOptions, { key = "SLUG,OUTLINE", text = "Slug Outline" })
     end
 
     local outlineDropdown = GUIFrame:CreateDropdown(row1, "Outline", {

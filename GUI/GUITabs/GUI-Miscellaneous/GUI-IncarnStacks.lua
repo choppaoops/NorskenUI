@@ -497,10 +497,12 @@ GUIFrame:RegisterContent("IncarnStacks", function(scrollChild, yOffset)
 
     -- Outline list
     local outlineList = {
-        { key = "NONE",         text = "None" },
-        { key = "OUTLINE",      text = "Outline" },
-        { key = "THICKOUTLINE", text = "Thick" },
-        { key = "SOFTOUTLINE",  text = "Soft" },
+        { key = "NONE",                    text = "None" },
+        { key = "OUTLINE",                 text = "Outline" },
+        { key = "THICKOUTLINE",            text = "Thick" },
+        { key = "SOFTOUTLINE",             text = "Soft" },
+        { key = "SLUG",                    text = "Slug" },
+        { key = "SLUG,OUTLINE",            text = "Slug Outline" },
     }
 
     -- Stack Font and Size

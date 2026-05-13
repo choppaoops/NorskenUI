@@ -324,7 +324,7 @@ GUIFrame:RegisterPanel("ActionBars", function(container)
         row3a:AddWidget(fontDropdown, 0.5)
         manager:Register(fontDropdown, "main")
 
-        local outlineList = { ["NONE"] = "None", ["OUTLINE"] = "Outline", ["THICKOUTLINE"] = "Thick" }
+        local outlineList = { ["NONE"] = "None", ["OUTLINE"] = "Outline", ["THICKOUTLINE"] = "Thick", ["SLUG"] = "Slug", ["SLUG,OUTLINE"] = "Slug Outline" }
         local outlineDropdown = GUIFrame:CreateDropdown(row3a, "Outline", {
             options = outlineList,
             value = db.FontOutline,

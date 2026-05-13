@@ -212,8 +212,8 @@ local Defaults = {
             ParentFrame = "UIParent",     -- Parent frame name (when SELECTFRAME)
             FontFace = "Expressway",      -- Font face
             FontSize = 16,                -- Font size
-            FontOutline = "SOFTOUTLINE",  -- Font outline: NONE, OUTLINE, THICKOUTLINE, SOFTOUTLINE
-            FontShadow = {                -- Font shadow settings (disabled when SOFTOUTLINE)
+            FontOutline = "SOFTOUTLINE",  -- Font outline: NONE, OUTLINE, THICKOUTLINE, SOFTOUTLINE, SLUG, SLUG,OUTLINE
+            FontShadow = {                -- Font shadow settings (disabled for SOFTOUTLINE/SLUG variants)
                 Enabled = false,          -- Enable font shadow
                 Color = { 0, 0, 0, 0 },   -- Shadow color
                 OffsetX = 0,              -- Shadow X offset
@@ -620,7 +620,7 @@ local Defaults = {
                 -- Font settings
                 FontFace = "Expressway",      -- Font face
                 FontSize = 36,                -- Font size
-                FontOutline = "SOFTOUTLINE",  -- Font outline (NONE, OUTLINE, THICKOUTLINE)
+                FontOutline = "SOFTOUTLINE",  -- Font outline (NONE, OUTLINE, THICKOUTLINE, SOFTOUTLINE, SLUG, SLUG,OUTLINE)
                 -- Position settings
                 Strata = "HIGH",              -- Frame strata
                 anchorFrameType = "UIPARENT", -- Anchor frame type
@@ -1926,7 +1926,7 @@ local Defaults = {
                 barTexture = "NorskenUI", -- LSM statusbar texture key
                 fontFace = "Expressway",
                 fontSize = 14,
-                fontOutline = "OUTLINE", -- NONE, OUTLINE, THICKOUTLINE, SOFTOUTLINE
+                fontOutline = "OUTLINE", -- NONE, OUTLINE, THICKOUTLINE, SOFTOUTLINE, SLUG, SLUG,OUTLINE
                 iconEnabled = true,
             },
 
@@ -1934,7 +1934,7 @@ local Defaults = {
             TextDisplay = {
                 fontFace = "Expressway",
                 fontSize = 24,
-                fontOutline = "SOFTOUTLINE", -- NONE, OUTLINE, THICKOUTLINE, SOFTOUTLINE
+                fontOutline = "SOFTOUTLINE", -- NONE, OUTLINE, THICKOUTLINE, SOFTOUTLINE, SLUG, SLUG,OUTLINE
                 textAlign = "CENTER",        -- LEFT, CENTER, RIGHT
             },
 

@@ -419,9 +419,16 @@ function NRSKNUI:ApplyFontToText(fontString, fontName, fontSize, fontOutline, sh
     fontOutline = fontOutline or "OUTLINE"
     shadowSettings = shadowSettings or {}
 
-    local success = self:ApplyFont(fontString, fontName, fontSize, fontOutline)
+    local useSoftOutline = fontOutline == "SOFTOUTLINE"
 
+    local blizzardOutline = fontOutline
     if fontOutline == "SOFTOUTLINE" then
+        blizzardOutline = "NONE"
+    end
+
+    local success = self:ApplyFont(fontString, fontName, fontSize, blizzardOutline)
+
+    if useSoftOutline then
         fontString:SetShadowOffset(0, 0)
         fontString:SetShadowColor(0, 0, 0, 0)
 
@@ -434,7 +441,8 @@ function NRSKNUI:ApplyFontToText(fontString, fontName, fontSize, fontOutline, sh
             fontString.softOutline:SetShown(false)
         end
 
-        if shadowSettings.Enabled then
+        local noShadowOutline = fontOutline == "SLUG" or fontOutline == "SLUG,OUTLINE"
+        if shadowSettings.Enabled and not noShadowOutline then
             local c = shadowSettings.Color or { 0, 0, 0, 1 }
             fontString:SetShadowColor(c[1], c[2], c[3], (c[4] and c[4] > 0) and c[4] or 0.9)
             fontString:SetShadowOffset(shadowSettings.OffsetX or 1, shadowSettings.OffsetY or -1)

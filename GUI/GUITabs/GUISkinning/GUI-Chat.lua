@@ -140,7 +140,7 @@ GUIFrame:RegisterContent("Chat", function(scrollChild, yOffset)
     table_insert(allWidgets, fontDropdown)
 
     -- Font Outline Dropdown
-    local outlineList = { ["NONE"] = "None", ["OUTLINE"] = "Outline", ["THICKOUTLINE"] = "Thick" }
+    local outlineList = { ["NONE"] = "None", ["OUTLINE"] = "Outline", ["THICKOUTLINE"] = "Thick", ["SLUG"] = "Slug", ["SLUG,OUTLINE"] = "Slug Outline" }
     local outlineDropdown = GUIFrame:CreateDropdown(row2, "Outline", {
         options = outlineList,
         value = db.FontOutline or "OUTLINE",

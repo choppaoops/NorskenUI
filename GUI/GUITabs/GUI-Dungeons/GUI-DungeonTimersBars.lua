@@ -16,10 +16,12 @@ local SETTINGS_GROWTH_OPTIONS = {
 }
 
 local SETTINGS_TEXT_OUTLINE_OPTIONS = {
-    { key = "NONE",         text = "None" },
-    { key = "OUTLINE",      text = "Outline" },
-    { key = "THICKOUTLINE", text = "Thick" },
-    { key = "SOFTOUTLINE",  text = "Soft" },
+    { key = "NONE",                    text = "None" },
+    { key = "OUTLINE",                 text = "Outline" },
+    { key = "THICKOUTLINE",            text = "Thick" },
+    { key = "SOFTOUTLINE",             text = "Soft" },
+    { key = "SLUG",                    text = "Slug" },
+    { key = "SLUG,OUTLINE",            text = "Slug Outline" },
 }
 
 local function GetSettingsDB()

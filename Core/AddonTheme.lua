@@ -281,10 +281,12 @@ NRSKNUI.ThemeDefaults = ThemeDefaults
 
 -- Font outline options (shared constant for dropdowns)
 NRSKNUI.FontOutlineOptions = {
-    { key = "NONE",         text = "None" },
-    { key = "OUTLINE",      text = "Outline" },
-    { key = "THICKOUTLINE", text = "Thick" },
-    { key = "SOFTOUTLINE",  text = "Soft" },
+    { key = "NONE",                    text = "None" },
+    { key = "OUTLINE",                 text = "Outline" },
+    { key = "THICKOUTLINE",            text = "Thick" },
+    { key = "SOFTOUTLINE",             text = "Soft" },
+    { key = "SLUG",                    text = "Slug" },
+    { key = "SLUG,OUTLINE",            text = "Slug Outline" },
 }
 
 NRSKNUI.GlobalZoom = 0.3

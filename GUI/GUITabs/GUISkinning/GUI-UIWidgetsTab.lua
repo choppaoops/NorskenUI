@@ -77,6 +77,8 @@ GUIFrame:RegisterContent("UIWidgets", function(scrollChild, yOffset)
         { key = "NONE",         text = "None" },
         { key = "OUTLINE",      text = "Outline" },
         { key = "THICKOUTLINE", text = "Thick" },
+        { key = "SLUG",         text = "Slug" },
+        { key = "SLUG,OUTLINE", text = "Slug Outline" },
     }
 
     -- Build font list
