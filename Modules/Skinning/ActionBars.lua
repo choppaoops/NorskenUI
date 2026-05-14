@@ -6,7 +6,6 @@ local NRSKNUI = select(2, ...)
 --TODO: Flyout buttonbar growth direction
 --TODO: Fix bug with pet bar on classes that temporarily spawn their pet, in this case if u spawn the pet and pet times out/dies in combat, the pet bar is shown until you leave combat
 --TODO: Add hide keybind, macro and charge/stack text support as a global and also per par gobal override
---TODO: Hide non active actionbars from the editmode.
 
 -- Check for addon object
 if not NorskenUI then
@@ -951,12 +950,16 @@ function ACB:OnEnable()
         for _, cfg in ipairs(configTable) do
             SkinBar(cfg)
             SetupMouseoverScript(cfg.nrsknui_container)
-            RegisterBarWithEditMode(
-                cfg.name,
-                cfg.dbReference,
-                cfg.nrsknui_container,
-                cfg.relativeTo
-            )
+
+            -- Only register with edit mode if bar is enabled
+            if cfg.enabled then
+                RegisterBarWithEditMode(
+                    cfg.name,
+                    cfg.dbReference,
+                    cfg.nrsknui_container,
+                    cfg.relativeTo
+                )
+            end
 
             -- Setup bonusbar override for Bar1
             if cfg.name == "Bar1" and cfg.nrsknui_container then
@@ -1294,15 +1297,19 @@ function ACB:UpdateAllLayouts()
     end
 end
 
--- Toggle bar visibility
+-- Toggle bar visibility and edit mode registration
 function ACB:UpdateBarEnabled(barKey)
     local barDB, container = GetBarData(barKey)
     if not barDB or not container then return end
 
     if barDB.Enabled then
         container:Show()
+        -- Register with edit mode when enabled
+        RegisterBarWithEditMode(barKey, barDB, container, _G[barDB.ParentFrame] or UIParent)
     else
         container:Hide()
+        -- Unregister from edit mode when disabled
+        NRSKNUI.EditMode:UnregisterElement("ActionBars_" .. barKey)
     end
 end
 
