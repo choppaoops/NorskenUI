@@ -48,9 +48,10 @@ GUIFrame.SidebarConfig = {
             text = "Aura Tracking",
             defaultExpanded = false,
             items = {
-                { id = "CustomSkin_Buffs",     text = "Buffs" },
-                { id = "CustomSkin_Debuffs",   text = "Debuffs" },
-                { id = "CustomSkin_Externals", text = "External & Defensive Buffs" },
+                { id = "CustomSkin_Buffs",        text = "Default Buffs" },
+                { id = "CustomSkin_DebuffsDefault", text = "Default Debuffs" },
+                { id = "CustomSkin_Debuffs",      text = "Advanced Debuffs" },
+                { id = "CustomSkin_Externals",    text = "External & Defensive Buffs" },
             }
         },
         {

@@ -92,9 +92,10 @@
     <Script file="GUITabs\GUISkinning\GUI-UIWidgetsTab.lua" />
     <Script file="GUITabs\GUISkinning\GUI-BnetFrame.lua" />
 
-    <!-- GUI Skinning Tabs -->
+    <!-- GUI Aura Tracking Tabs -->
     <Script file="GUITabs\GUI-AuraTracking\GUI-Buffs.lua" />
     <Script file="GUITabs\GUI-AuraTracking\GUI-Debuffs.lua" />
+    <Script file="GUITabs\GUI-AuraTracking\GUI-DebuffsDefault.lua" />
     <Script file="GUITabs\GUI-AuraTracking\GUI-ExternalBuffs.lua" />
 
     <!-- GUI Dungeons Tabs -->

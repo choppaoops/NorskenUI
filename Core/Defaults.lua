@@ -1761,6 +1761,50 @@ local Defaults = {
                 },
                 Blocklist = {},
             },
+            DebuffTrackingDefault = {
+                Enabled = true,
+
+                IconSize = 41,
+                IconSpacing = 2,
+                IconsPerRow = 10,
+                MaxRows = 1,
+                Swipe = true,
+                Reverse = true,
+
+                BorderColor = { 0.8, 0, 0, 1 },
+
+                FontFace = "Expressway",
+                FontSize = 12,
+                FontOutline = "OUTLINE",
+                TimerFontSize = 14,
+
+                TimerPosition = {
+                    AnchorFrom = "CENTER",
+                    AnchorTo = "CENTER",
+                    XOffset = 0,
+                    YOffset = 0,
+                },
+
+                StackPosition = {
+                    AnchorFrom = "BOTTOMRIGHT",
+                    AnchorTo = "BOTTOMRIGHT",
+                    XOffset = 2,
+                    YOffset = 2,
+                },
+
+                Strata = "MEDIUM",
+                anchorFrameType = "UIPARENT",
+                ParentFrame = "UIParent",
+                Position = {
+                    AnchorFrom = "TOPRIGHT",
+                    AnchorTo = "TOPRIGHT",
+                    XOffset = -234,
+                    YOffset = -224,
+                },
+
+                GrowHorizontal = "LEFT",
+                GrowVertical = "DOWN",
+            },
 
             -- ExternalBuffTracking
             ExternalBuffTracking = {

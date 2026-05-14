@@ -3,5 +3,6 @@
 
     <Script file="AuraBuffs.lua" />
     <Script file="AuraDebuffs.lua" />
+    <Script file="AuraDebuffsDefault.lua" />
     <Script file="AuraExternals.lua" />
 </Ui>

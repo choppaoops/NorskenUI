@@ -3,70 +3,54 @@ local NRSKNUI = select(2, ...)
 local GUIFrame = NRSKNUI.GUIFrame
 local Theme = NRSKNUI.Theme
 
-GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
-    if NRSKNUI:ShouldNotLoadModule() then return yOffset end
-    local db = NRSKNUI.db and NRSKNUI.db.profile.Skinning.BuffTracking
+GUIFrame:RegisterContent("CustomSkin_DebuffsDefault", function(scrollChild, yOffset)
+    local db = NRSKNUI.db and NRSKNUI.db.profile.Skinning.DebuffTrackingDefault
     if not db then return GUIFrame:ShowDBError(scrollChild, yOffset) end
 
-    ---@type BuffTracking?
-    local BUFFS = NorskenUI and NorskenUI:GetModule("BuffTracking", true)
+    ---@type DebuffTrackingDefault?
+    local DEBUFFS = NorskenUI and NorskenUI:GetModule("DebuffTrackingDefault", true)
     local manager = GUIFrame:CreateWidgetStateManager()
 
     manager:SetCondition("swipeOn", function() return db.Swipe end)
 
     local function ApplySettings()
-        if BUFFS and BUFFS:IsEnabled() and BUFFS.ApplySettings then
-            BUFFS:ApplySettings()
+        if DEBUFFS and DEBUFFS:IsEnabled() and DEBUFFS.ApplySettings then
+            DEBUFFS:ApplySettings()
         end
     end
 
     local function UpdateAllWidgetStates() manager:UpdateAll(db.Enabled) end
 
-    -- Card 1
-    local card1 = GUIFrame:CreateCard(scrollChild, "Default Buff Frame", yOffset)
+    -- Card 1: Enable
+    local card1 = GUIFrame:CreateCard(scrollChild, "Default Debuff Frame", yOffset)
 
     local row1 = GUIFrame:CreateRow(card1.content, Theme.rowHeightLast)
-    local enableCheck = GUIFrame:CreateCheckbox(row1, "Default Buff Frame", {
+    local enableCheck = GUIFrame:CreateCheckbox(row1, "Default Debuff Frame", {
         value = db.Enabled,
         callback = function(checked)
             db.Enabled = checked
-            if BUFFS then
-                BUFFS.db.Enabled = checked
+            if DEBUFFS then
+                DEBUFFS.db.Enabled = checked
                 if checked then
-                    NorskenUI:EnableModule("BuffTracking")
+                    NorskenUI:EnableModule("DebuffTrackingDefault")
                 else
-                    NorskenUI:DisableModule("BuffTracking")
+                    NorskenUI:DisableModule("DebuffTrackingDefault")
                 end
             end
             UpdateAllWidgetStates()
             NRSKNUI:CreateReloadPrompt("Enabling/Disabling this module requires a reload.")
         end,
         msgPopup = true,
-        msgText = "Custom Buff Frame",
+        msgText = "Default Debuff Frame",
     })
     row1:AddWidget(enableCheck, 1)
     card1:AddRow(row1, Theme.rowHeightLast, 0)
 
     yOffset = card1:GetNextOffset()
 
-    -- Card 2
+    -- Card 2: Icon Settings
     local card2 = GUIFrame:CreateCard(scrollChild, "Icon Settings", yOffset)
     manager:Register(card2, "all")
-
-    local row2ab = GUIFrame:CreateRow(card2.content, Theme.rowHeight)
-    local includeEnchantsCheck = GUIFrame:CreateCheckbox(row2ab, "Include Weapon Enchants", {
-        value = db.IncludeWeaponEnchants,
-        callback = function(checked)
-            db.IncludeWeaponEnchants = checked
-            NRSKNUI:CreateReloadPrompt("Changing this setting requires a reload.")
-        end
-    })
-    row2ab:AddWidget(includeEnchantsCheck, 1)
-    manager:Register(includeEnchantsCheck, "all")
-    card2:AddRow(row2ab, Theme.rowHeight)
-
-    local separator67 = GUIFrame:CreateSeparator(card2.content)
-    card2:AddRow(separator67, Theme.rowHeightSeparator)
 
     local row2a = GUIFrame:CreateRow(card2.content, Theme.rowHeight)
     local iconSizeSlider = GUIFrame:CreateSlider(row2a, "Icon Size", {
@@ -76,7 +60,7 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
         value = db.IconSize,
         callback = function(value)
             db.IconSize = value
-            NRSKNUI:CreateReloadPrompt("Changing icon size requires a reload.")
+            ApplySettings()
         end
     })
     row2a:AddWidget(iconSizeSlider, 0.5)
@@ -89,7 +73,7 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
         value = db.IconSpacing,
         callback = function(value)
             db.IconSpacing = value
-            NRSKNUI:CreateReloadPrompt("Changing icon spacing requires a reload.")
+            ApplySettings()
         end
     })
     row2a:AddWidget(iconSpacingSlider, 0.5)
@@ -104,7 +88,7 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
         value = db.IconsPerRow,
         callback = function(value)
             db.IconsPerRow = value
-            NRSKNUI:CreateReloadPrompt("Changing icons per row requires a reload.")
+            ApplySettings()
         end
     })
     row2b:AddWidget(iconsPerRowSlider, 0.5)
@@ -117,7 +101,7 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
         value = db.MaxRows,
         callback = function(value)
             db.MaxRows = value
-            NRSKNUI:CreateReloadPrompt("Changing max rows requires a reload.")
+            ApplySettings()
         end
     })
     row2b:AddWidget(maxRowsSlider, 0.5)
@@ -127,13 +111,6 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
     local sep2a = GUIFrame:CreateSeparator(card2.content)
     card2:AddRow(sep2a, Theme.rowHeightSeparator)
 
-    local function GetGrowthParts()
-        local h, v = db.GrowthDirection:match("^(%u+)_(%u+)$")
-        return h, v
-    end
-
-    local currentH, currentV = GetGrowthParts()
-
     local row2c = GUIFrame:CreateRow(card2.content, Theme.rowHeight)
     local growHList = {
         { key = "LEFT",  text = "Left" },
@@ -141,11 +118,10 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
     }
     local growHDropdown = GUIFrame:CreateDropdown(row2c, "Grow Horizontal", {
         options = growHList,
-        value = currentH,
+        value = db.GrowHorizontal,
         callback = function(key)
-            currentH = key
-            db.GrowthDirection = currentH .. "_" .. currentV
-            NRSKNUI:CreateReloadPrompt("Changing growth direction requires a reload.")
+            db.GrowHorizontal = key
+            ApplySettings()
         end
     })
     row2c:AddWidget(growHDropdown, 0.5)
@@ -157,11 +133,10 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
     }
     local growVDropdown = GUIFrame:CreateDropdown(row2c, "Then Vertical", {
         options = growVList,
-        value = currentV,
+        value = db.GrowVertical,
         callback = function(key)
-            currentV = key
-            db.GrowthDirection = currentH .. "_" .. currentV
-            NRSKNUI:CreateReloadPrompt("Changing growth direction requires a reload.")
+            db.GrowVertical = key
+            ApplySettings()
         end
     })
     row2c:AddWidget(growVDropdown, 0.5)
@@ -178,6 +153,7 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
             db.Swipe = checked
             ApplySettings()
             UpdateAllWidgetStates()
+            if DEBUFFS then DEBUFFS:TogglePreview() end
         end
     })
     rowSwipe:AddWidget(swipeCheck, 0.5)
@@ -188,6 +164,7 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
         callback = function(checked)
             db.Reverse = checked
             ApplySettings()
+            if DEBUFFS then DEBUFFS:TogglePreview() end
         end
     })
     rowSwipe:AddWidget(reverseCheck, 0.5)
@@ -196,11 +173,11 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
 
     yOffset = card2:GetNextOffset()
 
-    -- Card 3
-    local card3 = GUIFrame:CreateCard(scrollChild, "Color Settings", yOffset)
+    -- Card 3: Visual Settings
+    local card3 = GUIFrame:CreateCard(scrollChild, "Visual Settings", yOffset)
     manager:Register(card3, "all")
 
-    local row3a = GUIFrame:CreateRow(card3.content, Theme.rowHeight)
+    local row3a = GUIFrame:CreateRow(card3.content, Theme.rowHeightLast)
     local borderColorPicker = GUIFrame:CreateColorPicker(row3a, "Border Color", {
         color = db.BorderColor,
         callback = function(r, g, b, a)
@@ -208,27 +185,15 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
             ApplySettings()
         end
     })
-    row3a:AddWidget(borderColorPicker, 0.5)
+    row3a:AddWidget(borderColorPicker, 1)
     manager:Register(borderColorPicker, "all")
-    card3:AddRow(row3a, Theme.rowHeight)
-
-    local row3b = GUIFrame:CreateRow(card3.content, Theme.rowHeightLast)
-    local enchantColorPicker = GUIFrame:CreateColorPicker(row3b, "Weapon Enchant Border", {
-        color = db.EnchantBorderColor,
-        callback = function(r, g, b, a)
-            db.EnchantBorderColor = { r, g, b, a }
-            ApplySettings()
-        end
-    })
-    row3b:AddWidget(enchantColorPicker, 0.5)
-    manager:Register(enchantColorPicker, "all")
-    card3:AddRow(row3b, Theme.rowHeightLast, 0)
+    card3:AddRow(row3a, Theme.rowHeightLast, 0)
 
     yOffset = card3:GetNextOffset()
 
-    -- Card 5
-    local card5 = GUIFrame:CreateCard(scrollChild, "Text Positions", yOffset)
-    manager:Register(card5, "all")
+    -- Card 4: Text Positions
+    local card4 = GUIFrame:CreateCard(scrollChild, "Text Positions", yOffset)
+    manager:Register(card4, "all")
 
     local textAnchorOptions = {
         { key = "TOPLEFT",     text = "Top Left" },
@@ -242,8 +207,8 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
         { key = "BOTTOMRIGHT", text = "Bottom Right" },
     }
 
-    local row5a = GUIFrame:CreateRow(card5.content, Theme.rowHeight)
-    local timerAnchorDropdown = GUIFrame:CreateDropdown(row5a, "Timer Anchor", {
+    local row4a = GUIFrame:CreateRow(card4.content, Theme.rowHeight)
+    local timerAnchorDropdown = GUIFrame:CreateDropdown(row4a, "Timer Anchor", {
         options = textAnchorOptions,
         value = db.TimerPosition.AnchorFrom,
         callback = function(key)
@@ -252,10 +217,10 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
             ApplySettings()
         end
     })
-    row5a:AddWidget(timerAnchorDropdown, 1 / 3)
+    row4a:AddWidget(timerAnchorDropdown, 1 / 3)
     manager:Register(timerAnchorDropdown, "all")
 
-    local timerXSlider = GUIFrame:CreateSlider(row5a, "Timer X", {
+    local timerXSlider = GUIFrame:CreateSlider(row4a, "Timer X", {
         min = -50,
         max = 50,
         step = 1,
@@ -265,10 +230,10 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
             ApplySettings()
         end
     })
-    row5a:AddWidget(timerXSlider, 1 / 3)
+    row4a:AddWidget(timerXSlider, 1 / 3)
     manager:Register(timerXSlider, "all")
 
-    local timerYSlider = GUIFrame:CreateSlider(row5a, "Timer Y", {
+    local timerYSlider = GUIFrame:CreateSlider(row4a, "Timer Y", {
         min = -50,
         max = 50,
         step = 1,
@@ -278,15 +243,15 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
             ApplySettings()
         end
     })
-    row5a:AddWidget(timerYSlider, 1 / 3)
+    row4a:AddWidget(timerYSlider, 1 / 3)
     manager:Register(timerYSlider, "all")
-    card5:AddRow(row5a, Theme.rowHeight)
+    card4:AddRow(row4a, Theme.rowHeight)
 
-    local sep6a = GUIFrame:CreateSeparator(card5.content)
-    card5:AddRow(sep6a, Theme.rowHeightSeparator)
+    local sep4 = GUIFrame:CreateSeparator(card4.content)
+    card4:AddRow(sep4, Theme.rowHeightSeparator)
 
-    local row5stack = GUIFrame:CreateRow(card5.content, Theme.rowHeightLast)
-    local stackAnchorDropdown = GUIFrame:CreateDropdown(row5stack, "Stack Anchor", {
+    local row4b = GUIFrame:CreateRow(card4.content, Theme.rowHeightLast)
+    local stackAnchorDropdown = GUIFrame:CreateDropdown(row4b, "Stack Anchor", {
         options = textAnchorOptions,
         value = db.StackPosition.AnchorFrom,
         callback = function(key)
@@ -295,10 +260,10 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
             ApplySettings()
         end
     })
-    row5stack:AddWidget(stackAnchorDropdown, 1 / 3)
+    row4b:AddWidget(stackAnchorDropdown, 1 / 3)
     manager:Register(stackAnchorDropdown, "all")
 
-    local stackXSlider = GUIFrame:CreateSlider(row5stack, "Stack X", {
+    local stackXSlider = GUIFrame:CreateSlider(row4b, "Stack X", {
         min = -50,
         max = 50,
         step = 1,
@@ -308,10 +273,10 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
             ApplySettings()
         end
     })
-    row5stack:AddWidget(stackXSlider, 1 / 3)
+    row4b:AddWidget(stackXSlider, 1 / 3)
     manager:Register(stackXSlider, "all")
 
-    local stackYSlider = GUIFrame:CreateSlider(row5stack, "Stack Y", {
+    local stackYSlider = GUIFrame:CreateSlider(row4b, "Stack Y", {
         min = -50,
         max = 50,
         step = 1,
@@ -321,13 +286,13 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
             ApplySettings()
         end
     })
-    row5stack:AddWidget(stackYSlider, 1 / 3)
+    row4b:AddWidget(stackYSlider, 1 / 3)
     manager:Register(stackYSlider, "all")
-    card5:AddRow(row5stack, Theme.rowHeightLast, 0)
+    card4:AddRow(row4b, Theme.rowHeightLast, 0)
 
-    yOffset = card5:GetNextOffset()
+    yOffset = card4:GetNextOffset()
 
-    -- Card 4
+    -- Card 5: Font Settings
     local fontCard, fontOffset, fontWidgets = GUIFrame:CreateFontSettingsCard(scrollChild, yOffset, {
         title = "Font Settings",
         db = db,
@@ -344,14 +309,14 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
 
     yOffset = fontOffset
 
-    -- Card 7
+    -- Card 6: Position
     local posCard, posOffset = GUIFrame:CreatePositionCard(scrollChild, yOffset, {
         db = db,
         showAnchorFrameType = true,
         showStrata = true,
         onChangeCallback = function()
-            if BUFFS and BUFFS.ApplyPosition then
-                BUFFS:ApplyPosition()
+            if DEBUFFS and DEBUFFS.ApplyPosition then
+                DEBUFFS:ApplyPosition()
             end
         end,
     })

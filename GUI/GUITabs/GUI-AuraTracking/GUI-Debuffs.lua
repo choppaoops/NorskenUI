@@ -32,10 +32,10 @@ GUIFrame:RegisterContent("CustomSkin_Debuffs", function(scrollChild, yOffset)
     local function UpdateAllWidgetStates() manager:UpdateAll(db.Enabled) end
 
     -- Card 1: Enable
-    local card1 = GUIFrame:CreateCard(scrollChild, "Custom Debuff Frame", yOffset)
+    local card1 = GUIFrame:CreateCard(scrollChild, "Advanced Debuff Frame", yOffset)
 
     local row1 = GUIFrame:CreateRow(card1.content, Theme.rowHeightLast)
-    local enableCheck = GUIFrame:CreateCheckbox(row1, "Custom Debuff Frame", {
+    local enableCheck = GUIFrame:CreateCheckbox(row1, "Advanced Debuff Frame", {
         value = db.Enabled,
         callback = function(checked)
             db.Enabled = checked
