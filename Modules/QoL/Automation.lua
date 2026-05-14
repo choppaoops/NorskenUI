@@ -292,5 +292,11 @@ function AUTO:OnEnable()
 end
 
 function AUTO:OnDisable()
-    -- Hooks cannot be removed, but the db checks prevent actions
+    if cinematicFrame then cinematicFrame:UnregisterAllEvents() end
+    if merchantFrame then merchantFrame:UnregisterAllEvents() end
+    if questCompleteFrame then questCompleteFrame:UnregisterAllEvents() end
+    if questAcceptFrame then questAcceptFrame:UnregisterAllEvents() end
+    if voidcoresFrame then voidcoresFrame:UnregisterAllEvents() end
+    self:UnhookAll()
+    self._talkingHeadHooked = nil
 end
