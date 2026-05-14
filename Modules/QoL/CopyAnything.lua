@@ -28,6 +28,8 @@ local C_AddOns = C_AddOns
 local GetTime = GetTime
 
 local lastCopyTime = 0
+local GetMouseFoci = GetMouseFoci
+local format = string.format
 
 function CopyAnything:UpdateDB() self.db = NRSKNUI.db.profile.Miscellaneous.CopyAnything end
 
@@ -176,6 +178,22 @@ function CopyAnything:TryCopy(key)
             end
         end
     end
+    -- NUI Color Picker
+    if not copyId then
+        local frames = GetMouseFoci()
+        local focus = frames and frames[1]
+        if focus and focus.isNUIColorPicker and focus.colorPickerRow then
+            local r, g, b, a = focus.colorPickerRow:GetColor()
+            local function fmtNum(n)
+                local s = format("%.2f", n)
+                s = s:gsub("%.?0+$", "")
+                return s
+            end
+            copyId = fmtNum(r) .. ", " .. fmtNum(g) .. ", " .. fmtNum(b) .. ", " .. fmtNum(a)
+            copyName = "Color"
+        end
+    end
+
     if copyId then
         lastCopyTime = GetTime()
         NRSKNUI:CreateCopyDialog(copyName, tostring(copyId))
