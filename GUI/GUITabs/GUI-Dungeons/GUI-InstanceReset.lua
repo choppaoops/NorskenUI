@@ -31,7 +31,7 @@ GUIFrame:RegisterContent("InstanceReset", function(scrollChild, yOffset)
     local card1 = GUIFrame:CreateCard(scrollChild, "Instance Reset Announcer", yOffset)
 
     local row1 = GUIFrame:CreateRow(card1.content, Theme.rowHeightLast)
-    local enableCheck = GUIFrame:CreateCheckbox(row1, "Enable Healer Mana Tracker", {
+    local enableCheck = GUIFrame:CreateCheckbox(row1, "Enable Instance Reset Message", {
         value = db.Enabled,
         callback = function(checked)
             db.Enabled = checked
