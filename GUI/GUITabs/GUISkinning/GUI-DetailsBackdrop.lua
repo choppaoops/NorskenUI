@@ -22,6 +22,10 @@ GUIFrame:RegisterContent("DetailsBackdrop", function(scrollChild, yOffset)
     local curEdit = db.currentEdit or 1
     local backdropName = "Backdrop " .. curEdit
 
+    if not db.backdrops[curEdit] then
+        db.backdrops[curEdit] = CopyTable(NRSKNUI.db.defaults.profile.Skinning.DetailsBackdrop.backdrops[1])
+    end
+
     local function GetCurrentBackdropDB() return db.backdrops[curEdit] end
 
     manager:SetCondition("autoSizeWidgets", function() return GetCurrentBackdropDB().autoSize end)

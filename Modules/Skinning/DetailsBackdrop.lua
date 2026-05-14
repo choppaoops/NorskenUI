@@ -37,20 +37,6 @@ end
 
 function DBG:UpdateDB()
     self.db = NRSKNUI.db.profile.Skinning.DetailsBackdrop
-
-    -- Migration from old backDropOne/backDropTwo format
-    if self.db.backDropOne then
-        self.db.backdrops[1] = self.db.backDropOne
-        self.db.backdrops[2] = self.db.backDropTwo
-        self.db.backDropOne = nil
-        self.db.backDropTwo = nil
-
-        if self.db.currentEdit == "bgOne" then
-            self.db.currentEdit = 1
-        elseif self.db.currentEdit == "bgTwo" then
-            self.db.currentEdit = 2
-        end
-    end
 end
 
 function DBG:OnInitialize()
