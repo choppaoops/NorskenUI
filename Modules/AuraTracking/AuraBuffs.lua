@@ -208,11 +208,11 @@ function BUFFS:CreateBuffFrame()
         self.db.Position.YOffset)
     NRSKNUI:PixelPerfect(self.buffs)
 
-    self.buffs:SetAttribute("template", "SecureAuraButtonTemplate")
+    self.buffs:SetAttribute("template", "NorskenUIAuraButtonTemplate")
     self.buffs:SetAttribute("unit", "player")
     self.buffs:SetAttribute("filter", self.db.Filter)
     self.buffs:SetAttribute("includeWeapons", self.db.IncludeWeaponEnchants and 1 or 0)
-    self.buffs:SetAttribute("weaponTemplate", "SecureAuraButtonTemplate")
+    self.buffs:SetAttribute("weaponTemplate", "NorskenUIAuraButtonTemplate")
 
     self.buffs:SetAttribute("sortMethod", self.db.SortMethod)
     self.buffs:SetAttribute("sortDirection", self.db.SortDirection)
