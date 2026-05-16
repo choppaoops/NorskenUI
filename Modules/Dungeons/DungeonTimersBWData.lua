@@ -119,7 +119,7 @@ function DT:GetSpellsForDungeon(dungeonKey, forceRefresh, isRetry)
     if forceRefresh then self.spellCache[dungeonKey] = nil end
     if self.spellCache[dungeonKey] then return self.spellCache[dungeonKey] end
 
-    if BigWigsLoader and BigWigsLoader.LoadZone then
+    if BigWigs and BigWigsLoader and BigWigsLoader.LoadZone then
         BigWigsLoader:LoadZone(dungeonData.instanceId)
         if not isRetry and not self.spellCache[dungeonKey] then
             C_Timer.After(0.5, function() self:GetSpellsForDungeon(dungeonKey, true, true) end)
