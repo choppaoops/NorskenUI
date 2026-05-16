@@ -65,9 +65,9 @@ local ITEM_TRACKS = {
 
 local CRAFTED_TRACKS = {
     { minIlvl = 295, letter = "C", color = { 1.00, 0.50, 0.00 }, weaponOnly = true }, -- Mythic Crafted (Weapons only)
-    { minIlvl = 285, letter = "C", color = { 1.00, 0.50, 0.00 } }, -- Mythic Crafted (Non-Weapons)
-    { minIlvl = 282, letter = "C", color = { 0.78, 0.30, 0.78 } }, -- Heroic Crafted
-    { minIlvl = 269, letter = "C", color = { 0.00, 0.70, 1.00 } }, -- Normal Crafted
+    { minIlvl = 285, letter = "C", color = { 1.00, 0.50, 0.00 } },                    -- Mythic Crafted (Non-Weapons)
+    { minIlvl = 282, letter = "C", color = { 0.78, 0.30, 0.78 } },                    -- Heroic Crafted
+    { minIlvl = 269, letter = "C", color = { 0.00, 0.70, 1.00 } },                    -- Normal Crafted
 }
 
 local qualityAtlasPattern = "|A:(Professions%-ChatIcon%-Quality%-[^:]+):%d+:%d+"
@@ -745,8 +745,9 @@ function CHAR:CreateGemButton(index)
 
     btn.stats = btn:CreateFontString(nil, "OVERLAY")
     btn.stats:SetPoint("LEFT", btn.iconFrame, "RIGHT", 6, 0)
-    btn.stats:SetPoint("RIGHT", btn, "RIGHT", -24, 0)
+    btn.stats:SetWidth(220)
     btn.stats:SetJustifyH("LEFT")
+    btn.stats:SetWordWrap(true)
     NRSKNUI:ApplyFontToText(btn.stats, "Expressway", 12, "OUTLINE", {})
     btn.stats:SetTextColor(Theme.textPrimary[1], Theme.textPrimary[2], Theme.textPrimary[3])
     btn.stats:SetShadowColor(0, 0, 0, 0)
@@ -901,7 +902,7 @@ function CHAR:ShowGemPopup(socketBtn)
     end
 
     local minWidth = popup.title:GetStringWidth() + 26
-    local rowHeight = POPUP_ICON_SIZE + ITEM_ROW_PADDING
+    local minRowHeight = POPUP_ICON_SIZE + ITEM_ROW_PADDING
 
     local targetHeight
     if #gemList == 0 then
@@ -914,6 +915,8 @@ function CHAR:ShowGemPopup(socketBtn)
     else
         popup.noGems:Hide()
         popup.separator:Show()
+
+        local yOffset = TITLE_HEIGHT
         for i, gemData in ipairs(gemList) do
             local btn = self:CreateGemButton(i)
             btn.gemData = gemData
@@ -924,24 +927,28 @@ function CHAR:ShowGemPopup(socketBtn)
             btn._hoverBg:SetAlpha(0)
             btn._hoverTarget = 0
 
-            btn:SetHeight(rowHeight)
-            btn:ClearAllPoints()
-            btn:SetPoint("TOPLEFT", popup, "TOPLEFT", POPUP_PADDING, -TITLE_HEIGHT - (i - 1) * rowHeight)
-            btn:SetPoint("TOPRIGHT", popup, "TOPRIGHT", -POPUP_PADDING, -TITLE_HEIGHT - (i - 1) * rowHeight)
-            btn.iconFrame:SetSize(POPUP_ICON_SIZE, POPUP_ICON_SIZE)
-
             local stats = GetGemStatsFromLink(gemData.link)
             btn.stats:SetText(stats or "")
+
+            local textHeight = btn.stats:GetStringHeight() -- Need to check height since some tooltip can have multiple lines.
+            local rowHeight = max(minRowHeight, textHeight + ITEM_ROW_PADDING)
+
+            btn:SetHeight(rowHeight)
+            btn:ClearAllPoints()
+            btn:SetPoint("TOPLEFT", popup, "TOPLEFT", POPUP_PADDING, -yOffset)
+            btn:SetPoint("TOPRIGHT", popup, "TOPRIGHT", -POPUP_PADDING, -yOffset)
+            btn.iconFrame:SetSize(POPUP_ICON_SIZE, POPUP_ICON_SIZE)
 
             local atlas = GetQualityAtlasFromLink(gemData.link)
             SetQualityAtlas(btn.quality, atlas)
 
             btn:Show()
+            yOffset = yOffset + rowHeight
         end
         for i = #gemList + 1, #popup.buttons do popup.buttons[i]:Hide() end
 
         popup:SetWidth(280)
-        targetHeight = #gemList * rowHeight + TITLE_HEIGHT
+        targetHeight = yOffset
     end
 
     popup:ClearAllPoints()
