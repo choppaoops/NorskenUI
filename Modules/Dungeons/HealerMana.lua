@@ -268,16 +268,14 @@ end
 function HM:OnSpecChanged(_, unit)
     if not unit then return end
 
-    for _, healer in ipairs(self.currentHealers) do
-        if healer.unit == unit then
-            if healer.guid then
-                self.specCache[healer.guid] = nil
-            end
-            healer.specID = nil
-            self:QueueInspect(healer)
-            return
-        end
+    local guid = UnitGUID(unit)
+    if guid then
+        self.specCache[guid] = nil
     end
+
+    C_Timer_After(0.5, function()
+        self:FindHealers()
+    end)
 end
 
 function HM:ClearInspectQueue()
