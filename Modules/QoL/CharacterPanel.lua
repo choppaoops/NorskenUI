@@ -471,11 +471,14 @@ function CHAR:ScanItemSockets(slotID)
         emptyCount = 0,
     }
 
+    local filledIndices = {}
+
     for socketIndex = 1, 3 do
         local gemName, gemLink = C_Item.GetItemGem(itemLink, socketIndex)
         if gemLink then
             result.filledCount = result.filledCount + 1
             result.totalCount = result.totalCount + 1
+            filledIndices[socketIndex] = true
             local gemID = C_Item.GetItemInfoInstant(gemLink)
             local gemIcon = gemID and C_Item.GetItemIconByID(gemID)
             tinsert(result.sockets, {
@@ -493,6 +496,8 @@ function CHAR:ScanItemSockets(slotID)
     tt:ClearLines()
     tt:SetInventoryItem("player", slotID)
 
+    local nextEmptyIndex = 1
+
     for i = 1, tt:NumLines() do
         local line = _G["NRSKNUIScanTooltipTextLeft" .. i]
         if line then
@@ -501,14 +506,20 @@ function CHAR:ScanItemSockets(slotID)
                 for _, socketType in ipairs(NRSKNUI.GEM_SOCKET_TYPES) do
                     local localeString = _G[socketType.locale]
                     if localeString and text:find(localeString, 1, true) then
+                        while filledIndices[nextEmptyIndex] do
+                            nextEmptyIndex = nextEmptyIndex + 1
+                        end
+
                         result.emptyCount = result.emptyCount + 1
                         result.totalCount = result.totalCount + 1
+                        filledIndices[nextEmptyIndex] = true
                         tinsert(result.sockets, {
-                            index = result.totalCount,
+                            index = nextEmptyIndex,
                             filled = false,
                             socketType = socketType.name,
                             icon = socketType.icon,
                         })
+                        nextEmptyIndex = nextEmptyIndex + 1
                     end
                 end
             end
