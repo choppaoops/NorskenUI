@@ -133,12 +133,12 @@ function FCB:CreateFrame()
     local text = castBar:CreateFontString(nil, "OVERLAY")
     text:SetPoint("LEFT", castBar, "LEFT", 4, 0)
     text:SetJustifyH("LEFT")
-    NRSKNUI:ApplyFontToText(text, db.FontFace, db.FontSize, db.FontOutline, db.FontShadow)
+    text:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
 
     local time = castBar:CreateFontString(nil, "OVERLAY")
     time:SetPoint("RIGHT", castBar, "RIGHT", -4, 0)
     time:SetJustifyH("RIGHT")
-    NRSKNUI:ApplyFontToText(time, db.FontFace, db.FontSize, db.FontOutline, db.FontShadow)
+    time:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
 
     local targetText = frame:CreateFontString(nil, "OVERLAY", nil)
     targetText:SetParent(castBar)
@@ -158,8 +158,6 @@ function FCB:CreateFrame()
     self.text, self.time = text, time
     self.targetText = targetText
     self.holdTimer = nil
-
-    self:ApplySettings()
 end
 
 function FCB:ApplySettings()
@@ -954,7 +952,7 @@ function FCB:OnEnable()
     self:CreateColorObjects()
     self:CreateFrame()
     C_Timer.After(0.5, function()
-        NRSKNUI:ApplyFramePosition(self.frame, self.db.Position, self.db, true)
+        self:ApplySettings()
     end)
 
     local castEvents = {

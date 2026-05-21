@@ -14,7 +14,6 @@ local C_Timer = C_Timer
 
 local SOFT_OUTLINE_FADEOUT_SPEED = 0.85
 local fadeHookRunning = false
-local DEFAULT_FONT = "Fonts\\FRIZQT__.TTF"
 
 local SHADOW_OFFSETS = {
     { 0, 1 }, { 1, 1 }, { 1, 0 }, { 1, -1 },
@@ -143,13 +142,13 @@ end
 
 function SoftOutline:SetFont(fontPath, fontSize)
     if not self.shadows then return false end
-    fontPath = (fontPath and fontPath ~= "") and fontPath or DEFAULT_FONT
+    fontPath = (fontPath and fontPath ~= "") and fontPath or NRSKNUI.BLIZZARD_FONT
     fontSize = (fontSize and fontSize > 0) and fontSize or 14
 
     local success = true
     for _, shadow in ipairs(self.shadows) do
         if not shadow:SetFont(fontPath, fontSize, "") then
-            shadow:SetFont(DEFAULT_FONT, fontSize, "")
+            shadow:SetFont(NRSKNUI.BLIZZARD_FONT, fontSize, "")
             success = false
         end
     end
@@ -178,6 +177,7 @@ end
 
 function SoftOutline:_IsTextVisible()
     if not self.main then return false end
+    if not self.main:IsShown() then return false end
     local _, _, _, textAlpha = self.main:GetTextColor()
     local frameAlpha = self.main:GetAlpha()
     if issecretvalue and (issecretvalue(textAlpha) or issecretvalue(frameAlpha)) then
@@ -195,10 +195,6 @@ function SoftOutline:SetShown(shown)
         return
     end
 
-    local font, size = self.main:GetFont()
-    if font and font ~= "" and size and size > 0 then
-        self:SetFont(font, size)
-    end
     self:SetText(self.main:GetText() or "")
     self:_ApplyColor()
     self:_SyncJustify()
@@ -214,10 +210,6 @@ function SoftOutline:SetShownFromBoolean(condition, trueVal, falseVal)
     local showFalse = falseVal == true
 
     if showTrue and self:_IsTextVisible() then
-        local font, size = self.main:GetFont()
-        if font and font ~= "" and size and size > 0 then
-            self:SetFont(font, size)
-        end
         self:SetText(self.main:GetText() or "")
         self:_SyncJustify()
         self:_SyncWrapSettings()
@@ -352,7 +344,7 @@ end
 
 local function GetFontWithFallback(fontString, options)
     local font, size = fontString:GetFont()
-    font = options.fontPath or (font and font ~= "" and font) or DEFAULT_FONT
+    font = options.fontPath or (font and font ~= "" and font) or NRSKNUI.BLIZZARD_FONT
     size = options.fontSize or (size and size > 0 and size) or 14
     return font, size
 end

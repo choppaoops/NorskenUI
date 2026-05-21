@@ -159,7 +159,6 @@ function GATE:CreateAlertFrame()
     frame:Hide()
 
     self.alertFrame = frame
-    self:ApplySettings()
     return frame
 end
 

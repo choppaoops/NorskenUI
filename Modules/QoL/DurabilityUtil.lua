@@ -244,7 +244,7 @@ function DUR:ShowPreview()
 
     self.isPreview = true
     --self:ApplySettings()
-    C_Timer.After(0.5, function() self:ApplySettings() end)
+    --C_Timer.After(0.5, function() self:ApplySettings() end)
 
     if self.frame and self.text then
         self.frame:Show()

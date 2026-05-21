@@ -1,12 +1,5 @@
--- NorskenUI namespace
-local addonName = select(1, ...)
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
-
-NRSKNUI.PATH = ([[Interface\AddOns\%s\Media\]]):format(addonName)
-NRSKNUI.FONT = NRSKNUI.PATH .. [[Fonts\]] .. 'Expressway.TTF'
-
--- Module with my addon theme settings and helpers
 
 -- Localization Setup
 local type = type

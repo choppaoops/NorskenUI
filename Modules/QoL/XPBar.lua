@@ -114,12 +114,18 @@ function XPBar:CreateBar()
 
     bar.text = bar:CreateFontString(nil, "OVERLAY")
     bar.text:SetPoint("CENTER")
+    bar.text:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
 
     bar.level = bar:CreateFontString(nil, "OVERLAY")
     bar.level:SetPoint("RIGHT", bar, "RIGHT", -4, 0)
+    bar.level:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
 
     self.bar = bar
-    self:ApplySettings()
+
+    -- Basic setup without full font styling - ApplySettings will be called by OnEnable after delay
+    self.bar:SetSize(self.db.width, self.db.height)
+    NRSKNUI:ApplyFramePosition(self.bar, self.db.Position, self.db)
+    self:Update()
 end
 
 function XPBar:RegisterEvents()

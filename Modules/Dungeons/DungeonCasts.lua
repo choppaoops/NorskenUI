@@ -153,8 +153,11 @@ function DC:CreateBarFrame()
     frame.spark:SetTexture([[Interface\CastingBar\UI-CastingBar-Spark]])
 
     frame.nameText = frame.castBar:CreateFontString(nil, "OVERLAY")
+    frame.nameText:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
     frame.timeText = frame.castBar:CreateFontString(nil, "OVERLAY")
+    frame.timeText:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
     frame.targetText = frame.castBar:CreateFontString(nil, "OVERLAY")
+    frame.targetText:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
 
     frame.raidIcon = frame:CreateTexture(nil, "OVERLAY")
     frame.raidIcon:SetTexture("Interface/TargetingFrame/UI-RaidTargetingIcons")
@@ -238,8 +241,6 @@ function DC:ConfigureBar(bar)
 
     local targetDb = db.Target
     bar.targetText:ClearAllPoints()
-    NRSKNUI:ApplyFontToText(bar.targetText, barDb.FontFace, barDb.FontSize, barDb.FontOutline)
-    bar.targetText:SetTextColor(tc[1], tc[2], tc[3], tc[4])
     if targetDb and targetDb.Position == "LEFT" then
         bar.targetText:SetPoint("LEFT", bar.nameText, "RIGHT", 2, 0)
         bar.targetText:SetJustifyH("LEFT")
@@ -247,6 +248,8 @@ function DC:ConfigureBar(bar)
         bar.targetText:SetPoint("RIGHT", bar.timeText, "LEFT", -4, 0)
         bar.targetText:SetJustifyH("RIGHT")
     end
+    NRSKNUI:ApplyFontToText(bar.targetText, barDb.FontFace, barDb.FontSize, barDb.FontOutline)
+    bar.targetText:SetTextColor(tc[1], tc[2], tc[3], tc[4])
     bar.targetText:Hide()
 
     if raidDb.Enabled then

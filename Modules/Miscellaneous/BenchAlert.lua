@@ -107,7 +107,6 @@ function BA:CreateAlertFrame()
     local frame = NRSKNUI:CreateTextFrame(UIParent, 300, 40, { name = "NRSKNUI_BenchAlert" })
     frame:Hide()
     self.alertFrame = frame
-    self:ApplySettings()
     return frame
 end
 

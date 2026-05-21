@@ -1,20 +1,47 @@
+local addonName = select(1, ...)
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
 
 local ipairs, pairs, type = ipairs, pairs, type
 local pcall = pcall
 
+NRSKNUI.PATH = ([[Interface\AddOns\%s\Media\]]):format(addonName)
+
+local BLIZZARD_FONT = "Fonts\\FRIZQT__.TTF"
+local ADDON_FONT_PATH = NRSKNUI.PATH .. [[Fonts\Expressway.TTF]]
+local ADDON_STATUSBAR_PATH = NRSKNUI.PATH .. [[Statusbars\NorskenUI.blp]]
+local DEFAULT_FONT_NAME = "Expressway"
+
+NRSKNUI.BLIZZARD_FONT = BLIZZARD_FONT
+NRSKNUI.FONT = ADDON_FONT_PATH
+NRSKNUI.SB = ADDON_STATUSBAR_PATH
+NRSKNUI.Media = {
+    Font = BLIZZARD_FONT,
+    Statusbar = "Interface\\TargetingFrame\\UI-StatusBar",
+}
+
 NRSKNUI.LSM = LibStub("LibSharedMedia-3.0")
-NRSKNUI.SB = NRSKNUI.PATH .. [[Statusbars\]] .. 'NorskenUI.blp'
 
 if NRSKNUI.LSM then
-    NRSKNUI.LSM:Register('font', 'Expressway', NRSKNUI.FONT)
-    NRSKNUI.LSM:Register('statusbar', 'NorskenUI', NRSKNUI.SB)
-    NRSKNUI.LSM:Register('sound', '|cffe51039NorskenWhisper|r', [[Interface\AddOns\NorskenUI\Media\Sounds\Whisper.ogg]])
-    NRSKNUI.LSM:Register('border', 'WHITE8X8', [[Interface\Buttons\WHITE8X8]])
+    NRSKNUI.LSM:Register("font", "Expressway", ADDON_FONT_PATH)
+    NRSKNUI.LSM:Register("statusbar", "NorskenUI", ADDON_STATUSBAR_PATH)
+    NRSKNUI.LSM:Register("sound", "|cffe51039NorskenWhisper|r", [[Interface\AddOns\NorskenUI\Media\Sounds\Whisper.ogg]])
+    NRSKNUI.LSM:Register("border", "WHITE8X8", [[Interface\Buttons\WHITE8X8]])
 end
 
--- Preload LSM media on login
+function NRSKNUI:ResolveMedia()
+    local LSM = self.LSM
+    if LSM then
+        self.Media.Font = LSM:Fetch("font", "Expressway") or ADDON_FONT_PATH
+        self.Media.Statusbar = LSM:Fetch("statusbar", "NorskenUI") or ADDON_STATUSBAR_PATH
+    else
+        self.Media.Font = ADDON_FONT_PATH
+        self.Media.Statusbar = ADDON_STATUSBAR_PATH
+    end
+    self.FONT = self.Media.Font
+    self.SB = self.Media.Statusbar
+end
+
 do
     local CreateFrame = CreateFrame
     local C_Timer = C_Timer
@@ -34,16 +61,13 @@ do
     preloadFrame:RegisterEvent("PLAYER_LOGIN")
     preloadFrame:SetScript("OnEvent", function(self)
         self:UnregisterAllEvents()
+        NRSKNUI:ResolveMedia()
         C_Timer.After(1.5, PreloadLSMMedia)
     end)
 end
 
--- TODO: In 12.0.7 new api will be available for font/asset validation, but use pcall method for now
--- Font validation
 local fontProbe = UIParent:CreateFontString()
 fontProbe:Hide()
-
-local DEFAULT_FONT = "Expressway"
 
 ---@param fontPath string
 ---@return boolean
@@ -66,9 +90,9 @@ local function ValidateFontsRecursive(tbl, defaults)
     for key, value in pairs(tbl) do
         if IsFontKey(key) and type(value) == "string" then
             if not LSM:IsValid("font", value) then
-                local defaultVal = defaults and defaults[key] or DEFAULT_FONT
+                local defaultVal = defaults and defaults[key] or DEFAULT_FONT_NAME
                 if not LSM:IsValid("font", defaultVal) then
-                    defaultVal = DEFAULT_FONT
+                    defaultVal = DEFAULT_FONT_NAME
                 end
                 tbl[key] = defaultVal
             end
@@ -155,13 +179,10 @@ function NRSKNUI:ApplyFont(fontString, fontName, fontSize, fontOutline)
     local size = (fontSize and fontSize > 0) and fontSize or 12
     local outline = self:GetFontOutline(fontOutline)
 
-    local fontObj = fontString:GetFontObject()
-    if fontObj then
-        fontString:SetFontObject(nil)
-    end
-
     -- Try the requested font first, fall back to Blizzard font if it fails
-    if fontString:SetFont(fontPath, size, outline) then
+    local result = fontString:SetFont(fontPath, size, outline)
+
+    if result then
         return true
     end
 
