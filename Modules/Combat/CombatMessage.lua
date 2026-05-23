@@ -184,6 +184,7 @@ function CM:GetMessageFrame(msgType)
     frame:Hide()
 
     local text = frame:CreateFontString(nil, "OVERLAY")
+    text:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
     text:SetPoint("CENTER")
     text:SetJustifyH("CENTER")
     text:SetJustifyV("MIDDLE")

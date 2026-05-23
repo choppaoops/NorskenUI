@@ -80,10 +80,10 @@ function DUR:CreateFrame()
     frame:SetSize(160, 14)
 
     local text = frame:CreateFontString(nil, "OVERLAY")
+    text:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
     text:SetPoint("LEFT")
     text:SetJustifyH("LEFT")
     text:SetWordWrap(false)
-    text:SetFont(NRSKNUI.FONT, 12, "")
     text:SetText("100%")
 
     self.frame = frame
@@ -97,8 +97,8 @@ function DUR:CreateWarningFrame()
     frame:SetSize(180, 28)
 
     local text = frame:CreateFontString(nil, "OVERLAY")
+    text:SetFont("Fonts\\FRIZQT__.TTF", 14, "")
     text:SetPoint("CENTER")
-    text:SetFont(NRSKNUI.FONT, 14, "")
     text:SetText("LOW DURABILITY")
 
     self.warningFrame = frame

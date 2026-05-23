@@ -7,6 +7,7 @@ local Defaults = {
     global = {
         UseGlobalProfile = false,  -- Switch to global profile
         GlobalProfile = "Default", -- Name of global profile to use
+        UIScale = 0,               -- 0 = auto (use perfect scale), otherwise custom value
 
         -- Theme settings
         -- Mode: "preset", "class", or "custom"
@@ -223,7 +224,7 @@ local Defaults = {
             Position = {                  -- Position settings
                 AnchorFrom = "CENTER",    -- Anchor point from
                 AnchorTo = "CENTER",      -- Anchor point to
-                XOffset = 0.1,            -- X offset
+                XOffset = 0,              -- X offset
                 YOffset = 205,            -- Y offset
             },
             Spacing = 0,                  -- Vertical spacing between messages
@@ -528,6 +529,23 @@ local Defaults = {
         -- Miscellaneous Settings
         Miscellaneous = {
 
+            BloodlustTracker = {
+                Enabled = true,
+                Size = 40,
+                FontFace = "Expressway",
+                FontSize = 18,
+                FontOutline = "SOFTOUTLINE",
+                Strata = "HIGH",
+                anchorFrameType = "UIPARENT",
+                ParentFrame = "UIParent",
+                Position = {
+                    AnchorFrom = "CENTER",
+                    AnchorTo = "CENTER",
+                    XOffset = 0,
+                    YOffset = -200,
+                },
+            },
+
             BenchAlert = {
                 Enabled = false,
                 Text = "BENCH CUH",
@@ -692,10 +710,10 @@ local Defaults = {
                 Enabled = true,
                 HideBlizzardBar = true,
                 hideWhenMax = true,
-                width = 500,
-                height = 24,
+                width = 477,
+                height = 26,
                 FontFace = "Expressway",
-                FontOutline = "OUTLINE",
+                FontOutline = "SOFTOUTLINE",
                 FontSize = 14,
                 FontShadow = {
                     Enabled = false,
@@ -718,7 +736,7 @@ local Defaults = {
                 StatusBarTexture = "NorskenUI", -- LSM statusbar texture name
 
                 -- Rested Coloring
-                RestedColor = { 0.7803, 0.0000, 0.0000, 0.25 },
+                RestedColor = { 1, 0.5, 0, 0.25 },
 
                 -- Backdrop
                 BackdropColor = { 0, 0, 0, 0.8 },
@@ -734,11 +752,6 @@ local Defaults = {
                 mod = "ctrl",   -- ctrl, shift, alt
             },
 
-            WhisperSounds = {
-                Enabled = true,                                  -- Enable whisper sounds
-                WhisperSound = "|cffe51039NorskenWhisper|r",     -- Sound for regular whispers
-                BNetWhisperSound = "|cffe51039NorskenWhisper|r", -- Sound for Battle.net whispers
-            },
             CursorCircle = {
                 Enabled = true,            -- Enable cursor circle
                 Size = 40,                 -- Circle size
@@ -930,43 +943,68 @@ local Defaults = {
                 Enabled = true,
             },
 
-            Chat = {
+            -- Custom Chat (Chatv2)
+            Chatv2 = {
                 Enabled = true,
                 Width = 448,
                 Height = 245,
-                FontFace = "Expressway", -- Module font face
-                FontOutline = "OUTLINE", -- Module font outline
-                EditBoxFontSize = 14,    -- EditBox Font size
-                ChatFontSize = 12,       -- Chat Font size
-                TabFontSize = 12,        -- Chat Tab Font size
-                TabSpacing = 20,
-                -- Tab Color Settings
-                TabColors = {
-                    AlertColor = { 1, 0, 0, 1 },                -- Red for new messages/alerts
-                    ActiveColor = { 1, 1, 1, 1 },               -- White for selected/active tab
-                    WhisperColor = { 1, 0.5, 0.8, 1 },          -- Pink for whisper tabs
-                    InactiveColorMode = "theme",                -- "theme", "class", or "custom"
-                    InactiveColor = { 0.898, 0.063, 0.224, 1 }, -- Custom color for inactive tabs
+                FontFace = "Expressway",
+                FontOutline = "OUTLINE",
+                FontSize = 14,
+                TabFontSize = 12,
+                EditBoxFontSize = 14,
+                FontShadow = {
+                    Enabled = false,
+                    Color = { 0, 0, 0, 1 },
+                    OffsetX = 1,
+                    OffsetY = -1,
                 },
-                -- EditBox Backdrop Settings
+                ShortChannels = true,                           -- Use short channel names
+                FadeEnabled = true,                             -- Enable text fading
+                FadeTime = 30,                                  -- Seconds before chat fades
+                FadeAlpha = 0,                                  -- Alpha when faded
+                MaxLines = 500,                                 -- Max lines to keep in history
+                TimestampFormat = "[%H:%M] ",                   -- Timestamp format (NONE = disabled)
+                UseLocalTime = true,                            -- Use local time for timestamps
+                TimestampColorEnabled = true,                   -- Use custom timestamp color
+                TimestampColor = { r = 0.6, g = 0.6, b = 0.6 }, -- Custom timestamp color
+                Backdrop = {
+                    Enabled = true,
+                    Color = { 0, 0, 0, 0.8 },
+                    BorderColor = { 0, 0, 0, 1 },
+                },
                 EditBox = {
-                    BackdropColor = { 0, 0, 0, 0.8 }, -- EditBox background color
-                    BorderColor = { 0, 0, 0, 1 },     -- EditBox border color
+                    BackdropColor = { 0, 0, 0, 0.8 },
+                    BorderColor = { 0, 0, 0, 1 },
                 },
-                -- Backdrop Settings
-                Backdrop = {                      -- Backdrop settings (text mode mainly)
-                    Enabled = true,               -- Enable backdrop, if not enable, set alpha 0 on backdrop and borders
-                    Color = { 0, 0, 0, 0.8 },     -- Background color
-                    BorderColor = { 0, 0, 0, 1 }, -- Border color
+                TabBackdrop = {
+                    Enabled = true,
+                    Color = { 0, 0, 0, 0.2 },
+                    BorderColor = { 0, 0, 0, 1 },
                 },
-                -- Position Settings
-                anchorFrameType = "UIPARENT",  -- Anchor frame type
-                ParentFrame = "UIParent",      -- Parent frame name
-                Position = {                   -- Position settings
-                    AnchorFrom = "BOTTOMLEFT", -- Anchor point from
-                    AnchorTo = "BOTTOMLEFT",   -- Anchor point to
-                    XOffset = 1,               -- X offset
-                    YOffset = 1,               -- Y offset
+                FadeTabs = true,                                  -- Fade tab text when not hovered
+                EditBoxPosition = "ABOVE_CHAT_INSIDE",            -- BELOW_CHAT or ABOVE_CHAT
+                NumScrollMessages = 3,                            -- Number of messages to scroll per wheel tick
+                -- Tab Styling
+                TabSelector = "NONE",                             -- Tab selector style: NONE, ARROW, ARROW1, ARROW2, ARROW3, BOX, BOX1, CURLY, CURLY1, CURVE, CURVE1
+                TabSelectorColor = { r = 1, g = 1, b = 1 },       -- Tab selector color
+                TabSelectedTextEnabled = true,                    -- Use custom color for selected tab text
+                TabSelectedTextColor = { r = 1, g = 0.5, b = 0 }, -- Selected tab text color
+                TabTextColor = { r = 0.57, g = 0.57, b = 0.57 },  -- Default tab text color
+                TabFontFace = nil,                                -- Tab font face (nil = use STANDARD_TEXT_FONT)
+                TabFontOutline = "OUTLINE",                       -- Tab font outline
+                anchorFrameType = "UIPARENT",
+                ParentFrame = "UIParent",
+                Position = {
+                    AnchorFrom = "BOTTOMLEFT",
+                    AnchorTo = "BOTTOMLEFT",
+                    XOffset = 1,
+                    YOffset = 1,
+                },
+                WhisperSounds = {
+                    Enabled = false,
+                    WhisperSound = "|cffe51039NorskenWhisper|r",
+                    BNetWhisperSound = "|cffe51039NorskenWhisper|r",
                 },
             },
 
@@ -1026,8 +1064,8 @@ local Defaults = {
                         Position = {
                             AnchorFrom = "BOTTOM",
                             AnchorTo = "BOTTOM",
-                            XOffset = 0.1,
-                            YOffset = 1.1,
+                            XOffset = 0,
+                            YOffset = -699,
                         },
                         Mouseover = {
                             GlobalOverride = true,
@@ -1069,8 +1107,8 @@ local Defaults = {
                         Position = {
                             AnchorFrom = "BOTTOM",
                             AnchorTo = "BOTTOM",
-                            XOffset = 369.1,
-                            YOffset = 1.1,
+                            XOffset = 369,
+                            YOffset = -679,
                         },
                         Mouseover = {
                             GlobalOverride = true,
@@ -1112,8 +1150,8 @@ local Defaults = {
                         Position = {
                             AnchorFrom = "BOTTOM",
                             AnchorTo = "BOTTOM",
-                            XOffset = 0.1,
-                            YOffset = 42.1,
+                            XOffset = 0,
+                            YOffset = -658,
                         },
                         Mouseover = {
                             GlobalOverride = true,
@@ -1147,7 +1185,7 @@ local Defaults = {
                         TotalButtons = 12,
                         Layout = "VERTICAL",
                         GrowthDirection = "RIGHT",
-                        ButtonsPerLine = 6,
+                        ButtonsPerLine = 2,
                         ParentFrame = "UIParent",
                         HideEmptyBackdrops = false,
                         BackdropColor = { 0, 0, 0, 0.8 },
@@ -1155,8 +1193,8 @@ local Defaults = {
                         Position = {
                             AnchorFrom = "BOTTOMLEFT",
                             AnchorTo = "BOTTOMLEFT",
-                            XOffset = 450.1,
-                            YOffset = 1.1,
+                            XOffset = -790,
+                            YOffset = -597,
                         },
                         Mouseover = {
                             GlobalOverride = true,
@@ -1198,8 +1236,8 @@ local Defaults = {
                         Position = {
                             AnchorFrom = "BOTTOM",
                             AnchorTo = "BOTTOM",
-                            XOffset = -368.1,
-                            YOffset = 1.1,
+                            XOffset = -369,
+                            YOffset = -679,
                         },
                         Mouseover = {
                             GlobalOverride = true,
@@ -1233,7 +1271,7 @@ local Defaults = {
                         TotalButtons = 12,
                         Layout = "VERTICAL",
                         GrowthDirection = "RIGHT",
-                        ButtonsPerLine = 6,
+                        ButtonsPerLine = 2,
                         ParentFrame = "UIParent",
                         HideEmptyBackdrops = false,
                         BackdropColor = { 0, 0, 0, 0.8 },
@@ -1241,8 +1279,8 @@ local Defaults = {
                         Position = {
                             AnchorFrom = "BOTTOMLEFT",
                             AnchorTo = "BOTTOMLEFT",
-                            XOffset = 532.1,
-                            YOffset = 1.1,
+                            XOffset = -708,
+                            YOffset = -597,
                         },
                         Mouseover = {
                             GlobalOverride = true,
@@ -1276,7 +1314,7 @@ local Defaults = {
                         TotalButtons = 12,
                         Layout = "VERTICAL",
                         GrowthDirection = "RIGHT",
-                        ButtonsPerLine = 12,
+                        ButtonsPerLine = 1,
                         ParentFrame = "UIParent",
                         HideEmptyBackdrops = false,
                         BackdropColor = { 0, 0, 0, 0.8 },
@@ -1284,8 +1322,8 @@ local Defaults = {
                         Position = {
                             AnchorFrom = "LEFT",
                             AnchorTo = "LEFT",
-                            XOffset = 1.1,
-                            YOffset = 0.1,
+                            XOffset = -1259,
+                            YOffset = 0,
                         },
                         Mouseover = {
                             GlobalOverride = true,
@@ -1319,7 +1357,7 @@ local Defaults = {
                         TotalButtons = 12,
                         Layout = "VERTICAL",
                         GrowthDirection = "RIGHT",
-                        ButtonsPerLine = 12,
+                        ButtonsPerLine = 1,
                         ParentFrame = "UIParent",
                         HideEmptyBackdrops = false,
                         BackdropColor = { 0, 0, 0, 0.8 },
@@ -1327,8 +1365,8 @@ local Defaults = {
                         Position = {
                             AnchorFrom = "LEFT",
                             AnchorTo = "LEFT",
-                            XOffset = 42.1,
-                            YOffset = 0.1,
+                            XOffset = -1218,
+                            YOffset = 0,
                         },
                         Mouseover = {
                             GlobalOverride = true,
@@ -1362,7 +1400,7 @@ local Defaults = {
                         TotalButtons = 10,
                         Layout = "HORIZONTAL",
                         GrowthDirection = "RIGHT",
-                        ButtonsPerLine = 10,
+                        ButtonsPerLine = 2,
                         ParentFrame = "UIParent",
                         HideEmptyBackdrops = false,
                         BackdropColor = { 0, 0, 0, 0.8 },
@@ -1370,8 +1408,8 @@ local Defaults = {
                         Position = {
                             AnchorFrom = "BOTTOM",
                             AnchorTo = "BOTTOM",
-                            XOffset = 0.1,
-                            YOffset = 83.1,
+                            XOffset = -634,
+                            YOffset = -556,
                         },
                         Mouseover = {
                             GlobalOverride = false,
@@ -1413,8 +1451,8 @@ local Defaults = {
                         Position = {
                             AnchorFrom = "BOTTOM",
                             AnchorTo = "BOTTOM",
-                            XOffset = 0.1,
-                            YOffset = 117.1,
+                            XOffset = -996,
+                            YOffset = -457,
                         },
                         Mouseover = {
                             GlobalOverride = false,
@@ -1999,7 +2037,7 @@ local Defaults = {
                     AnchorFrom = "CENTER",
                     AnchorTo = "CENTER",
                     XOffset = 0,
-                    YOffset = -128.1,
+                    YOffset = -128,
                 },
                 GrowthDirection = "UP",
                 Spacing = 1,
@@ -2008,8 +2046,8 @@ local Defaults = {
                 Position = {
                     AnchorFrom = "CENTER",
                     AnchorTo = "CENTER",
-                    XOffset = 0.1,
-                    YOffset = 75.1,
+                    XOffset = 0,
+                    YOffset = 75,
                 },
                 GrowthDirection = "DOWN",
                 Spacing = 0,
@@ -2096,8 +2134,8 @@ local Defaults = {
                 Position = {
                     AnchorFrom = "CENTER",
                     AnchorTo = "CENTER",
-                    XOffset = -360.1,
-                    YOffset = 90.1,
+                    XOffset = -360,
+                    YOffset = 90,
                 },
             },
 

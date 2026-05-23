@@ -15,7 +15,8 @@ local math_floor = math.floor
 local UIParent = UIParent
 
 function NRSKNUI:UIMult()
-    self.mult = self.perfect or 1
+    local uiScale = self.uiScale or (UIParent and UIParent:GetEffectiveScale()) or 1
+    self.mult = self.perfect / uiScale
 end
 
 function NRSKNUI:PixelBestSize()
@@ -25,6 +26,12 @@ function NRSKNUI:PixelBestSize()
     return perfectScale
 end
 
+function NRSKNUI:UIScale()
+    UIParent:SetScale(self.perfect)
+    self.uiScale = self.perfect
+    self:UIMult()
+end
+
 ---@param event string
 function NRSKNUI:PixelScaleChanged(event)
     if event == "UI_SCALE_CHANGED" then
@@ -32,7 +39,7 @@ function NRSKNUI:PixelScaleChanged(event)
         self.resolution = string_format("%dx%d", self.physicalWidth, self.physicalHeight)
         self.perfect = 768 / self.physicalHeight
     end
-    self:UIMult()
+    self:UIScale()
     if self.UpdateSpells then self:UpdateSpells() end
 end
 
@@ -55,23 +62,19 @@ end
 function NRSKNUI:Scale(x)
     if not x or type(x) ~= "number" then return 0 end
 
-    local multiplier = self.mult or 1
-    if multiplier == 1 or x == 0 then return x end
+    local m = self.mult or 1
+    if m == 1 or x == 0 then return x end
 
-    local scaled = x * multiplier
-    if scaled >= 0 then
-        return math_floor(scaled + 0.5) / multiplier
-    else
-        return -math_floor(-scaled + 0.5) / multiplier
-    end
+    local y = m > 1 and m or -m
+    return x - x % (x < 0 and y or -y)
 end
 
 ---@param value number?
 ---@return number
 function NRSKNUI:SnapToPixel(value)
     if not value or type(value) ~= "number" then return 0 end
-    local scale = UIParent:GetEffectiveScale()
-    return math_floor(value * scale + 0.5) / scale
+    local scale = self.perfect
+    return math_floor(value / scale + 0.5) * scale
 end
 
 ---@param frame Frame?
@@ -117,9 +120,9 @@ function NRSKNUI:SnapFrameToPixels(frame, forceAbsolute)
         frame:ClearAllPoints()
         frame:SetPoint(newPoint, UIParent, newPoint, x, y)
     else
-        local scale = UIParent:GetEffectiveScale()
-        local snappedX = math_floor((xOfs or 0) * scale + 0.5) / scale
-        local snappedY = math_floor((yOfs or 0) * scale + 0.5) / scale
+        local scale = self.perfect
+        local snappedX = math_floor((xOfs or 0) / scale + 0.5) * scale
+        local snappedY = math_floor((yOfs or 0) / scale + 0.5) * scale
         frame:ClearAllPoints()
         frame:SetPoint(point, relativeTo or UIParent, relativePoint or point, snappedX, snappedY)
     end
@@ -142,7 +145,7 @@ end
 NRSKNUI.physicalWidth, NRSKNUI.physicalHeight = GetPhysicalScreenSize()
 NRSKNUI.resolution = string_format("%dx%d", NRSKNUI.physicalWidth, NRSKNUI.physicalHeight)
 NRSKNUI.perfect = 768 / NRSKNUI.physicalHeight
-NRSKNUI.mult = NRSKNUI.perfect
+NRSKNUI:UIMult()
 
 -- GUI Widget Pixel Perfection System
 do

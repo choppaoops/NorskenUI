@@ -79,6 +79,17 @@ local function BuildBarConfig(barKey, barDB, globalMouseover)
         mouseoverAlpha = (barDB.Mouseover and barDB.Mouseover.Alpha) or 1
     end
 
+    -- Determine point (corner) from layout and growth direction
+    -- This matches ElvUI's db.point which controls both start corner and growth
+    local layout = barDB.Layout or "HORIZONTAL"
+    local growth = barDB.GrowthDirection or "RIGHT"
+    local point
+    if layout == "HORIZONTAL" then
+        point = (growth == "LEFT") and "BOTTOMRIGHT" or "BOTTOMLEFT"
+    else
+        point = (growth == "LEFT") and "TOPRIGHT" or "TOPLEFT"
+    end
+
     -- Return config
     return {
         name = barKey,
@@ -88,12 +99,8 @@ local function BuildBarConfig(barKey, barDB, globalMouseover)
         spacing = barDB.Spacing or 1,
         buttonSize = barDB.ButtonSize or 40,
         totalButtons = barDB.TotalButtons or 12,
-        layout = barDB.Layout or "HORIZONTAL",
-        growthDirection = barDB.GrowthDirection or "RIGHT",
+        point = point,
         buttonsPerLine = barDB.ButtonsPerLine or 12,
-        anchorFrom = barDB.Position and barDB.Position.AnchorFrom or "BOTTOM",
-        relativeTo = _G[barDB.ParentFrame] or UIParent,
-        anchorTO = barDB.Position and barDB.Position.AnchorTo or "BOTTOM",
         x = barDB.Position and barDB.Position.XOffset or 0,
         y = barDB.Position and barDB.Position.YOffset or 0,
         enabled = barDB.Enabled ~= false,
@@ -365,6 +372,7 @@ function ACB:StyleButtonTextures(button)
 
     -- Style highlight texture
     if button.HighlightTexture then
+        NRSKNUI.DisablePixelSnap(button.HighlightTexture)
         button.HighlightTexture:SetTexture("Interface\\Buttons\\WHITE8x8")
         button.HighlightTexture:SetTexCoord(0, 1, 0, 1)
         button.HighlightTexture:ClearAllPoints()
@@ -377,6 +385,7 @@ function ACB:StyleButtonTextures(button)
     -- Style pushed texture
     local pushed = button:GetPushedTexture()
     if pushed then
+        NRSKNUI.DisablePixelSnap(pushed)
         pushed:SetTexture("Interface\\Buttons\\WHITE8x8")
         pushed:SetTexCoord(0, 1, 0, 1)
         pushed:ClearAllPoints()
@@ -412,8 +421,9 @@ function ACB:CreateButtonBackdrop(button, barName, index, buttonSize)
     local backdropColor = barConfig and barConfig.BackdropColor or { 0, 0, 0, 0.8 }
     local borderColor = barConfig and barConfig.BorderColor or { 0, 0, 0, 1 }
 
-    -- Create backdrop frame with dynamic name
+    -- Create backdrop frame with raw integer size (pixel-perfect approach)
     local backdrop = CreateFrame("Frame", "NRSKNUI_" .. barName .. "Backdrop" .. index, UIParent, "BackdropTemplate")
+    NRSKNUI.DisablePixelSnap(backdrop)
     backdrop:SetSize(buttonSize, buttonSize)
     backdrop:SetFrameStrata("BACKGROUND")
     backdrop:SetFrameLevel(1)
@@ -437,9 +447,10 @@ function ACB:CreateButtonBackdrop(button, barName, index, buttonSize)
     NRSKNUI:AddBorders(backdrop, borderColor, borderFrame)
     backdrop._barName = barName
 
-    -- Resize and re-anchor the Blizzard button to backdrop
+    -- Resize and re-anchor the Blizzard button with raw integer size
     button:SetParent(backdrop)
     button:ClearAllPoints()
+    NRSKNUI.DisablePixelSnap(button)
     button:SetSize(buttonSize, buttonSize)
     button:SetPoint("CENTER", backdrop, "CENTER", 0, 0)
 
@@ -499,14 +510,23 @@ function ACB:CreateButtonBackdrop(button, barName, index, buttonSize)
     end
 
     -- Blizzard elements hide/skin
-    if button.SlotArt then button.SlotArt:Hide() end                                           -- Hides the default slot background
-    if button.IconMask then button.IconMask:Hide() end                                         -- Hides the default circular mask on icons
-    if button.InterruptDisplay then button.InterruptDisplay:SetAlpha(0) end                    -- Hides the "slash" texture for interruptible spells
-    if button.SpellCastAnimFrame then button.SpellCastAnimFrame:SetAlpha(0) end                -- Hides the "shine" animation
-    if button.icon then button.icon:SetAllPoints(button) end                                   -- Resize the icon to fit properly
-    if button.cooldown then button.cooldown:SetAllPoints(button) end                           -- Fix cooldown/GCD swipe to match button size
-    if button.SpellHighlightTexture then button.SpellHighlightTexture:SetAllPoints(button) end -- Fix action bar glow (proc highlights)
-    if button.AutoCastable then button.AutoCastable:SetDrawLayer("OVERLAY", 7) end             -- Ensure glow is above the button
+    if button.SlotArt then button.SlotArt:Hide() end                            -- Hides the default slot background
+    if button.IconMask then button.IconMask:Hide() end                          -- Hides the default circular mask on icons
+    if button.InterruptDisplay then button.InterruptDisplay:SetAlpha(0) end     -- Hides the "slash" texture for interruptible spells
+    if button.SpellCastAnimFrame then button.SpellCastAnimFrame:SetAlpha(0) end -- Hides the "shine" animation
+    if button.icon then
+        NRSKNUI.DisablePixelSnap(button.icon)
+        button.icon:SetAllPoints(button)
+    end
+    if button.cooldown then
+        NRSKNUI.DisablePixelSnap(button.cooldown)
+        button.cooldown:SetAllPoints(button)
+    end
+    if button.SpellHighlightTexture then
+        NRSKNUI.DisablePixelSnap(button.SpellHighlightTexture)
+        button.SpellHighlightTexture:SetAllPoints(button)
+    end
+    if button.AutoCastable then button.AutoCastable:SetDrawLayer("OVERLAY", 7) end -- Ensure glow is above the button
 
     -- Reposition auto cast overlay and shine to match button size
     if button.AutoCastOverlay then
@@ -534,6 +554,7 @@ function ACB:CreateButtonBackdrop(button, barName, index, buttonSize)
 
     -- Create range overlay, red tint when out of range
     local rangeOverlay = button:CreateTexture(nil, "OVERLAY", nil, 1)
+    NRSKNUI.DisablePixelSnap(rangeOverlay)
     rangeOverlay:SetAllPoints(button)
     rangeOverlay:SetColorTexture(1, 0, 0, 0.2)
     rangeOverlay:Hide()
@@ -544,45 +565,80 @@ function ACB:CreateButtonBackdrop(button, barName, index, buttonSize)
     return backdrop
 end
 
--- Calculate button position based on layout
-local function CalculateButtonPosition(index, layout, columns, rows, growLeft, buttonSize, spacing)
-    local col, row
-    if layout == "HORIZONTAL" then
-        col = index % columns
-        row = math.floor(index / columns)
-    else
-        row = index % rows
-        col = math.floor(index / rows)
-    end
-    local dx = (growLeft and (columns - 1 - col) or col) * (buttonSize + spacing)
-    local dy = -(row * (buttonSize + spacing))
-    return dx, dy
+-- Get growth directions from point (matching ElvUI's GetGrowth)
+-- point is a corner: BOTTOMLEFT, BOTTOMRIGHT, TOPLEFT, TOPRIGHT
+local function GetGrowth(point)
+    local vertical = (point == "TOPLEFT" or point == "TOPRIGHT") and "DOWN" or "UP"
+    local horizontal = (point == "BOTTOMLEFT" or point == "TOPLEFT") and "RIGHT" or "LEFT"
+    local anchorUp = vertical == "UP"
+    local anchorLeft = horizontal == "LEFT"
+    return vertical, horizontal, anchorUp, anchorLeft
 end
 
--- Layout function, supports vertical and horizontal grid
-local function SkinBar(cfg)
-    if not cfg or not cfg.frame then return end
-    local buttonsPerLine = math.max(1, math.min(cfg.buttonsPerLine, cfg.totalButtons))
-    local growLeft = cfg.growthDirection == "LEFT"
+-- Position backdrop using raw SetPoint with integer pixel values (matching ElvUI approach)
+-- Uses direct positioning without widget methods to ensure exact pixel alignment
+local function PositionBackdrop(bar, backdrop, index, buttonsPerRow, point, buttonSpacing, lastBackdrop, lastRowBackdrop)
+    local _, _, anchorUp, anchorLeft = GetGrowth(point)
 
-    -- Calculate grid dimensions based on layout
-    local columns, rows
-    if cfg.layout == "HORIZONTAL" then
-        columns = buttonsPerLine
-        rows = math.ceil(cfg.totalButtons / columns)
+    local anchorPoint, relFrame, relPoint, x, y
+
+    if index == 1 then
+        anchorPoint = point
+        relFrame = bar
+        relPoint = point
+        x, y = 0, 0
+    elseif (index - 1) % buttonsPerRow == 0 then
+        anchorPoint, relFrame, relPoint, x, y = "TOP", lastRowBackdrop, "BOTTOM", 0, -buttonSpacing
+        if anchorUp then
+            anchorPoint, relPoint, y = "BOTTOM", "TOP", buttonSpacing
+        end
     else
-        rows = buttonsPerLine
-        columns = math.ceil(cfg.totalButtons / rows)
+        anchorPoint, relFrame, relPoint, x, y = "LEFT", lastBackdrop, "RIGHT", buttonSpacing, 0
+        if anchorLeft then
+            anchorPoint, relPoint, x = "RIGHT", "LEFT", -buttonSpacing
+        end
     end
 
-    -- Create container
-    local container = CreateFrame("Frame", "NRSKNUI_" .. cfg.name .. "_Container", UIParent)
-    container:SetSize(columns * cfg.buttonSize + (columns - 1) * cfg.spacing,
-        rows * cfg.buttonSize + (rows - 1) * cfg.spacing)
-    container:SetPoint(cfg.anchorFrom, cfg.relativeTo, cfg.anchorTO, cfg.x, cfg.y)
-    container:SetFrameStrata("LOW")
+    backdrop:ClearAllPoints()
+    backdrop:SetPoint(anchorPoint, relFrame, relPoint, x, y)
+end
 
-    -- Initialize mouseover settings
+-- Layout function using ElvUI pattern:
+-- 1. Create sizer frame anchored to first/last backdrops (siblings)
+-- 2. Copy sizer's derived size to container
+local function SkinBar(cfg)
+    if not cfg or not cfg.frame then return end
+
+    local point = cfg.point or "BOTTOMLEFT"
+    local buttonSize = cfg.buttonSize
+    local buttonSpacing = cfg.spacing
+    local numButtons = cfg.totalButtons
+    local buttonsPerRow = math.max(1, math.min(cfg.buttonsPerLine, numButtons))
+
+    if numButtons < buttonsPerRow then buttonsPerRow = numButtons end
+
+    local rows = math.ceil(numButtons / buttonsPerRow)
+    local columns = buttonsPerRow
+
+    -- Calculate size using raw integer values (pixel-perfect approach)
+    local containerWidth = columns * buttonSize + (columns - 1) * buttonSpacing
+    local containerHeight = rows * buttonSize + (rows - 1) * buttonSpacing
+
+    -- Create container with size and position
+    local container = CreateFrame("Frame", "NRSKNUI_" .. cfg.name .. "_Container", UIParent)
+    NRSKNUI.DisablePixelSnap(container)
+    container:SetFrameStrata("LOW")
+    container:SetSize(containerWidth, containerHeight)
+    cfg.nrsknui_container = container
+
+    -- Position at screen center + offset using integer pixel values
+    local screenCenterX = UIParent:GetWidth() / 2
+    local screenCenterY = UIParent:GetHeight() / 2
+    local left = math.floor(screenCenterX + cfg.x - containerWidth / 2 + 0.5)
+    local bottom = math.floor(screenCenterY + cfg.y - containerHeight / 2 + 0.5)
+    container:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", left, bottom)
+
+    -- Mouseover settings
     local mouseoverEnabled = cfg.mouseover and cfg.mouseover.enabled
     container:SetAlpha(mouseoverEnabled and (cfg.mouseover.alpha or 0) or 1)
     container._fadeAlpha = cfg.mouseover and cfg.mouseover.alpha or 0
@@ -590,22 +646,28 @@ local function SkinBar(cfg)
     container._fadeOutDur = cfg.mouseover and cfg.mouseover.fadeOutDuration or 1
     container._mouseoverEnabled = mouseoverEnabled
     container._isMouseOver = false
-    cfg.nrsknui_container = container
 
-    -- Iterate through buttons and lay them out
-    for i = 1, cfg.totalButtons do
+    -- Track for positioning
+    local lastBackdrop = nil
+    local lastRowBackdrop = nil
+
+    for i = 1, numButtons do
         local button = _G[cfg.buttonPrefix .. i]
         if button then
             ACB:StyleButtonTextures(button)
             ACB:StyleButtonText(button, cfg.name)
 
-            local backdrop = ACB:CreateButtonBackdrop(button, cfg.name, i, cfg.buttonSize)
+            local backdrop = ACB:CreateButtonBackdrop(button, cfg.name, i, buttonSize)
             if backdrop then
                 backdrop:SetParent(container)
-                local dx, dy = CalculateButtonPosition(i - 1, cfg.layout, columns, rows, growLeft, cfg.buttonSize,
-                    cfg.spacing)
-                backdrop:ClearAllPoints()
-                backdrop:SetPoint("TOPLEFT", container, "TOPLEFT", dx, dy)
+
+                PositionBackdrop(container, backdrop, i, buttonsPerRow, point, buttonSpacing, lastBackdrop,
+                    lastRowBackdrop)
+
+                if i == 1 or (i - 1) % buttonsPerRow == 0 then
+                    lastRowBackdrop = backdrop
+                end
+                lastBackdrop = backdrop
             end
         end
     end
@@ -885,10 +947,9 @@ local function SetupStanceBarVisibility(container)
 end
 
 -- Register each bar with my custom edit mode
-local function RegisterBarWithEditMode(barName, barDB, barContainer, relativeTo)
+local function RegisterBarWithEditMode(barName, barDB, barContainer)
     local db = barDB
     local frame = barContainer
-    local rel = relativeTo or UIParent
 
     local config = {
         key = "ActionBars_" .. barName,
@@ -896,10 +957,8 @@ local function RegisterBarWithEditMode(barName, barDB, barContainer, relativeTo)
         frame = frame,
 
         getPosition = function()
-            -- Pulling directly from the locked 'db' reference
+            -- Just return X/Y offsets from center
             return {
-                AnchorFrom = (db.Position and db.Position.AnchorFrom) or "CENTER",
-                AnchorTo = (db.Position and db.Position.AnchorTo) or "CENTER",
                 XOffset = (db.Position and db.Position.XOffset) or 0,
                 YOffset = (db.Position and db.Position.YOffset) or 0,
             }
@@ -908,24 +967,23 @@ local function RegisterBarWithEditMode(barName, barDB, barContainer, relativeTo)
         setPosition = function(pos)
             if not db.Position then db.Position = {} end
 
-            -- Update the SavedVariables
-            db.Position.AnchorFrom = pos.AnchorFrom
-            db.Position.AnchorTo = pos.AnchorTo
+            -- Update the SavedVariables (just X/Y)
             db.Position.XOffset = pos.XOffset
             db.Position.YOffset = pos.YOffset
 
-            -- Apply to frame
+            -- Position using raw SetPoint with BOTTOMLEFT anchor
+            local containerWidth, containerHeight = frame:GetSize()
+            local screenCenterX = UIParent:GetWidth() / 2
+            local screenCenterY = UIParent:GetHeight() / 2
+            local left = screenCenterX + pos.XOffset - containerWidth / 2
+            local bottom = screenCenterY + pos.YOffset - containerHeight / 2
+
             frame:ClearAllPoints()
-            frame:SetPoint(pos.AnchorFrom, rel, pos.AnchorTo, pos.XOffset, pos.YOffset)
+            frame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", left, bottom)
         end,
 
         getParentFrame = function()
-            -- Return the captured relativeTo or get current from db
-            local parentName = db.ParentFrame
-            if parentName and _G[parentName] then
-                return _G[parentName]
-            end
-            return rel
+            return UIParent
         end,
 
         guiPath = "ActionBars",
@@ -934,10 +992,48 @@ local function RegisterBarWithEditMode(barName, barDB, barContainer, relativeTo)
     NRSKNUI.EditMode:RegisterElement(config)
 end
 
+-- One-time migration to reset bar positions for pixel-perfect update
+local function RunPixelPerfectMigration(db)
+    if db.PixelPerfectMigrationV1 then return end
+
+    local defaults = NRSKNUI:GetDefaultDB()
+    local defaultBars = defaults and defaults.profile and defaults.profile.Skinning
+        and defaults.profile.Skinning.ActionBars and defaults.profile.Skinning.ActionBars.Bars
+
+    if not defaultBars then return end
+
+    -- Reset all bar positions to defaults
+    if db.Bars then
+        for barKey, defaultBar in pairs(defaultBars) do
+            if db.Bars[barKey] and db.Bars[barKey].Position and defaultBar.Position then
+                db.Bars[barKey].Position.XOffset = defaultBar.Position.XOffset
+                db.Bars[barKey].Position.YOffset = defaultBar.Position.YOffset
+            end
+        end
+    end
+
+    db.PixelPerfectMigrationV1 = true
+
+    NRSKNUI:CreatePrompt({
+        title = "Action Bar Update",
+        text = "Action bar positions have been reset due to pixel-perfect improvements.",
+        onAccept = function()
+        end,
+        onCancel = function()
+        end,
+        acceptText = "Yes",
+        cancelText = "Ok",
+    })
+end
+
 -- Module OnEnable
 function ACB:OnEnable()
     if NRSKNUI:ShouldNotLoadModule() then return end
     if not self.db.Enabled then return end
+
+    -- Run one-time migration for pixel-perfect positioning
+    RunPixelPerfectMigration(self.db)
+
     self:BuildConfigTable()
 
     -- Delay skinning until after Blizzard's initial setup to avoid taint issues and ensure all elements exist
@@ -956,8 +1052,7 @@ function ACB:OnEnable()
                 RegisterBarWithEditMode(
                     cfg.name,
                     cfg.dbReference,
-                    cfg.nrsknui_container,
-                    cfg.relativeTo
+                    cfg.nrsknui_container
                 )
             end
 
@@ -1142,14 +1237,33 @@ function ACB:UpdateBarPosition(barKey)
     local barDB, container = GetBarData(barKey)
     if not barDB or not container then return end
 
-    local anchor = barDB.Position and barDB.Position.AnchorFrom or "BOTTOM"
-    local relTo = _G[barDB.ParentFrame] or UIParent
-    local relPt = barDB.Position and barDB.Position.AnchorTo or "BOTTOM"
     local x = barDB.Position and barDB.Position.XOffset or 0
     local y = barDB.Position and barDB.Position.YOffset or 0
 
+    -- Calculate size (with mult=1, this is exact)
+    local buttonSize = barDB.ButtonSize or 40
+    local buttonSpacing = barDB.Spacing or 1
+    local buttonsPerLine = barDB.ButtonsPerLine or 12
+    local totalButtons = barDB.TotalButtons or 12
+
+    local numButtons = totalButtons
+    local buttonsPerRow = math.max(1, math.min(buttonsPerLine, numButtons))
+    if numButtons < buttonsPerRow then buttonsPerRow = numButtons end
+    local rows = math.ceil(numButtons / buttonsPerRow)
+    local columns = buttonsPerRow
+
+    local containerWidth = columns * buttonSize + (columns - 1) * buttonSpacing
+    local containerHeight = rows * buttonSize + (rows - 1) * buttonSpacing
+
+    -- Position using raw SetPoint with BOTTOMLEFT anchor
+    -- X/Y are offsets from screen center
+    local screenCenterX = UIParent:GetWidth() / 2
+    local screenCenterY = UIParent:GetHeight() / 2
+    local left = math.floor(screenCenterX + x - containerWidth / 2 + 0.5)
+    local bottom = math.floor(screenCenterY + y - containerHeight / 2 + 0.5)
+
     container:ClearAllPoints()
-    container:SetPoint(anchor, relTo, relPt, x, y)
+    container:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", left, bottom)
 end
 
 -- Update all bar positions
@@ -1204,41 +1318,47 @@ function ACB:UpdateAllMouseover()
     end
 end
 
--- Update bar size and layout, requires more complex update
+-- Update bar size and layout using widget methods with UNSCALED values (like ElvUI)
 function ACB:UpdateBarLayout(barKey)
     local barDB, container = GetBarData(barKey)
     if not barDB or not container then return end
 
     local buttonSize = barDB.ButtonSize or 40
-    local spacing = barDB.Spacing or 1
+    local buttonSpacing = barDB.Spacing or 1
     local totalButtons = barDB.TotalButtons or 12
-    local layout = barDB.Layout or "HORIZONTAL"
-    local growthDirection = barDB.GrowthDirection or "RIGHT"
-    local growLeft = growthDirection == "LEFT"
-    local buttonsPerLine = math.max(1, math.min(barDB.ButtonsPerLine or 12, totalButtons))
+    local buttonsPerRow = math.max(1, math.min(barDB.ButtonsPerLine or 12, totalButtons))
     local frameInfo = BAR_FRAME_MAP[barKey]
 
-    -- Calculate new container size
-    local columns, rows
+    -- Determine point from layout and growth direction
+    local layout = barDB.Layout or "HORIZONTAL"
+    local growth = barDB.GrowthDirection or "RIGHT"
+    local point
     if layout == "HORIZONTAL" then
-        columns = buttonsPerLine
-        rows = math.ceil(totalButtons / columns)
+        point = (growth == "LEFT") and "BOTTOMRIGHT" or "BOTTOMLEFT"
     else
-        rows = buttonsPerLine
-        columns = math.ceil(totalButtons / rows)
+        point = (growth == "LEFT") and "TOPRIGHT" or "TOPLEFT"
     end
-    container:SetSize(
-        columns * buttonSize + (columns - 1) * spacing,
-        rows * buttonSize + (rows - 1) * spacing
-    )
 
-    -- Update visible buttons and their backdrops
+    -- Calculate container size using raw integer values (pixel-perfect approach)
+    if totalButtons < buttonsPerRow then buttonsPerRow = totalButtons end
+    local rows = math.ceil(totalButtons / buttonsPerRow)
+    local columns = buttonsPerRow
+
+    local containerWidth = columns * buttonSize + (columns - 1) * buttonSpacing
+    local containerHeight = rows * buttonSize + (rows - 1) * buttonSpacing
+    container:SetSize(containerWidth, containerHeight)
+
+    -- Track for relative positioning
+    local lastBackdrop = nil
+    local lastRowBackdrop = nil
+
+    -- Update visible buttons and their backdrops using widget methods with UNSCALED values
     for i = 1, totalButtons do
         local button = _G[frameInfo.prefix .. i]
         if button then
             local backdrop = button.nrsknui_backdrop
 
-            -- Create backdrop if it doesn't exist
+            -- Create backdrop if it doesn't exist (use UNSCALED size)
             if not backdrop then
                 self:StyleButtonTextures(button)
                 self:StyleButtonText(button, barKey)
@@ -1250,29 +1370,43 @@ function ACB:UpdateBarLayout(barKey)
 
             -- If backdrop exist, style it with new settings
             if backdrop then
-                -- Show backdrop for visible buttons
                 backdrop:Show()
 
-                -- Update button size
+                -- Update sizes using raw SetSize (pixel-perfect approach)
                 button:SetSize(buttonSize, buttonSize)
                 backdrop:SetSize(buttonSize, buttonSize)
 
-                -- Recalculate position using helper
-                local dx, dy = CalculateButtonPosition(i - 1, layout, columns, rows, growLeft, buttonSize, spacing)
-                backdrop:ClearAllPoints()
-                backdrop:SetPoint("TOPLEFT", container, "TOPLEFT", dx, dy)
+                -- Position using raw SetPoint via PositionBackdrop
+                PositionBackdrop(container, backdrop, i, buttonsPerRow, point, buttonSpacing, lastBackdrop,
+                    lastRowBackdrop)
+
+                -- Track for next iteration
+                if i == 1 or (i - 1) % buttonsPerRow == 0 then
+                    lastRowBackdrop = backdrop
+                end
+                lastBackdrop = backdrop
 
                 -- Update icon and cooldown to match new size
-                if button.icon then button.icon:SetAllPoints(button) end
-                if button.cooldown then button.cooldown:SetAllPoints(button) end
-                if button.SpellHighlightTexture then button.SpellHighlightTexture:SetAllPoints(button) end
+                if button.icon then
+                    NRSKNUI.DisablePixelSnap(button.icon)
+                    button.icon:SetAllPoints(button)
+                end
+                if button.cooldown then
+                    NRSKNUI.DisablePixelSnap(button.cooldown)
+                    button.cooldown:SetAllPoints(button)
+                end
+                if button.SpellHighlightTexture then
+                    NRSKNUI.DisablePixelSnap(button.SpellHighlightTexture)
+                    button.SpellHighlightTexture:SetAllPoints(button)
+                end
 
                 -- Update proc glow to match new size
                 if button.SpellActivationAlert then
-                    local glowOverflow = buttonSize * 0.2
+                    local glowOverflow = math.floor(buttonSize * 0.2 + 0.5)
                     button.SpellActivationAlert:ClearAllPoints()
                     button.SpellActivationAlert:SetPoint("TOPLEFT", button, "TOPLEFT", -glowOverflow, glowOverflow)
-                    button.SpellActivationAlert:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", glowOverflow, -glowOverflow)
+                    button.SpellActivationAlert:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", glowOverflow,
+                        -glowOverflow)
                 end
 
                 -- Re-style text elements with new size
@@ -1305,7 +1439,7 @@ function ACB:UpdateBarEnabled(barKey)
     if barDB.Enabled then
         container:Show()
         -- Register with edit mode when enabled
-        RegisterBarWithEditMode(barKey, barDB, container, _G[barDB.ParentFrame] or UIParent)
+        RegisterBarWithEditMode(barKey, barDB, container)
     else
         container:Hide()
         -- Unregister from edit mode when disabled
@@ -1415,7 +1549,8 @@ function ACB:ApplySettings()
                     container:Show()
                     -- Trigger visibility update for special bars
                     if container._visibilityFrame then
-                        container._visibilityFrame:GetScript("OnEvent")(container._visibilityFrame, "PLAYER_ENTERING_WORLD")
+                        container._visibilityFrame:GetScript("OnEvent")(container._visibilityFrame,
+                            "PLAYER_ENTERING_WORLD")
                     end
                 else
                     container:Hide()

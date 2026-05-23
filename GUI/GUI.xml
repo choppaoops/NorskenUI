@@ -65,7 +65,6 @@
 
     <!-- GUI QoL Tabs -->
     <Script file="GUITabs\GUI-QoL\GUI-AutomationTab.lua" />
-    <Script file="GUITabs\GUI-QoL\GUI-WhisperSoundsTab.lua" />
     <Script file="GUITabs\GUI-QoL\GUI-DragonRiding.lua" />
     <Script file="GUITabs\GUI-QoL\GUI-CopyAnything.lua" />
     <Script file="GUITabs\GUI-QoL\GUI-XPBar.lua" />
@@ -85,12 +84,12 @@
     <Script file="GUITabs\GUISkinning\GUI-MicroMenuTab.lua" />
     <Script file="GUITabs\GUISkinning\GUI-MinimapTab.lua" />
     <Script file="GUITabs\GUISkinning\GUI-DetailsBackdrop.lua" />
-    <Script file="GUITabs\GUISkinning\GUI-Chat.lua" />
     <Script file="GUITabs\GUISkinning\GUI-ActionBarsTab.lua" />
     <Script file="GUITabs\GUISkinning\GUI-UICleanup.lua" />
     <Script file="GUITabs\GUISkinning\GUI-BlizzardRaidmanager.lua" />
     <Script file="GUITabs\GUISkinning\GUI-UIWidgetsTab.lua" />
     <Script file="GUITabs\GUISkinning\GUI-BnetFrame.lua" />
+    <Script file="GUITabs\GUISkinning\GUI-Chatv2.lua" />
 
     <!-- GUI Aura Tracking Tabs -->
     <Script file="GUITabs\GUI-AuraTracking\GUI-Buffs.lua" />
@@ -113,6 +112,7 @@
     <Script file="GUITabs\GUI-Miscellaneous\GUI-BenchAlert.lua" />
     <Script file="GUITabs\GUI-Miscellaneous\GUI-TotemTracker.lua" />
     <Script file="GUITabs\GUI-Miscellaneous\GUI-SpellAlert.lua" />
+    <Script file="GUITabs\GUI-Miscellaneous\GUI-BloodlustTracker.lua" />
 
     <Script file="GUIMain\GUI-MainFrame.lua" />
 </Ui>

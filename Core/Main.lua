@@ -76,6 +76,9 @@ function NorskenUI:OnInitialize()
         end
     end)
 
+    -- Set UIParent scale to perfect for pixel-perfect rendering
+    NRSKNUI:UIScale()
+
     -- Slight delay so that current Theme color can be applied to the minimap icon
     C_Timer.After(1, function()
         NRSKNUI:SetupMinimapIcon()

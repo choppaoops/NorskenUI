@@ -48,10 +48,10 @@ GUIFrame.SidebarConfig = {
             text = "Aura Tracking",
             defaultExpanded = false,
             items = {
-                { id = "CustomSkin_Buffs",        text = "Default Buffs" },
+                { id = "CustomSkin_Buffs",          text = "Default Buffs" },
                 { id = "CustomSkin_DebuffsDefault", text = "Default Debuffs" },
-                { id = "CustomSkin_Debuffs",      text = "Advanced Debuffs" },
-                { id = "CustomSkin_Externals",    text = "External & Defensive Buffs" },
+                { id = "CustomSkin_Debuffs",        text = "Advanced Debuffs" },
+                { id = "CustomSkin_Externals",      text = "External & Defensive Buffs" },
             }
         },
         {
@@ -60,13 +60,14 @@ GUIFrame.SidebarConfig = {
             text = "Class Util",
             defaultExpanded = false,
             items = {
-                { id = "BurningRush",  text = "Warlock: Burning Rush" },
-                { id = "IncarnStacks", text = "Guardian Druid: Incarn Stacks" },
-                { id = "HuntersMark",  text = "Hunter: Mark Missing" },
-                { id = "PetTexts",     text = "Pet Status Texts" },
-                { id = "gateway",      text = "Gateway Alert" },
-                { id = "TotemTracker", text = "Totem Tracker" },
-                { id = "SpellAlert",   text = "Spell Alert Overlay" },
+                { id = "BurningRush",      text = "Warlock: Burning Rush" },
+                { id = "IncarnStacks",     text = "Guardian Druid: Incarn Stacks" },
+                { id = "HuntersMark",      text = "Hunter: Mark Missing" },
+                { id = "PetTexts",         text = "Pet Status Texts" },
+                { id = "gateway",          text = "Gateway Alert" },
+                { id = "TotemTracker",     text = "Totem Tracker" },
+                { id = "SpellAlert",       text = "Spell Alert Overlay" },
+                { id = "BloodlustTracker", text = "Bloodlust Tracker" },
             }
         },
         {
@@ -80,7 +81,6 @@ GUIFrame.SidebarConfig = {
                 { id = "Automation",         text = "Automation" },
                 { id = "CopyAnything",       text = "Copy Anything" },
                 { id = "CooldownStrings",    text = "CDM Profile Strings" },
-                { id = "whisperSounds",      text = "Whisper Sounds" },
                 { id = "DragonRiding",       text = "Dragon Riding UI" },
                 { id = "XPBar",              text = "XP Bar" },
                 { id = "Durability",         text = "Durability Util" },
@@ -97,7 +97,7 @@ GUIFrame.SidebarConfig = {
             elvUIDisabled = true,
             items = {
                 { id = "UICleanup",         text = "General UI Cleanup" },
-                { id = "Chat",              text = "Chat" },
+                { id = "Chatv2",            text = "Chat v2" },
                 { id = "ActionBars",        text = "Action Bars" },
                 { id = "Minimap",           text = "Minimap" },
                 { id = "MicroMenu",         text = "Micro Menu" },

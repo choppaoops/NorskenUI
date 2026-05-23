@@ -8,4 +8,5 @@
     <Script file="PetTexts.lua"/>
     <Script file="TotemTracker.lua"/>
     <Script file="SpellAlert.lua" />
+    <Script file="BloodlustTracker.lua" />
 </Ui>

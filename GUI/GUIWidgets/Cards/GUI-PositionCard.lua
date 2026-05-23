@@ -187,7 +187,7 @@ function GUIFrame:CreatePositionCard(scrollChild, yOffset, config)
     local onChange = config.onChangeCallback
     local showAnchorFrameType = config.showAnchorFrameType ~= false
     local showStrata = config.showStrata == true
-    local sliderRange = config.sliderRange or { -1000, 1000 }
+    local sliderRange = config.sliderRange or { -2000, 2000 }
     local contextOptions = config.contextOptions
     local defaultContext = config.defaultContext
     local splitToggleKey = config.splitToggleKey
@@ -412,7 +412,7 @@ function GUIFrame:CreatePositionCard(scrollChild, yOffset, config)
     xSlider = GUIFrame:CreateSlider(row4, "X Offset", {
         min = sliderRange[1],
         max = sliderRange[2],
-        step = 0.1,
+        step = 1,
         value = getValue(keys.xOffset, defaults.xOffset or 0),
         labelWidth = 55,
         callback = function(val)
@@ -425,7 +425,7 @@ function GUIFrame:CreatePositionCard(scrollChild, yOffset, config)
     ySlider = GUIFrame:CreateSlider(row4, "Y Offset", {
         min = sliderRange[1],
         max = sliderRange[2],
-        step = 0.1,
+        step = 1,
         value = getValue(keys.yOffset, defaults.yOffset or 0),
         labelWidth = 55,
         callback = function(val)

@@ -3,8 +3,6 @@ local NRSKNUI = select(2, ...)
 local GUIFrame = NRSKNUI.GUIFrame
 local Theme = NRSKNUI.Theme
 
-local ipairs = ipairs
-
 GUIFrame:RegisterContent("BurningRush", function(scrollChild, yOffset)
     local db = NRSKNUI.db and NRSKNUI.db.profile.BurningRush
     if not db then return GUIFrame:ShowDBError(scrollChild, yOffset) end

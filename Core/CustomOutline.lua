@@ -10,10 +10,10 @@ local setmetatable = setmetatable
 local UIFrameFade, UIFrameFadeIn, UIFrameFadeOut = UIFrameFade, UIFrameFadeIn, UIFrameFadeOut
 local issecretvalue = issecretvalue
 local type = type
-local C_Timer = C_Timer
 
 local SOFT_OUTLINE_FADEOUT_SPEED = 0.85
 local fadeHookRunning = false
+local DEFAULT_FONT = "Fonts\\FRIZQT__.TTF"
 
 local SHADOW_OFFSETS = {
     { 0, 1 }, { 1, 1 }, { 1, 0 }, { 1, -1 },
@@ -32,7 +32,6 @@ local function StripEscapeCodes(text)
         :gsub("|T.-|t", "   ")
         :gsub("|A.-|a", "   ")
         :gsub("|H.-|h(.-)|h", "%1")
-        :gsub("{rt%d}", " ")
 end
 
 local function HandleFadeHook(frame, outline, startAlpha)
@@ -97,10 +96,12 @@ function SoftOutline:_ForEach(fn)
 end
 
 function SoftOutline:_ApplyOffsets()
+    local point = self.main:GetPoint(1)
+    local anchor = point or "CENTER"
     self:_ForEach(function(shadow, i)
         local offset = SHADOW_OFFSETS[i]
         shadow:ClearAllPoints()
-        shadow:SetPoint("CENTER", self.main, "CENTER", offset[1] * self.thickness, offset[2] * self.thickness)
+        shadow:SetPoint(anchor, self.main, anchor, offset[1] * self.thickness, offset[2] * self.thickness)
     end)
 end
 
@@ -142,13 +143,13 @@ end
 
 function SoftOutline:SetFont(fontPath, fontSize)
     if not self.shadows then return false end
-    fontPath = (fontPath and fontPath ~= "") and fontPath or NRSKNUI.BLIZZARD_FONT
+    fontPath = (fontPath and fontPath ~= "") and fontPath or DEFAULT_FONT
     fontSize = (fontSize and fontSize > 0) and fontSize or 14
 
     local success = true
     for _, shadow in ipairs(self.shadows) do
         if not shadow:SetFont(fontPath, fontSize, "") then
-            shadow:SetFont(NRSKNUI.BLIZZARD_FONT, fontSize, "")
+            shadow:SetFont(DEFAULT_FONT, fontSize, "")
             success = false
         end
     end
@@ -177,7 +178,6 @@ end
 
 function SoftOutline:_IsTextVisible()
     if not self.main then return false end
-    if not self.main:IsShown() then return false end
     local _, _, _, textAlpha = self.main:GetTextColor()
     local frameAlpha = self.main:GetAlpha()
     if issecretvalue and (issecretvalue(textAlpha) or issecretvalue(frameAlpha)) then
@@ -195,6 +195,10 @@ function SoftOutline:SetShown(shown)
         return
     end
 
+    local font, size = self.main:GetFont()
+    if font and font ~= "" and size and size > 0 then
+        self:SetFont(font, size)
+    end
     self:SetText(self.main:GetText() or "")
     self:_ApplyColor()
     self:_SyncJustify()
@@ -210,6 +214,10 @@ function SoftOutline:SetShownFromBoolean(condition, trueVal, falseVal)
     local showFalse = falseVal == true
 
     if showTrue and self:_IsTextVisible() then
+        local font, size = self.main:GetFont()
+        if font and font ~= "" and size and size > 0 then
+            self:SetFont(font, size)
+        end
         self:SetText(self.main:GetText() or "")
         self:_SyncJustify()
         self:_SyncWrapSettings()
@@ -344,8 +352,8 @@ end
 
 local function GetFontWithFallback(fontString, options)
     local font, size = fontString:GetFont()
-    font = options.fontPath or (font and font ~= "" and font) or NRSKNUI.BLIZZARD_FONT
-    size = options.fontSize or (size and size > 0 and size) or 14
+    font = (font and font ~= "") and font or options.fontPath or DEFAULT_FONT
+    size = (size and size > 0) and size or options.fontSize or 14
     return font, size
 end
 
@@ -410,37 +418,27 @@ function NRSKNUI:ApplyFontToText(fontString, fontName, fontSize, fontOutline, sh
     fontOutline = fontOutline or "OUTLINE"
     shadowSettings = shadowSettings or {}
 
-    local useSoftOutline = fontOutline == "SOFTOUTLINE"
+    local success = self:ApplyFont(fontString, fontName, fontSize, fontOutline)
 
-    local blizzardOutline = fontOutline
     if fontOutline == "SOFTOUTLINE" then
-        blizzardOutline = "NONE"
-    end
-
-    local fontPath = self:GetFontPath(fontName)
-
-    local success = self:ApplyFont(fontString, fontName, fontSize, blizzardOutline)
-
-    if useSoftOutline then
         fontString:SetShadowOffset(0, 0)
         fontString:SetShadowColor(0, 0, 0, 0)
 
-        -- Defer soft outline creation to next frame to ensure font is fully applied
-        C_Timer.After(0, function()
-            if not fontString.softOutline then
-                fontString.softOutline = self:CreateSoftOutline(fontString, { fontPath = fontPath, fontSize = fontSize })
-            else
-                fontString.softOutline:SetFont(fontPath, fontSize)
-            end
-            fontString.softOutline:SetShown(true)
-        end)
+        local fontPath = self:GetFontPath(fontName)
+        if not fontString.softOutline then
+            fontString.softOutline = self:CreateSoftOutline(fontString, {
+                fontPath = fontPath,
+                fontSize = fontSize,
+            })
+        end
+        fontString.softOutline:SetShown(true)
+        fontString.softOutline:SetFont(fontPath, fontSize)
     else
         if fontString.softOutline then
             fontString.softOutline:SetShown(false)
         end
 
-        local noShadowOutline = fontOutline == "SLUG" or fontOutline == "SLUG,OUTLINE"
-        if shadowSettings.Enabled and not noShadowOutline then
+        if shadowSettings.Enabled then
             local c = shadowSettings.Color or { 0, 0, 0, 1 }
             fontString:SetShadowColor(c[1], c[2], c[3], (c[4] and c[4] > 0) and c[4] or 0.9)
             fontString:SetShadowOffset(shadowSettings.OffsetX or 1, shadowSettings.OffsetY or -1)
