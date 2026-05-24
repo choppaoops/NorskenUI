@@ -17,20 +17,23 @@ local LIST_PADDING = 4
 local selectedItem = "General"
 
 local SIDEBAR_ITEMS = {
-    { key = "sep_paladin",           name = "Paladin",                order = 9,  type = "separator" },
-    { key = "BeaconOfLight",         name = "Beacon of Light",        icon = 53563,  order = 10, type = "targeted", class = "PALADIN" },
-    { key = "BeaconOfFaith",         name = "Beacon of Faith",        icon = 156910, order = 11, type = "targeted", class = "PALADIN" },
+    { key = "sep_paladin",           name = "Paladin",                order = 9,     type = "separator" },
+    { key = "BeaconOfLight",         name = "Beacon of Light",        icon = 53563,  order = 10,        type = "targeted", class = "PALADIN" },
+    { key = "BeaconOfFaith",         name = "Beacon of Faith",        icon = 156910, order = 11,        type = "targeted", class = "PALADIN" },
 
-    { key = "sep_evoker",            name = "Evoker",                 order = 19, type = "separator" },
-    { key = "BlisteringScales",      name = "Blistering Scales",      icon = 360827, order = 20, type = "targeted", class = "EVOKER" },
-    { key = "Timelessness",          name = "Timelessness",           icon = 412710, order = 21, type = "targeted", class = "EVOKER" },
-    { key = "SourceOfMagic",         name = "Source of Magic",        icon = 369459, order = 22, type = "targeted", class = "EVOKER" },
+    { key = "sep_evoker",            name = "Evoker",                 order = 19,    type = "separator" },
+    { key = "BlisteringScales",      name = "Blistering Scales",      icon = 360827, order = 20,        type = "targeted", class = "EVOKER" },
+    { key = "Timelessness",          name = "Timelessness",           icon = 412710, order = 21,        type = "targeted", class = "EVOKER" },
+    { key = "SourceOfMagic",         name = "Source of Magic",        icon = 369459, order = 22,        type = "targeted", class = "EVOKER" },
 
-    { key = "sep_shaman",            name = "Shaman",                 order = 29, type = "separator" },
-    { key = "EarthShieldOthers",     name = "Earth Shield (Others)",  icon = 974,    order = 30, type = "targeted", class = "SHAMAN" },
+    { key = "sep_shaman",            name = "Shaman",                 order = 29,    type = "separator" },
+    { key = "EarthShieldOthers",     name = "Earth Shield (Others)",  icon = 974,    order = 30,        type = "targeted", class = "SHAMAN" },
 
-    { key = "sep_druid",             name = "Druid",                  order = 39, type = "separator" },
-    { key = "SymbioticRelationship", name = "Symbiotic Relationship", icon = 474750, order = 40, type = "targeted", class = "DRUID" },
+    { key = "sep_druid",             name = "Druid",                  order = 39,    type = "separator" },
+    { key = "SymbioticRelationship", name = "Symbiotic Relationship", icon = 474750, order = 40,        type = "targeted", class = "DRUID" },
+
+    { key = "sep_monk",              name = "Monk",                   order = 49,    type = "separator" },
+    { key = "LinkedSpirits",         name = "Linked Spirits",         icon = 434774, order = 50,        type = "targeted", class = "MONK" },
 }
 
 local function GetModule()

@@ -946,13 +946,18 @@ local function CheckTargetedBuffs()
     local targetedSettings = MBUFFS.db.TargetedBuffs
     if not targetedSettings or targetedSettings.Enabled == false then return targetedMissingCache end
 
+    local restrictionState = NRSKNUI:GetRestrictionState()
+    local isRestricted = InCombatLockdown() or isEncounterInProgress or restrictionState == 1 or restrictionState == 2
+
     local targetedBuffsDb = MBUFFS.db.TargetedBuffSettings or {}
     local currentSpecId = NRSKNUI.MySpec.id
     local inGroup = checkContext.groupSize > 0
 
     for _, buff in ipairs(TARGETED_BUFFS) do
         if buff.class == playerClass and buff.key then
-            if not inGroup and not buff.includeSelf then
+            if buff.secret and isRestricted then
+                -- Skip secret buffs when restricted (can't check aura data reliably)
+            elseif not inGroup and not buff.includeSelf then
                 -- Skip buffs that require group targets when solo
             else
                 local buffSettings = targetedBuffsDb[buff.key] or {}
@@ -1025,13 +1030,18 @@ local function CheckSelfBuffs()
     wipe(groupMissingBuffCache)
     if not MBUFFS.db then return selfMissingCache end
 
+    local restrictionState = NRSKNUI:GetRestrictionState()
+    local isRestricted = InCombatLockdown() or isEncounterInProgress or restrictionState == 1 or restrictionState == 2
+
     local selfBuffsDb = MBUFFS.db.SelfBuffs or {}
     local currentSpecId = NRSKNUI.MySpec.id
 
     local hasElementalOrbit = playerClass == "SHAMAN" and C_SpellBook.IsSpellKnown(ELEMENTAL_ORBIT_TALENT)
 
     for _, buff in ipairs(SELF_BUFFS) do
-        if buff.class == playerClass and buff.key then
+        if buff.secret and isRestricted then
+            -- Skip secret buffs when restricted
+        elseif buff.class == playerClass and buff.key then
             local buffSettings = selfBuffsDb[buff.key] or {}
             local specMatch = not buff.specId or currentSpecId == buff.specId
             local talentKnown = not buff.talentId or C_SpellBook.IsSpellKnown(buff.talentId)
@@ -1117,6 +1127,9 @@ local function CheckPresenceBuffs()
     if not checkContext.isInRaid then return presenceMissingCache end
     if checkContext.trackingMode ~= "all" then return presenceMissingCache end
 
+    local restrictionState = NRSKNUI:GetRestrictionState()
+    local isRestricted = InCombatLockdown() or isEncounterInProgress or restrictionState == 1 or restrictionState == 2
+
     local presenceBuffsDb = MBUFFS.db.PresenceBuffs or {}
     local showOtherClass = checkContext.showOtherClass
     local checkGroup = checkContext.checkGroup
@@ -1125,10 +1138,13 @@ local function CheckPresenceBuffs()
     local maxIndex = checkContext.maxIndex
 
     for _, buff in ipairs(PRESENCE_BUFFS) do
-        local isOwnClassBuff = buff.providerClass == playerClass
-        local shouldTrack = isOwnClassBuff or (showOtherClass and groupClassesCache[buff.providerClass])
+        if buff.secret and isRestricted then
+            -- Skip secret buffs when restricted
+        else
+            local isOwnClassBuff = buff.providerClass == playerClass
+            local shouldTrack = isOwnClassBuff or (showOtherClass and groupClassesCache[buff.providerClass])
 
-        if buff.key and shouldTrack then
+            if buff.key and shouldTrack then
             local buffSettings = presenceBuffsDb[buff.key] or {}
             local buffEnabled = buffSettings.Enabled ~= false
 
@@ -1161,6 +1177,7 @@ local function CheckPresenceBuffs()
                     }
                 end
             end
+        end
         end
     end
 

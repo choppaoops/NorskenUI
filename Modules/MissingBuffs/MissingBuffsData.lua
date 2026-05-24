@@ -47,36 +47,38 @@ Data.RESTRICTED_BUFFS = {
 }
 
 Data.TARGETED_BUFFS = {
-    { spellId = 53563,  class = "PALADIN", specId = 65,   targetType = "any",    maxTargets = 1, key = "BeaconOfLight",         excludeIfTalent = 200025 },
-    { spellId = 156910, class = "PALADIN", specId = 65,   targetType = "any",    maxTargets = 1, key = "BeaconOfFaith",         talentId = 156910 },
+    { spellId = 53563,  class = "PALADIN", specId = 65,   targetType = "any",    maxTargets = 1, key = "BeaconOfLight",         secret = false, excludeIfTalent = 200025 },
+    { spellId = 156910, class = "PALADIN", specId = 65,   targetType = "any",    maxTargets = 1, key = "BeaconOfFaith",         secret = false, talentId = 156910 },
 
-    { spellId = 360827, class = "EVOKER",  specId = 1473, targetType = "any",    maxTargets = 1, key = "BlisteringScales",      includeSelf = true,      talentId = 360827 },
-    { spellId = 412710, class = "EVOKER",  specId = 1473, targetType = "any",    maxTargets = 1, key = "Timelessness",          talentId = 412710 },
-    { spellId = 369459, class = "EVOKER",  specId = 1473, targetType = "healer", maxTargets = 1, key = "SourceOfMagic" },
+    { spellId = 360827, class = "EVOKER",  specId = 1473, targetType = "any",    maxTargets = 1, key = "BlisteringScales",      secret = false, includeSelf = true,      talentId = 360827 },
+    { spellId = 412710, class = "EVOKER",  specId = 1473, targetType = "any",    maxTargets = 1, key = "Timelessness",          secret = true,  talentId = 412710 },
+    { spellId = 369459, class = "EVOKER",  specId = 1473, targetType = "healer", maxTargets = 1, key = "SourceOfMagic",         secret = false },
 
-    { spellId = 974,    class = "SHAMAN",  specId = 264,  targetType = "any",    maxTargets = 1, key = "EarthShieldOthers",     excludeSelf = true },
+    { spellId = 974,    class = "SHAMAN",  specId = 264,  targetType = "any",    maxTargets = 1, key = "EarthShieldOthers",     secret = false, excludeSelf = true },
 
-    { spellId = 474750, class = "DRUID",   specId = 105,  targetType = "any",    maxTargets = 1, key = "SymbioticRelationship", talentId = 474750 },
+    { spellId = 474750, class = "DRUID",   specId = 105,  targetType = "any",    maxTargets = 1, key = "SymbioticRelationship", secret = false, talentId = 474750 },
+
+    { spellId = 434763, class = "MONK",    specId = 270,  targetType = "any",    maxTargets = 1, key = "LinkedSpirits",         secret = true,  talentId = 434774 },
 }
 
 Data.ELEMENTAL_ORBIT_TALENT = 383010
 Data.EARTH_SHIELD_SELF_BUFF = 383648
 
 Data.SELF_BUFFS = {
-    { spellId = 210126, class = "MAGE",    key = "ArcaneFamiliar",    talentId = 205022,        specId = 62 },
-    { spellId = 196099, class = "WARLOCK", key = "GrimoireSacrifice", talentId = 108503,        castSpellId = 108503 },
-    { spellId = 318038, class = "SHAMAN",  key = "FlametongueWeapon", enchantId = 5400 },
-    { spellId = 33757,  class = "SHAMAN",  key = "WindfuryWeapon",    enchantId = 5401 },
-    { spellId = 382021, class = "SHAMAN",  key = "EarthlivingWeapon", enchantId = 6498 },
-    { spellId = 974,    class = "SHAMAN",  key = "EarthShieldSelf",   groupId = "ShamanShield" },
-    { spellId = 192106, class = "SHAMAN",  key = "LightningShield",   groupId = "ShamanShield" },
-    { spellId = 52127,  class = "SHAMAN",  key = "WaterShield",       groupId = "ShamanShield", specId = 264 },
+    { spellId = 210126, class = "MAGE",    key = "ArcaneFamiliar",    secret = true,  talentId = 205022,        specId = 62 },
+    { spellId = 196099, class = "WARLOCK", key = "GrimoireSacrifice", secret = true,  talentId = 108503,        castSpellId = 108503 },
+    { spellId = 319778, class = "SHAMAN",  key = "FlametongueWeapon", secret = false, enchantId = 5400 },
+    { spellId = 319773, class = "SHAMAN",  key = "WindfuryWeapon",    secret = false, enchantId = 5401 },
+    { spellId = 382021, class = "SHAMAN",  key = "EarthlivingWeapon", secret = false, enchantId = 6498 },
+    { spellId = 974,    class = "SHAMAN",  key = "EarthShieldSelf",   secret = false, groupId = "ShamanShield" },
+    { spellId = 192106, class = "SHAMAN",  key = "LightningShield",   secret = true,  groupId = "ShamanShield" },
+    { spellId = 52127,  class = "SHAMAN",  key = "WaterShield",       secret = true,  groupId = "ShamanShield", specId = 264 },
 }
 
 Data.PRESENCE_BUFFS = {
-    { spellId = 465,    providerClass = "PALADIN", key = "DevotionAura" },
-    { spellId = 20707,  providerClass = "WARLOCK", key = "Soulstone",      checkAnyGroupMember = true },
-    { spellId = 381637, providerClass = "ROGUE",   key = "AtrophicPoison", checkAnyGroupMember = true },
+    { spellId = 465,    providerClass = "PALADIN", key = "DevotionAura",   secret = true },
+    { spellId = 20707,  providerClass = "WARLOCK", key = "Soulstone",      secret = true, checkAnyGroupMember = true },
+    { spellId = 381637, providerClass = "ROGUE",   key = "AtrophicPoison", secret = true, checkAnyGroupMember = true },
 }
 
 Data.ASSA_DOUBLE_POISON_TALENT = 381801

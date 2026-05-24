@@ -2244,6 +2244,7 @@ local Defaults = {
                 SourceOfMagic = { Enabled = true, LoadCondition = "ANYGROUP", GlowMode = "always", ExpirationMins = 10, GlowEnabled = true, GlowType = "pixel", GlowColor = { 0, 0.82, 1, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 10, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
                 EarthShieldOthers = { Enabled = true, LoadCondition = "ANYGROUP", GlowMode = "always", ExpirationMins = 10, GlowEnabled = true, GlowType = "pixel", GlowColor = { 0.78, 1, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 10, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
                 SymbioticRelationship = { Enabled = true, LoadCondition = "ANYGROUP", GlowMode = "always", ExpirationMins = 10, GlowEnabled = true, GlowType = "pixel", GlowColor = { 0.12, 1, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 10, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
+                LinkedSpirits = { Enabled = true, LoadCondition = "ANYGROUP", GlowMode = "always", ExpirationMins = 10, GlowEnabled = true, GlowType = "pixel", GlowColor = { 0.12, 1, 0, 1 }, GlowLines = 5, GlowFrequency = 0.2, GlowLength = 10, GlowThickness = 2, GlowBorder = true, GlowScale = 1 },
             },
 
             TargetedBuffDisplay = {
