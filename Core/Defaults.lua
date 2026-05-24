@@ -570,6 +570,10 @@ local Defaults = {
                 },
             },
 
+            WayFinder = {
+                Enabled = true,
+            },
+
             SpellAlert = {
                 Enabled = true,
                 UseGlobal = true,

@@ -147,6 +147,7 @@ GUIFrame.SidebarConfig = {
             defaultExpanded = false,
             items = {
                 { id = "BenchAlert", text = "Bench Alert" },
+                { id = "WayFinder",  text = "Waypoint Finder" },
             }
         },
     },

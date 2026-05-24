@@ -113,6 +113,7 @@
     <Script file="GUITabs\GUI-Miscellaneous\GUI-TotemTracker.lua" />
     <Script file="GUITabs\GUI-Miscellaneous\GUI-SpellAlert.lua" />
     <Script file="GUITabs\GUI-Miscellaneous\GUI-BloodlustTracker.lua" />
+    <Script file="GUITabs\GUI-Miscellaneous\GUI-WayFinder.lua" />
 
     <Script file="GUIMain\GUI-MainFrame.lua" />
 </Ui>
