@@ -38,11 +38,18 @@ local strupper = strupper
 local gsub = gsub
 local strmatch = strmatch
 local time = time
+local GetRealmName = GetRealmName
+local wipe = wipe
 local UNKNOWN = UNKNOWN
 local BetterDate = BetterDate
 local AFK = AFK
 local DND = DND
 local GetServerTime = GetServerTime
+local PlaySound = PlaySound
+
+local ChatEditSetLastActiveWindow = (_G.ChatFrameUtil and _G.ChatFrameUtil.SetLastActiveWindow) or
+    _G.ChatEdit_SetLastActiveWindow
+local SOUND_U_CHAT_SCROLL_BUTTON = SOUNDKIT.U_CHAT_SCROLL_BUTTON or 1115
 
 local PANEL_HEIGHT = 250
 local EDITBOX_HEIGHT = 22
@@ -58,6 +65,11 @@ local COPY_FRAME_HEIGHT = 300
 
 local IGNORE_FRAMES = { [2] = "CombatLog", [3] = "Voice", }
 local tconcat = table.concat
+local function Lerp(a, b, t) return a + (b - a) * t end
+local function NormalizeFontOutline(outline)
+    if not outline or outline == "NONE" then return "" end
+    return outline
+end
 local TAB_TEXTURES = { "", "Selected", "Active", "Highlight" }
 local BACKDROP_TEMPLATE = { bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1, }
 
@@ -129,6 +141,7 @@ CHAT.ChatWindow = nil
 CHAT.ClassNames = {}
 CHAT.originalStates = {}
 
+
 function CHAT:UpdateDB()
     self.db = NRSKNUI.db.profile.Skinning.Chatv2
 end
@@ -147,13 +160,25 @@ end
 function CHAT:RegisterWhisperSounds()
     local ws = self.db.WhisperSounds
     if not ws or not ws.Enabled then return end
+    if self.whisperSoundsRegistered then return end
+    self.whisperSoundsRegistered = true
 
     self:RegisterEvent("CHAT_MSG_WHISPER", function()
-        self:PlayWhisperSound(ws.WhisperSound)
+        C_Timer.After(0, function() self:PlayWhisperSound(ws.WhisperSound) end)
     end)
     self:RegisterEvent("CHAT_MSG_BN_WHISPER", function()
-        self:PlayWhisperSound(ws.BNetWhisperSound)
+        C_Timer.After(0, function() self:PlayWhisperSound(ws.BNetWhisperSound) end)
     end)
+end
+
+-- Secret Message Protection
+local function canChangeMessage(arg1, id)
+    if id and arg1 == '' then return id end
+end
+
+function CHAT:MessageIsProtected(message)
+    if NRSKNUI:IsSecretValue(message) then return true end
+    return message and (message ~= gsub(message, '(:?|?)|K(.-)|k', canChangeMessage))
 end
 
 -- Chat Copy Feature
@@ -180,18 +205,14 @@ local function RemoveIconFromLine(text)
 end
 
 local function ColorizeLine(text, r, g, b)
-    r = r or 1
-    g = g or 1
-    b = b or 1
-    local hexCode = format("|cff%02x%02x%02x", r * 255, g * 255, b * 255)
-    return format("%s%s|r", hexCode, text)
+    return format("|cff%02x%02x%02x%s|r", r * 255, g * 255, b * 255, text)
 end
 
 function CHAT:GetChatLines(frame)
     local index = 1
     for i = 1, frame:GetNumMessages() do
         local message, r, g, b = frame:GetMessageInfo(i)
-        if message then
+        if message and not self:MessageIsProtected(message) then
             r, g, b = r or 1, g or 1, b or 1
             message = RemoveIconFromLine(message)
             message = ColorizeLine(message, r, g, b)
@@ -199,7 +220,9 @@ function CHAT:GetChatLines(frame)
             index = index + 1
         end
     end
-    return index - 1
+    local count = index - 1
+    for i = index, #copyLines do copyLines[i] = nil end
+    return count
 end
 
 function CHAT:CopyChat(frame)
@@ -226,17 +249,13 @@ function CHAT:CopyChatEditBox_OnTextChanged(userInput)
     if scrollFrame and scrollFrame.ScrollBar then
         local _, maxValue = scrollFrame.ScrollBar:GetMinMaxValues()
         for _ = 1, maxValue do
-            if _G.ScrollFrameTemplate_OnMouseWheel then
-                _G.ScrollFrameTemplate_OnMouseWheel(scrollFrame, -1)
-            end
+            if _G.ScrollFrameTemplate_OnMouseWheel then _G.ScrollFrameTemplate_OnMouseWheel(scrollFrame, -1) end
         end
     end
 end
 
 function CHAT:CopyChatScrollFrame_OnSizeChanged(width, height)
-    if CHAT.CopyChatFrameEditBox then
-        CHAT.CopyChatFrameEditBox:SetSize(width, height)
-    end
+    if CHAT.CopyChatFrameEditBox then CHAT.CopyChatFrameEditBox:SetSize(width, height) end
 end
 
 function CHAT:CopyChatScrollFrame_OnVerticalScroll(offset)
@@ -254,11 +273,7 @@ function CHAT:BuildCopyChatFrame()
 
     local frame = CreateFrame("Frame", "NRSKNUI_CopyChatFrame", UIParent, "BackdropTemplate")
     tinsert(_G.UISpecialFrames, "NRSKNUI_CopyChatFrame")
-    frame:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8X8",
-        edgeFile = "Interface\\Buttons\\WHITE8X8",
-        edgeSize = 1,
-    })
+    frame:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1, })
     frame:SetBackdropColor(Theme.bgDark[1], Theme.bgDark[2], Theme.bgDark[3], Theme.bgDark[4])
     frame:SetBackdropBorderColor(Theme.border[1], Theme.border[2], Theme.border[3], 1)
     frame:SetSize(COPY_FRAME_WIDTH, COPY_FRAME_HEIGHT)
@@ -299,8 +314,6 @@ function CHAT:BuildCopyChatFrame()
     title:SetText("Chat Copy")
     title:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
     frame.title = title
-
-    local function Lerp(a, b, t) return a + (b - a) * t end
 
     local closeBtn = CreateFrame("Button", nil, header)
     closeBtn:SetSize(22, 22)
@@ -359,11 +372,7 @@ function CHAT:BuildCopyChatFrame()
     scrollbar:SetWidth(SCROLLBAR_WIDTH)
     scrollbar:SetPoint("TOPRIGHT", contentArea, "TOPRIGHT", 0, 0)
     scrollbar:SetPoint("BOTTOMRIGHT", contentArea, "BOTTOMRIGHT", 0, 0)
-    scrollbar:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8X8",
-        edgeFile = "Interface\\Buttons\\WHITE8X8",
-        edgeSize = 1,
-    })
+    scrollbar:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1, })
     scrollbar:SetBackdropColor(Theme.bgDark[1], Theme.bgDark[2], Theme.bgDark[3], 0.5)
     scrollbar:SetBackdropBorderColor(Theme.border[1], Theme.border[2], Theme.border[3], 1)
     scrollbar:SetOrientation("VERTICAL")
@@ -397,9 +406,7 @@ function CHAT:BuildCopyChatFrame()
 
     scrollFrame:SetScrollChild(editBox)
 
-    scrollbar:SetScript("OnValueChanged", function(_, value)
-        scrollFrame:SetVerticalScroll(value)
-    end)
+    scrollbar:SetScript("OnValueChanged", function(_, value) scrollFrame:SetVerticalScroll(value) end)
 
     scrollFrame:SetScript("OnScrollRangeChanged", function(_, _, yRange)
         if yRange and yRange > 0 then
@@ -414,7 +421,6 @@ function CHAT:BuildCopyChatFrame()
         editBox:SetWidth(scrollFrame:GetWidth())
     end)
 
-    -- Mouse wheel scrolling
     scrollFrame:EnableMouseWheel(true)
     scrollFrame:SetScript("OnMouseWheel", function(sf, delta)
         local current = scrollbar:GetValue()
@@ -425,7 +431,6 @@ function CHAT:BuildCopyChatFrame()
         scrollbar:SetValue(newVal)
     end)
 
-    -- Text changed - scroll to bottom and update size
     editBox:SetScript("OnTextChanged", function(_, userInput)
         if userInput then return end
         C_Timer.After(0.01, function()
@@ -434,12 +439,8 @@ function CHAT:BuildCopyChatFrame()
         end)
     end)
 
-    -- Size changed handler
-    scrollFrame:SetScript("OnSizeChanged", function()
-        editBox:SetWidth(scrollFrame:GetWidth())
-    end)
+    scrollFrame:SetScript("OnSizeChanged", function() editBox:SetWidth(scrollFrame:GetWidth()) end)
 
-    -- Escape key handler
     frame:SetScript("OnKeyDown", function(f, key)
         if key == "ESCAPE" then
             f:SetPropagateKeyboardInput(false)
@@ -471,7 +472,6 @@ function CHAT:CreateCopyButton(chat)
     text:SetText("C")
     copyButton.text = text
 
-    -- Get color from selected tab text color, fallback to accent
     local color = db.TabSelectedTextColor
     if not color or not db.TabSelectedTextEnabled then
         color = { r = Theme.accent[1], g = Theme.accent[2], b = Theme.accent[3] }
@@ -480,27 +480,22 @@ function CHAT:CreateCopyButton(chat)
     text:SetTextColor(color.r, color.g, color.b, 0.5)
 
     copyButton:SetScript("OnMouseUp", function(btn, mouseBtn)
-        if mouseBtn == "LeftButton" then
-            CHAT:CopyChat(btn:GetParent())
-        end
+        if mouseBtn == "LeftButton" then CHAT:CopyChat(btn:GetParent()) end
     end)
-
-    copyButton:SetScript("OnEnter", function()
-        text:SetTextColor(color.r, color.g, color.b, 1)
-    end)
-
-    copyButton:SetScript("OnLeave", function()
-        text:SetTextColor(color.r, color.g, color.b, 0.5)
-    end)
+    copyButton:SetScript("OnEnter", function() text:SetTextColor(color.r, color.g, color.b, 1) end)
+    copyButton:SetScript("OnLeave", function() text:SetTextColor(color.r, color.g, color.b, 0.5) end)
 end
 
 function CHAT:OnEnable()
     self:UpdateDB()
+    BuildShortChannelPatterns()
     self:CreateChatPanel()
     self:SetupChat()
     self:RegisterEditMode()
     self:SetupBlizzardEditModeLock()
     self:RegisterWhisperSounds()
+    self:ForceInlineWhispers()
+    self:AddWhisperModeWarning()
     self:RegisterEvent("UPDATE_CHAT_WINDOWS", "SetupChat")
     self:RegisterEvent("UPDATE_FLOATING_CHAT_WINDOWS", "SetupChat")
     self:RegisterEvent("PLAYER_ENTERING_WORLD", "RefreshDockPosition")
@@ -528,6 +523,97 @@ end
 
 function CHAT:OnCVAR_UPDATE(_, cvar, value)
     if cvar == "chatStyle" then self:UpdateEditboxAnchors() end
+    if cvar == "whisperMode" and value ~= "inline" then
+        C_Timer.After(0, function() C_CVar.SetCVar("whisperMode", "inline") end)
+    end
+end
+
+-- Taint protection, forces whisper mode to be inline always
+-- Auto opening new tabs while in secret lockdown causes taint errors
+function CHAT:ForceInlineWhispers()
+    C_CVar.SetCVar("whisperMode", "inline")
+    local frame = CreateFrame("Frame")
+    frame:RegisterEvent("VARIABLES_LOADED")
+    frame:SetScript("OnEvent", function() C_CVar.SetCVar("whisperMode", "inline") end)
+end
+
+-- Adds a warning label w/ tooltip that explains why i need to force inline mode
+function CHAT:AddWhisperModeWarning()
+    local warningFrame = CreateFrame("Frame", nil, UIParent)
+    warningFrame:SetSize(200, 20)
+    warningFrame:SetFrameStrata("DIALOG")
+    warningFrame:Hide()
+    warningFrame:EnableMouse(true)
+
+    local text = warningFrame:CreateFontString(nil, "OVERLAY")
+    text:SetPoint("LEFT", 0, 0)
+    text:SetJustifyH("LEFT")
+    text:SetFont(STANDARD_TEXT_FONT, 10, "OUTLINE")
+    text:SetShadowColor(0, 0, 0, 0)
+    text:SetText("|cffff6600NorskenUI\nNew Tab disabled|r")
+
+    warningFrame:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine("NorskenUI: New Tab Disabled", Theme.accent[1], Theme.accent[2], Theme.accent[3])
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(
+            "The 'New Tab' whisper mode causes taint errors when clicking on whisper tabs with secret player names.", 1,
+            1, 1,
+            true)
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("NorskenUI forces 'In-line' mode to prevent these errors.", 0.7, 0.7, 0.7, true)
+        GameTooltip:Show()
+    end)
+
+    warningFrame:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    local function UpdateWarningPosition()
+        local settingsPanel = _G.SettingsPanel
+        if not settingsPanel or not settingsPanel:IsShown() then
+            warningFrame:Hide()
+            return
+        end
+
+        local scrollBox = settingsPanel.Container and settingsPanel.Container.SettingsList and
+            settingsPanel.Container.SettingsList.ScrollBox
+        if not scrollBox or not scrollBox.ScrollTarget then
+            warningFrame:Hide()
+            return
+        end
+
+        for _, child in pairs({ scrollBox.ScrollTarget:GetChildren() }) do
+            local labelText = child.Text and child.Text:GetText()
+            if labelText == "New Whispers" and child:IsShown() then
+                warningFrame:SetParent(child)
+                warningFrame:ClearAllPoints()
+                warningFrame:SetPoint("LEFT", child.Text, "RIGHT", 300, 2)
+                warningFrame:Show()
+                return
+            end
+        end
+
+        warningFrame:Hide()
+    end
+
+    local function SetupHooks()
+        if _G.SettingsPanel then
+            hooksecurefunc(_G.SettingsPanel, "Show", UpdateWarningPosition)
+            hooksecurefunc(_G.SettingsPanel, "Hide", function() warningFrame:Hide() end)
+        end
+        if _G.SettingsPanel and _G.SettingsPanel.Container and _G.SettingsPanel.Container.SettingsList then
+            hooksecurefunc(_G.SettingsPanel.Container.SettingsList.ScrollBox, "Update", UpdateWarningPosition)
+        end
+    end
+
+    local frame = CreateFrame("Frame")
+    frame:RegisterEvent("ADDON_LOADED")
+    frame:SetScript("OnEvent", function(_, _, addon)
+        if addon == "Blizzard_Settings" or addon == "Blizzard_SettingsDefinitions_Frame" then
+            C_Timer.After(0.5, SetupHooks)
+        end
+    end)
+
+    SetupHooks()
 end
 
 function CHAT:OnDisable()
@@ -858,12 +944,21 @@ function CHAT:OnFCF_SetButtonSide(chat)
     if chat and self:IsChatValid(chat) then self:PositionButtonFrame(chat) end
 end
 
+function CHAT:PostChatClose(chat)
+    local tab = CHAT:GetTab(chat)
+    if tab then
+        tab.whisperName = nil
+        tab.classColor = nil
+    end
+end
+
 function CHAT:OnFCF_Close(chat)
     if not chat then return end
     local id = chat:GetID()
     self.originalStates[id] = nil
     chat.styled = nil
     chat.scriptsSet = nil
+    self:PostChatClose(chat)
 end
 
 function CHAT:OnFCF_SetWindowAlpha(frame, alpha)
@@ -886,7 +981,7 @@ function CHAT:OnFCFTab_UpdateColors(tab, selected)
         if selected then tab.Text:SetTextColor(1, 1, 1) end
 
         local name = GetChatWindowInfo(tab:GetID())
-        if name and name ~= "" then tab.Text:SetText(name) end
+        if name and NRSKNUI:NotSecretValue(name) then tab.Text:SetText(name) end
 
         tab:SetAlpha(1)
     else
@@ -897,44 +992,48 @@ function CHAT:OnFCFTab_UpdateColors(tab, selected)
         tab.selected = selected
 
         local name = chat.name or UNKNOWN
-        local whisper = tab.conversationIcon and chat.chatTarget
+        local chatTarget = chat.chatTarget
+        local whisper = tab.conversationIcon and chatTarget
 
-        if whisper and not tab.whisperName then
+        if whisper and not tab.whisperName and NRSKNUI:NotSecretValue(name) then
             local strippedName = self:StripMyRealm(name)
             tab.whisperName = gsub(strippedName, "([%S]-)%-[%S]+", "%1|cFF999999*|r")
         end
 
         local nameText = tab.whisperName or name
+        local nameTextNotSecret = NRSKNUI:NotSecretValue(nameText)
 
         if selected then
-            local tabSelector = db.TabSelector or "ARROW1"
+            if nameTextNotSecret then
+                local tabSelector = db.TabSelector or "ARROW1"
 
-            if tabSelector == "NONE" then
-                tab:SetFormattedText(TAB_STYLES.NONE, nameText)
-            else
-                local selectorColor = db.TabSelectorColor
-                local hexColor = selectorColor and self:RGBToHex(selectorColor.r, selectorColor.g, selectorColor.b) or
-                    "|cff4cff4c"
-                tab:SetFormattedText(TAB_STYLES[tabSelector] or TAB_STYLES.ARROW1, hexColor, nameText, hexColor)
+                if tabSelector == "NONE" then
+                    tab:SetFormattedText(TAB_STYLES.NONE, nameText)
+                else
+                    local selectorColor = db.TabSelectorColor
+                    local hexColor = selectorColor and self:RGBToHex(selectorColor.r, selectorColor.g, selectorColor.b) or
+                        "|cff4cff4c"
+                    tab:SetFormattedText(TAB_STYLES[tabSelector] or TAB_STYLES.ARROW1, hexColor, nameText, hexColor)
+                end
             end
 
-            local selectedTextColor = db.TabSelectedTextColor
-            if db.TabSelectedTextEnabled and selectedTextColor then
-                tab.Text:SetTextColor(selectedTextColor.r, selectedTextColor.g, selectedTextColor.b)
+            if db.TabSelectedTextEnabled then
+                local selectedTextColor = db.TabSelectedTextColor
+                if selectedTextColor then
+                    tab.Text:SetTextColor(selectedTextColor.r, selectedTextColor.g, selectedTextColor.b)
+                else
+                    tab.Text:SetTextColor(1, 1, 1)
+                end
                 return
             end
         end
 
         if whisper then
-            if not selected then tab:SetText(nameText) end
+            if nameTextNotSecret and not selected then tab:SetText(nameText) end
 
-            if not tab.classColor then
-                local nameLower = strlower(name)
-                local classMatch = self.ClassNames[nameLower]
-                if classMatch then
-                    tab.classColor = self:GetClassColor(classMatch)
-                end
-            end
+            local nameLower = not tab.classColor and NRSKNUI:NotSecretValue(name) and strlower(name)
+            local classMatch = nameLower and self.ClassNames[nameLower]
+            if classMatch then tab.classColor = self:GetClassColor(classMatch) end
 
             if tab.classColor then
                 tab.Text:SetTextColor(tab.classColor.r, tab.classColor.g, tab.classColor.b)
@@ -942,7 +1041,7 @@ function CHAT:OnFCFTab_UpdateColors(tab, selected)
                 tab.Text:SetTextColor(1, 1, 1)
             end
         else
-            if not selected then tab:SetText(name) end
+            if nameTextNotSecret and not selected then tab:SetText(name) end
 
             local valueColor = db.TabTextColor
             if valueColor then
@@ -1058,23 +1157,19 @@ function CHAT:OnUIDropDownMenu_AddButton(info, level)
     if not button then return end
 
     if button.func == _G.FCF_PopInWindow then
-        button.func = function(chatFrame)
-            if chatFrame then
-                _G.FCF_PopInWindow(chatFrame)
-                self:SetupChat()
-            end
-        end
+        button.func = CHAT.FCF_PopInWindow
     elseif button.func == _G.FCF_Close then
-        button.func = function(chatFrame)
-            if chatFrame then _G.FCF_Close(chatFrame) end
-        end
+        button.func = CHAT.FCF_Close
     end
 end
 
 CHAT.GuidCache = {}
+CHAT.GuidCacheCount = 0
+local GUID_CACHE_MAX = 500
 
 function CHAT:StripMyRealm(name)
     if not name then return name end
+    if NRSKNUI:IsSecretValue(name) then return name end
     local myRealm = GetRealmName and GetRealmName()
     if myRealm then
         myRealm = gsub(myRealm, " ", "")
@@ -1104,7 +1199,6 @@ function CHAT:HandleShortChannels(msg, hide)
     msg = gsub(msg, "<" .. AFK .. ">", "[|cffFF9900AFK|r] ")
     msg = gsub(msg, "<" .. DND .. ">", "[|cffFF3333DND|r] ")
 
-    BuildShortChannelPatterns()
     if SHORT_CHANNEL_PATTERNS then
         for _, info in ipairs(SHORT_CHANNEL_PATTERNS) do msg = gsub(msg, info.pattern, info.replacement) end
     end
@@ -1113,16 +1207,16 @@ function CHAT:HandleShortChannels(msg, hide)
 end
 
 function CHAT:GetDateTime(useLocal)
-    if useLocal then
-        return time()
-    else
-        return GetServerTime and GetServerTime() or time()
-    end
+    return useLocal and time() or GetServerTime()
 end
 
 function CHAT:AddMessageEdits(frame, msg, isHistory, historyTime)
-    if not msg or msg == "" then return msg end
-    if strmatch(msg, "^%s*$") then return msg end
+    if not msg then return msg end
+
+    local isProtected = self:MessageIsProtected(msg)
+    if isProtected then return msg end
+
+    if strmatch(msg, '^%s*$') or strmatch(msg, '^|Hnrsktime|h') then return msg end
 
     local db = self.db
     local historyTimestamp
@@ -1145,20 +1239,19 @@ function CHAT:AddMessageEdits(frame, msg, isHistory, historyTime)
     return msg
 end
 
-function CHAT:AddMessage(msg, infoR, infoG, infoB, infoID, accessID, typeID, event, eventArgs, msgFormatter, isHistory, historyTime)
+function CHAT:AddMessage(msg, infoR, infoG, infoB, infoID, accessID, typeID, event, eventArgs, msgFormatter, isHistory,
+                         historyTime)
     local body = CHAT:AddMessageEdits(self, msg, isHistory, historyTime)
     self.OldAddMessage(self, body, infoR, infoG, infoB, infoID, accessID, typeID, event, eventArgs, msgFormatter)
 end
 
 function CHAT:GetClassColor(class)
     if not class then return nil end
-    local color = RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-    if color then return { r = color.r, g = color.g, b = color.b } end
-    return nil
+    return RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
 end
 
 function CHAT:OnGetPlayerInfoByGUID(guid)
-    if not guid or guid == "" then return end
+    if NRSKNUI:IsSecretValue(guid) then return end
 
     local data = self.GuidCache[guid]
     if data then
@@ -1170,7 +1263,8 @@ function CHAT:OnGetPlayerInfoByGUID(guid)
         guid)
     if not ok or not englishClass then return end
 
-    local nameWithRealm = (realm and realm ~= "") and (name .. "-" .. realm) or nil
+    local hasRealm = realm and realm ~= ''
+    local nameWithRealm = hasRealm and (name .. "-" .. realm) or nil
 
     data = {
         localizedClass = localizedClass,
@@ -1179,14 +1273,25 @@ function CHAT:OnGetPlayerInfoByGUID(guid)
         englishRace = englishRace,
         sex = sex,
         name = name,
-        realm = realm ~= "" and realm or nil,
+        realm = hasRealm and realm or nil,
         nameWithRealm = nameWithRealm,
     }
 
-    if name then self.ClassNames[strlower(name)] = englishClass end
-    if nameWithRealm then self.ClassNames[strlower(nameWithRealm)] = englishClass end
+    if name and not NRSKNUI:IsSecretValue(name) then
+        self.ClassNames[strlower(name)] = englishClass
+    end
+    if nameWithRealm and not NRSKNUI:IsSecretValue(nameWithRealm) then
+        self.ClassNames[strlower(nameWithRealm)] = englishClass
+    end
+
+    if self.GuidCacheCount >= GUID_CACHE_MAX then
+        wipe(self.GuidCache)
+        wipe(self.ClassNames)
+        self.GuidCacheCount = 0
+    end
 
     self.GuidCache[guid] = data
+    self.GuidCacheCount = self.GuidCacheCount + 1
 
     data.classColor = self:GetClassColor(englishClass)
 
@@ -1279,72 +1384,94 @@ function CHAT:UpdateChatTabColors()
     end
 end
 
-function CHAT:FCF_Tab_OnClick(tab, button)
-    local chat = tab and self:GetOwner(tab)
+function CHAT:FCF_Tab_OnClick(button)
+    local chat = self and CHAT:GetOwner(self)
     if not chat then return end
 
     if button == "RightButton" then
         chat:StopMovingOrSizing()
 
-        _G.CURRENT_CHAT_FRAME_ID = tab:GetID()
-        if _G.FCF_Tab_SetupMenu then _G.FCF_Tab_SetupMenu(tab) end
+        _G.CURRENT_CHAT_FRAME_ID = self:GetID()
+        _G.FCF_Tab_SetupMenu(self)
     elseif button == "MiddleButton" then
         if not IsBuiltinChatWindow(chat) then
             if not chat.isTemporary then
-                self:FCF_PopInWindow(tab, chat)
+                CHAT.FCF_PopInWindow(self, chat)
                 return
             elseif chat.chatType == "WHISPER" or chat.chatType == "BN_WHISPER" then
-                self:FCF_PopInWindow(tab, chat)
+                CHAT.FCF_PopInWindow(self, chat)
                 return
             elseif chat.chatType == "PET_BATTLE_COMBAT_LOG" then
-                self:FCF_Close(chat)
+                CHAT.FCF_Close(chat)
             end
         end
     else
-        if _G.CloseDropDownMenus then _G.CloseDropDownMenus() end
-
+        _G.CloseDropDownMenus()
         _G.SELECTED_CHAT_FRAME = chat
 
         if chat.isDocked and _G.FCFDock_GetSelectedWindow(_G.GeneralDockManager) ~= chat then
-            _G.FCF_SelectDockFrame(
-                chat)
+            _G.FCF_SelectDockFrame(chat)
         end
 
         if GetCVar("chatStyle") ~= "classic" then
             local chatFrame = (chat.isDocked and _G.GeneralDockManager.primary) or chat
-            if chatFrame and chatFrame.editBox then
-                if _G.ChatFrameUtil and _G.ChatFrameUtil.SetLastActiveWindow then
-                    _G.ChatFrameUtil.SetLastActiveWindow(chatFrame.editBox)
-                elseif _G.ChatEdit_SetLastActiveWindow then
-                    _G.ChatEdit_SetLastActiveWindow(chatFrame.editBox)
-                end
+            if chatFrame then
+                ChatEditSetLastActiveWindow(chatFrame.editBox)
             end
         end
 
         chat:ResetAllFadeTimes()
 
-        if _G.FCF_FadeInChatFrame then _G.FCF_FadeInChatFrame(chat) end
+        _G.FCF_FadeInChatFrame(chat)
     end
 end
 
-function CHAT:Tab_OnClick(tab, button)
-    self:FCF_Tab_OnClick(tab, button)
+function CHAT:Tab_OnClick(button)
+    CHAT.FCF_Tab_OnClick(self, button)
+    PlaySound(SOUND_U_CHAT_SCROLL_BUTTON)
 end
 
-function CHAT:FCF_PopInWindow(tab, chat)
-    if not chat then chat = self:GetOwner(tab) end
-    if chat and _G.FCF_PopInWindow then
-        _G.FCF_PopInWindow(chat)
-        self:SetupChat()
+function CHAT:FCF_Close(fallback)
+    if fallback then self = fallback end
+    if not self or self == CHAT then self = _G.FCF_GetCurrentChatFrame() end
+    if self == _G.DEFAULT_CHAT_FRAME then return end
+
+    _G.FCF_UnDockFrame(self)
+    self:Hide()
+    CHAT:GetTab(self):Hide()
+
+    _G.FCF_FlagMinimizedPositionReset(self)
+
+    if self.minFrame and self.minFrame:IsShown() then
+        self.minFrame:Hide()
     end
+
+    if self.isTemporary then
+        _G.FCFManager_UnregisterDedicatedFrame(self, self.chatType, self.chatTarget)
+        self.isRegistered = false
+        self.inUse = false
+    end
+
+    if self.RemoveAllMessageGroups then
+        self:RemoveAllMessageGroups()
+        self:RemoveAllChannels()
+        self:ReceiveAllPrivateMessages()
+    else
+        _G.ChatFrame_RemoveAllMessageGroups(self)
+        _G.ChatFrame_RemoveAllChannels(self)
+        _G.ChatFrame_ReceiveAllPrivateMessages(self)
+    end
+
+    CHAT:PostChatClose(self)
 end
 
-function CHAT:FCF_Close(chat)
-    if chat and _G.FCF_Close then
-        if chat == _G.DEFAULT_CHAT_FRAME then return end
-        if _G.FCF_RestoreChatsToFrame then _G.FCF_RestoreChatsToFrame(_G.DEFAULT_CHAT_FRAME, chat) end
-        _G.FCF_Close(chat)
-    end
+function CHAT:FCF_PopInWindow(fallback)
+    if fallback then self = fallback end
+    if not self or self == CHAT then self = _G.FCF_GetCurrentChatFrame() end
+    if self == _G.DEFAULT_CHAT_FRAME then return end
+
+    _G.FCF_RestoreChatsToFrame(_G.DEFAULT_CHAT_FRAME, self)
+    CHAT.FCF_Close(self)
 end
 
 function CHAT:StripTabTextures(tab)
@@ -1598,7 +1725,7 @@ function CHAT:StyleEditbox(editbox)
 
     if editbox.AddHistoryLine and not self:IsHooked(editbox, "AddHistoryLine") then
         self:SecureHook(editbox, "AddHistoryLine", function(eb, text)
-            if text and text ~= "" then
+            if text and #text > 0 then
                 tinsert(eb.historyLines, text)
                 while #eb.historyLines > 50 do
                     tremove(eb.historyLines, 1)
@@ -1670,8 +1797,7 @@ function CHAT:StyleChat(chat)
 
     local fontPath = LSM and LSM:Fetch("font", db.FontFace) or STANDARD_TEXT_FONT
     local _, fontSize = FCF_GetChatWindowInfo(id)
-    local fontOutline = db.FontOutline
-    if not fontOutline or fontOutline == "NONE" then fontOutline = "" end
+    local fontOutline = NormalizeFontOutline(db.FontOutline)
     chat:SetFont(fontPath, fontSize, fontOutline)
 
     local shadow = db.FontShadow
@@ -1687,6 +1813,7 @@ function CHAT:StyleChat(chat)
     chat:SetMaxLines(db.MaxLines or 500)
     chat:SetFading(db.FadeEnabled ~= false)
 
+    -- Hook AddMessage to apply timestamps and short channels (ElvUI pattern)
     local allowHooks = id and not IGNORE_FRAMES[id]
     if allowHooks and not chat.OldAddMessage then
         chat.OldAddMessage = chat.AddMessage
@@ -1694,14 +1821,13 @@ function CHAT:StyleChat(chat)
     end
 
     if tab and not IsCombatLog(chat) then
-        tab:SetScript("OnClick", function(t, button) CHAT:Tab_OnClick(t, button) end)
+        tab:SetScript("OnClick", CHAT.Tab_OnClick)
     end
 
     if tab and tab.Text then
         local tabFontPath = LSM and LSM:Fetch("font", db.FontFace) or STANDARD_TEXT_FONT
         local tabFontSize = db.TabFontSize or 12
-        local tabFontOutline = db.FontOutline
-        if not tabFontOutline or tabFontOutline == "NONE" then tabFontOutline = "" end
+        local tabFontOutline = NormalizeFontOutline(db.FontOutline)
         tab.Text:SetFont(tabFontPath, tabFontSize, tabFontOutline)
 
         if shadow and shadow.Enabled then
@@ -1860,20 +1986,26 @@ end
 function CHAT:SetupChatScripts(chat)
     if chat.scriptsSet then return end
 
+    local id = chat:GetID()
+    local allowHooks = id and not IGNORE_FRAMES[id]
+
     if not self:IsHooked(chat, "SetScript") then
         hooksecurefunc(chat, "SetScript", function(frame, scriptType, handler)
             self:ChatFrame_SetScript(frame, scriptType, handler)
         end)
     end
 
+    -- Replace OnEvent with our handler to prevent taint from secret valuesTable
+    if allowHooks and NRSKNUI.ChatMessageHandler then
+        chat:SetScript("OnEvent", function(frame, event, ...)
+            NRSKNUI.ChatMessageHandler:FloatingChatFrame_OnEvent(frame, event, ...)
+        end)
+    end
+
     chat:SetScript("OnMouseWheel", function(frame, delta) self:ChatFrame_OnMouseWheel(frame, delta) end)
 
-    if not self:IsHooked(chat, "OnHyperlinkEnter") then
-        self:HookScript(chat, "OnHyperlinkEnter", "OnHyperlinkEnter")
-    end
-    if not self:IsHooked(chat, "OnHyperlinkLeave") then
-        self:HookScript(chat, "OnHyperlinkLeave", "OnHyperlinkLeave")
-    end
+    if not self:IsHooked(chat, "OnHyperlinkEnter") then self:HookScript(chat, "OnHyperlinkEnter", "OnHyperlinkEnter") end
+    if not self:IsHooked(chat, "OnHyperlinkLeave") then self:HookScript(chat, "OnHyperlinkLeave", "OnHyperlinkLeave") end
 
     chat.scriptsSet = true
 end
@@ -1930,9 +2062,7 @@ function CHAT:StyleOverflowButton()
                 alpha = 1
             elseif alpha < 0.5 then
                 local hooks = CHAT.hooks and CHAT.hooks[_G.GeneralDockManager.primary]
-                if not (hooks and hooks.OnEnter) then
-                    alpha = 0.5
-                end
+                if not (hooks and hooks.OnEnter) then alpha = 0.5 end
             end
             origSetAlpha(frame, alpha)
         end
@@ -2164,11 +2294,6 @@ function CHAT:ApplySettings()
     local db = self.db
     self:UpdatePanel()
 
-    local function GetFontOutline(outline)
-        if not outline or outline == "NONE" then return "" end
-        return outline
-    end
-
     for _, frameName in ipairs(_G.CHAT_FRAMES) do
         local chat = _G[frameName]
         if chat then
@@ -2177,7 +2302,7 @@ function CHAT:ApplySettings()
 
             local fontPath = LSM and LSM:Fetch("font", db.FontFace) or STANDARD_TEXT_FONT
             local _, fontSize = FCF_GetChatWindowInfo(id)
-            local fontOutline = GetFontOutline(db.FontOutline)
+            local fontOutline = NormalizeFontOutline(db.FontOutline)
             chat:SetFont(fontPath, fontSize, fontOutline)
 
             local shadow = db.FontShadow
@@ -2196,7 +2321,7 @@ function CHAT:ApplySettings()
             if tab and tab.Text then
                 local tabFontPath = LSM and LSM:Fetch("font", db.FontFace) or STANDARD_TEXT_FONT
                 local tabFontSize = db.TabFontSize or 12
-                local tabFontOutline = GetFontOutline(db.FontOutline)
+                local tabFontOutline = NormalizeFontOutline(db.FontOutline)
                 tab.Text:SetFont(tabFontPath, tabFontSize, tabFontOutline)
 
                 if shadow and shadow.Enabled then
@@ -2366,27 +2491,21 @@ function CHAT:SetupBlizzardEditModeLock()
                 if chat.SelectSystem then
                     hooksecurefunc(chat, "SelectSystem", function(cf)
                         cf:SetMovable(false)
-                        if EditModeSystemSettingsDialog.attachedToSystem == cf then
-                            EditModeSystemSettingsDialog:Hide()
-                        end
+                        if EditModeSystemSettingsDialog.attachedToSystem == cf then EditModeSystemSettingsDialog:Hide() end
                         self:SetupBlizzEditModeLockHandlers(cf)
                         if not self.blizzEditModeChatNoticeShown then
-                            NRSKNUI:Print("Chat position is managed by |cff00ff00/nui edit|r or |cff00ff00/nui|r settings.")
+                            NRSKNUI:Print(
+                                "Chat position is managed by |cff00ff00/nui edit|r or |cff00ff00/nui|r settings.")
                             self.blizzEditModeChatNoticeShown = true
                         end
                     end)
                 end
 
                 if chat.HighlightSystem then
-                    hooksecurefunc(chat, "HighlightSystem", function(cf)
-                        self:SetupBlizzEditModeLockHandlers(cf)
-                    end)
+                    hooksecurefunc(chat, "HighlightSystem", function(cf) self:SetupBlizzEditModeLockHandlers(cf) end)
                 end
-
                 if chat.ClearHighlight then
-                    hooksecurefunc(chat, "ClearHighlight", function(cf)
-                        self:SetBlizzEditModeLockText(cf, false)
-                    end)
+                    hooksecurefunc(chat, "ClearHighlight", function(cf) self:SetBlizzEditModeLockText(cf, false) end)
                 end
 
                 self:LockChatInBlizzEditMode(chat)
@@ -2398,8 +2517,6 @@ function CHAT:SetupBlizzardEditModeLock()
     end
 
     if not TrySetup() then
-        EventUtil.ContinueOnAddOnLoaded("Blizzard_EditMode", function()
-            TrySetup()
-        end)
+        EventUtil.ContinueOnAddOnLoaded("Blizzard_EditMode", function() TrySetup() end)
     end
 end

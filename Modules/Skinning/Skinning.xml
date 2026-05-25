@@ -8,6 +8,7 @@
     <Script file="Minimap.lua" />
     <Script file="DetailsBackdrop.lua" />
     <Script file="ActionBars.lua" />
+    <Script file="ChatMessageHandler.lua" />
     <Script file="Chatv2.lua" />
     <Script file="UICleanup.lua" />
     <Script file="Battlenet.lua" />
