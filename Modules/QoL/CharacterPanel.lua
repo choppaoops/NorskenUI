@@ -19,6 +19,7 @@ local UnitFactionGroup = UnitFactionGroup
 local hooksecurefunc = hooksecurefunc
 local pairs = pairs
 local ipairs = ipairs
+local GetRealmName = GetRealmName
 local format = string.format
 local floor, abs, min, max = math.floor, math.abs, math.min, math.max
 local tinsert = table.insert
@@ -377,7 +378,7 @@ function CHAR:CreateRaceText()
 
     local text = PaperDollFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall2")
     text:SetPoint("TOP", CharacterLevelText, "BOTTOM", 0, 5)
-    text:SetText(UnitRace("player"))
+    text:SetText(GetRealmName() .. " - " .. UnitRace("player"))
     text:Hide()
 
     self._raceText = text
@@ -395,7 +396,7 @@ function CHAR:ShowRaceText()
 
     local text = self:CreateRaceText()
     self:ApplyFont(text, self.db.LevelTextSize or 12)
-    text:SetText(UnitRace("player"))
+    text:SetText(GetRealmName() .. " - " .. UnitRace("player"))
     text:Show()
     self:UpdateRaceTextPosition()
 end
