@@ -487,6 +487,7 @@ function CHAT:CreateCopyButton(chat)
 end
 
 function CHAT:OnEnable()
+    if NRSKNUI:ShouldNotLoadModule() then return end
     self:UpdateDB()
     BuildShortChannelPatterns()
     self:CreateChatPanel()
@@ -2290,6 +2291,7 @@ function CHAT:UpdatePanel()
 end
 
 function CHAT:ApplySettings()
+    if NRSKNUI:ShouldNotLoadModule() then return end
     self:UpdateDB()
     local db = self.db
     self:UpdatePanel()

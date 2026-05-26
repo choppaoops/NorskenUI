@@ -384,6 +384,7 @@ local function CreatePreviewButton(parent, index, db)
 end
 
 function BUFFS:ShowPreview()
+    if NRSKNUI:ShouldNotLoadModule() then return end
     local spacing = self.db.IconSize + self.db.IconSpacing
     local previewCount = self.db.IconsPerRow * self.db.MaxRows
 

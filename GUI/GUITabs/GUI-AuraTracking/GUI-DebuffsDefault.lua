@@ -4,6 +4,7 @@ local GUIFrame = NRSKNUI.GUIFrame
 local Theme = NRSKNUI.Theme
 
 GUIFrame:RegisterContent("CustomSkin_DebuffsDefault", function(scrollChild, yOffset)
+    if NRSKNUI:ShouldNotLoadModule() then return yOffset end
     local db = NRSKNUI.db and NRSKNUI.db.profile.Skinning.DebuffTrackingDefault
     if not db then return GUIFrame:ShowDBError(scrollChild, yOffset) end
 

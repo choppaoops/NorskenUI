@@ -596,7 +596,8 @@ function GUIFrame:RefreshSidebarImmediate()
                     NRSKNUI:ApplyThemeFont(item.label, "normal")
                     item.label:SetText(itemConfig.text or "")
 
-                    if sectionDisabled then
+                    local itemDisabled = sectionDisabled or (itemConfig.elvUIDisabled and NRSKNUI:ShouldNotLoadModule())
+                    if itemDisabled then
                         item.label:SetTextColor(Theme.textSecondary[1], Theme.textSecondary[2], Theme.textSecondary[3],
                             0.35)
                         item.accentBar:Hide()

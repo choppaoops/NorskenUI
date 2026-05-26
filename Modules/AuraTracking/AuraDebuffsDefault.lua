@@ -216,6 +216,7 @@ local function ApplyButtonSettings(button, db)
 end
 
 function DEBUFFS:ApplySettings()
+    if NRSKNUI:ShouldNotLoadModule() then return end
     for button in pairs(self.buttons) do ApplyButtonSettings(button, self.db) end
 
     if self.frame then
@@ -251,6 +252,7 @@ function DEBUFFS:UpdatePosition(pos)
 end
 
 function DEBUFFS:OnEnable()
+    if NRSKNUI:ShouldNotLoadModule() then return end
     if not self.db.Enabled then return end
 
     NRSKNUI:Hide('DebuffFrame')
@@ -292,6 +294,7 @@ end
 local PREVIEW_ICONS = { 136139, 136188, 132090, 135849, 132095, 136197 }
 
 function DEBUFFS:ShowPreview()
+    if NRSKNUI:ShouldNotLoadModule() then return end
     local db = self.db
     local spacing = db.IconSize + db.IconSpacing
     local previewCount = db.IconsPerRow * db.MaxRows
