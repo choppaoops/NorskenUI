@@ -1130,11 +1130,20 @@ end
 function CHAT:OnFCFDockOverflowButton_UpdatePulseState(btn)
     if not btn or not btn.Texture then return end
 
+    local db = self.db
     if btn.alerting then
         btn:SetAlpha(1)
-        btn.Texture:SetVertexColor(1, 0.8, 0)
+        if db.TabSelectedTextEnabled and db.TabSelectedTextColor then
+            local c = db.TabSelectedTextColor
+            btn.Texture:SetVertexColor(c.r, c.g, c.b)
+        else
+            btn.Texture:SetVertexColor(1, 1, 1)
+        end
     elseif not btn:IsMouseOver() then
-        btn.Texture:SetVertexColor(1, 1, 1)
+        local colorMode = db.TabTextColorMode or "custom"
+        local customColor = db.TabTextColor or { r = 1, g = 0.82, b = 0 }
+        local r, g, b = NRSKNUI:GetAccentColor(colorMode, { customColor.r, customColor.g, customColor.b, 1 })
+        btn.Texture:SetVertexColor(r, g, b)
     end
 end
 
@@ -1820,16 +1829,13 @@ function CHAT:StyleChat(chat)
     chat:SetMaxLines(db.MaxLines or 500)
     chat:SetFading(db.FadeEnabled ~= false)
 
-    -- Hook AddMessage to apply timestamps and short channels (ElvUI pattern)
     local allowHooks = id and not IGNORE_FRAMES[id]
     if allowHooks and not chat.OldAddMessage then
         chat.OldAddMessage = chat.AddMessage
         chat.AddMessage = self.AddMessage
     end
 
-    if tab and not IsCombatLog(chat) then
-        tab:SetScript("OnClick", CHAT.Tab_OnClick)
-    end
+    if tab and not IsCombatLog(chat) then tab:SetScript("OnClick", CHAT.Tab_OnClick) end
 
     if tab and tab.Text then
         local tabFontPath = LSM and LSM:Fetch("font", db.FontFace) or STANDARD_TEXT_FONT
@@ -2047,20 +2053,97 @@ function CHAT:SetupDockManager()
     self:OnFCFDock_ScrollToSelectedTab(docker)
 end
 
+local ARROW_TEX = "Interface\\AddOns\\NorskenUI\\Media\\GUITextures\\collapse.tga"
 function CHAT:StyleOverflowButton()
     local btn = _G.GeneralDockManagerOverflowButton
     if not btn then return end
 
-    local list = _G.GeneralDockManagerOverflowButtonList
-    if list then
-        list:SetFrameStrata("LOW")
-        list:SetFrameLevel(5)
+    if _G.GeneralDockManagerOverflowButtonList then
+        _G.GeneralDockManagerOverflowButtonList:SetFrameStrata("LOW")
+        _G.GeneralDockManagerOverflowButtonList:SetFrameLevel(5)
     end
 
     btn:ClearAllPoints()
     btn:SetPoint("RIGHT", _G.GeneralDockManager, "RIGHT", -4, 0)
 
-    if btn.Texture then btn.Texture:SetVertexColor(1, 1, 1) end
+    if not btn.NorskenStyled then
+        for _, region in next, { btn:GetRegions() } do
+            if region:IsObjectType("Texture") then
+                region:SetTexture(nil)
+                region:Hide()
+            end
+        end
+
+        if btn.Texture then
+            btn.Texture:SetTexture(nil)
+            btn.Texture:Hide()
+        end
+        if btn.Flash then
+            btn.Flash:SetTexture(nil)
+            btn.Flash:Hide()
+        end
+        if btn.FlashBorder then
+            btn.FlashBorder:SetTexture(nil)
+            btn.FlashBorder:Hide()
+        end
+        if btn.GlowTexture then
+            btn.GlowTexture:SetTexture(nil)
+            btn.GlowTexture:Hide()
+        end
+
+        local hl = btn:GetHighlightTexture()
+        if hl then
+            hl:SetTexture(nil)
+            hl:Hide()
+        end
+
+        local normal = btn:GetNormalTexture()
+        if normal then
+            normal:SetTexture(nil)
+            normal:Hide()
+        end
+
+        local pushed = btn:GetPushedTexture()
+        if pushed then
+            pushed:SetTexture(nil)
+            pushed:Hide()
+        end
+
+        local arrow = btn:CreateTexture(nil, "ARTWORK")
+        arrow:SetTexture(ARROW_TEX)
+        arrow:SetTexCoord(0, 1, 0, 1)
+        arrow:SetSize(14, 14)
+        arrow:SetPoint("CENTER")
+
+        btn.Texture = arrow
+        btn.NorskenStyled = true
+    end
+
+    local function ApplyInactiveColor()
+        if not btn.Texture then return end
+        local colorMode = self.db.TabTextColorMode or "custom"
+        local customColor = self.db.TabTextColor or { r = 1, g = 0.82, b = 0 }
+        local r, g, b = NRSKNUI:GetAccentColor(colorMode, { customColor.r, customColor.g, customColor.b, 1 })
+        btn.Texture:SetVertexColor(r, g, b)
+    end
+
+    local function ApplySelectedColor()
+        if not btn.Texture then return end
+        if self.db.TabSelectedTextEnabled and self.db.TabSelectedTextColor then
+            local c = self.db.TabSelectedTextColor
+            btn.Texture:SetVertexColor(c.r, c.g, c.b)
+        else
+            btn.Texture:SetVertexColor(1, 1, 1)
+        end
+    end
+
+    ApplyInactiveColor()
+
+    if not btn.NorskenHooked then
+        btn:HookScript("OnEnter", ApplySelectedColor)
+        btn:HookScript("OnLeave", ApplyInactiveColor)
+        btn.NorskenHooked = true
+    end
 
     if not btn.SetAlphaHooked then
         local origSetAlpha = btn.SetAlpha
@@ -2213,9 +2296,7 @@ function CHAT:ChatFrame_SetScript(frame, scriptType)
     if scriptType == "OnMouseWheel" then
         C_Timer.After(0, function()
             if frame and frame.scriptsSet then
-                frame:SetScript("OnMouseWheel", function(f, delta)
-                    self:ChatFrame_OnMouseWheel(f, delta)
-                end)
+                frame:SetScript("OnMouseWheel", function(f, delta) self:ChatFrame_OnMouseWheel(f, delta) end)
             end
         end)
     end
@@ -2434,15 +2515,11 @@ function CHAT:SetupBlizzEditModeLockHandlers(frame)
         state.lockTextToken = (state.lockTextToken or 0) + 1
         local token = state.lockTextToken
         C_Timer.After(3, function()
-            if state.lockTextToken == token then
-                self:SetBlizzEditModeLockText(frame, false)
-            end
+            if state.lockTextToken == token then self:SetBlizzEditModeLockText(frame, false) end
         end)
     end)
 
-    selection:HookScript("OnHide", function()
-        self:SetBlizzEditModeLockText(frame, false)
-    end)
+    selection:HookScript("OnHide", function() self:SetBlizzEditModeLockText(frame, false) end)
 end
 
 function CHAT:LockChatInBlizzEditMode(chat)
