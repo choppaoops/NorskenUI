@@ -15,7 +15,6 @@ externals:
     Libs/LibStub: https://repos.curseforge.com/wow/libstub/trunk
     Libs/CallbackHandler-1.0: https://repos.curseforge.com/wow/callbackhandler/trunk/CallbackHandler-1.0
     Libs/LibDBIcon-1.0: https://repos.wowace.com/wow/libdbicon-1-0/trunk/LibDBIcon-1.0
-    Libs/LibSpecialization: https://repos.curseforge.com/wow/libspecialization/trunk
     Libs/LibDataBroker-1.1:
         url: https://github.com/tekkub/libdatabroker-1-1
         tag: master
@@ -40,6 +39,9 @@ externals:
     Libs/LibCustomGlow-1.0:
         url: https://github.com/Stanzilla/LibCustomGlow.git
         branch: master
+    Libs/LibSpecialization:
+        url: https://github.com/funkydude/LibSpecialization.git
+        tag: master
 
 ignore:
     - README.md
