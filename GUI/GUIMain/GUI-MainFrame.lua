@@ -1198,6 +1198,8 @@ end
 function GUIFrame:RestoreFramePosition()
     if not self.mainFrame then return end
 
+    local wasShown = self.mainFrame:IsShown()
+
     local pos = NRSKNUI.db and NRSKNUI.db.global and NRSKNUI.db.global.GUIState and NRSKNUI.db.global.GUIState.frame
     if pos then
         self.mainFrame:ClearAllPoints()
@@ -1208,7 +1210,9 @@ function GUIFrame:RestoreFramePosition()
         end
     end
 
-    self:RestoreSessionState()
+    if not wasShown then
+        self:RestoreSessionState()
+    end
 end
 
 local combatFrame = CreateFrame("Frame")

@@ -186,6 +186,9 @@ function GUIFrame:ClearSearch()
         self.searchEditBox:SetText(PLACEHOLDER_TEXT)
         self.searchEditBox:SetTextColor(Theme.textSecondary[1], Theme.textSecondary[2], Theme.textSecondary[3], 0.6)
     end
+    if self.searchClearButton then
+        self.searchClearButton:Hide()
+    end
     self:RefreshSidebar()
 end
 
@@ -208,9 +211,29 @@ function GUIFrame:CreateSearchHeader(parent)
     searchContainer:SetBackdropColor(Theme.bgDark[1], Theme.bgDark[2], Theme.bgDark[3], 0)
     searchContainer:SetBackdropBorderColor(Theme.border[1], Theme.border[2], Theme.border[3], 0)
 
+    local clearButton = CreateFrame("Button", nil, searchContainer)
+    clearButton:SetSize(16, 16)
+    clearButton:SetPoint("RIGHT", searchContainer, "RIGHT", -4, 0)
+    clearButton:Hide()
+
+    local clearIcon = clearButton:CreateTexture(nil, "ARTWORK")
+    clearIcon:SetAllPoints()
+    clearIcon:SetTexture("Interface\\AddOns\\NorskenUI\\Media\\GUITextures\\NorskenCustomCrossv3.png")
+    clearIcon:SetVertexColor(Theme.textSecondary[1], Theme.textSecondary[2], Theme.textSecondary[3], 0.7)
+    clearIcon:SetRotation(math.rad(45))
+
+    clearButton:SetScript("OnEnter", function()
+        clearIcon:SetVertexColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
+    end)
+    clearButton:SetScript("OnLeave", function()
+        clearIcon:SetVertexColor(Theme.textSecondary[1], Theme.textSecondary[2], Theme.textSecondary[3], 0.7)
+    end)
+    clearButton:SetScript("OnClick", function() GUIFrame:ClearSearch() end)
+    self.searchClearButton = clearButton
+
     local searchEditBox = CreateFrame("EditBox", nil, searchContainer)
     searchEditBox:SetPoint("TOPLEFT", searchContainer, "TOPLEFT", 6, -4)
-    searchEditBox:SetPoint("BOTTOMRIGHT", searchContainer, "BOTTOMRIGHT", -6, 4)
+    searchEditBox:SetPoint("BOTTOMRIGHT", clearButton, "BOTTOMLEFT", -4, -4)
     searchEditBox:SetFontObject("GameFontNormal")
     searchEditBox:SetTextColor(Theme.textSecondary[1], Theme.textSecondary[2], Theme.textSecondary[3], 0.6)
     searchEditBox:SetAutoFocus(false)
@@ -224,6 +247,11 @@ function GUIFrame:CreateSearchHeader(parent)
             GUIFrame.searchText = ""
         else
             GUIFrame.searchText = text
+        end
+        if GUIFrame.searchText ~= "" then
+            clearButton:Show()
+        else
+            clearButton:Hide()
         end
         GUIFrame:SearchSidebar(GUIFrame.searchText)
         GUIFrame:RefreshSidebar()
