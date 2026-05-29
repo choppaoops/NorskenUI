@@ -967,39 +967,47 @@ local function CheckTargetedBuffs()
                 local excludedByTalent = buff.excludeIfTalent and C_SpellBook.IsSpellKnown(buff.excludeIfTalent)
 
                 if buffSettings.Enabled ~= false and specMatch and talentKnown and spellKnown and not excludedByTalent then
-                    local buffedCount = 0
-                    local targetCount = 0
-                    local playerIncluded = false
+                    local isMissing = false
 
-                    if inGroup then
-                        local targets = GetGroupMembersByRole(buff.targetType)
-                        targetCount = #targets
+                    if buff.selfBuffSpellId then
+                        isMissing = not PlayerHasBuff(buff.selfBuffSpellId)
+                    else
+                        local buffedCount = 0
+                        local targetCount = 0
+                        local playerIncluded = false
 
-                        for _, unit in ipairs(targets) do
-                            if UnitIsUnit(unit, "player") then
-                                playerIncluded = true
+                        if inGroup then
+                            local targets = GetGroupMembersByRole(buff.targetType)
+                            targetCount = #targets
+
+                            for _, unit in ipairs(targets) do
+                                if UnitIsUnit(unit, "player") then
+                                    playerIncluded = true
+                                end
+                                if buff.excludeSelf and UnitIsUnit(unit, "player") then
+                                    targetCount = targetCount - 1
+                                elseif UnitHasBuff(unit, buff.spellId) then
+                                    buffedCount = buffedCount + 1
+                                end
                             end
-                            if buff.excludeSelf and UnitIsUnit(unit, "player") then
-                                targetCount = targetCount - 1
-                            elseif UnitHasBuff(unit, buff.spellId) then
+                        end
+
+                        if buff.includeSelf and not playerIncluded then
+                            targetCount = targetCount + 1
+                            if PlayerHasBuff(buff.spellId) then
                                 buffedCount = buffedCount + 1
                             end
                         end
-                    end
 
-                    if buff.includeSelf and not playerIncluded then
-                        targetCount = targetCount + 1
-                        if PlayerHasBuff(buff.spellId) then
-                            buffedCount = buffedCount + 1
+                        local requiredTargets = buff.maxTargets
+                        if targetCount < requiredTargets then
+                            requiredTargets = targetCount
                         end
+
+                        isMissing = buffedCount < requiredTargets and requiredTargets > 0
                     end
 
-                    local requiredTargets = buff.maxTargets
-                    if targetCount < requiredTargets then
-                        requiredTargets = targetCount
-                    end
-
-                    if buffedCount < requiredTargets and requiredTargets > 0 then
+                    if isMissing then
                         targetedMissingCache[#targetedMissingCache + 1] = {
                             buff = buff,
                             text = "",

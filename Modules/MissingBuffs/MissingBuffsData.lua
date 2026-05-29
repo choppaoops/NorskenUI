@@ -56,7 +56,7 @@ Data.TARGETED_BUFFS = {
 
     { spellId = 974,    class = "SHAMAN",  specId = 264,  targetType = "any",    maxTargets = 1, key = "EarthShieldOthers",     secret = false, excludeSelf = true },
 
-    { spellId = 474750, class = "DRUID",   specId = 105,  targetType = "any",    maxTargets = 1, key = "SymbioticRelationship", secret = false, talentId = 474750 },
+    { spellId = 474750, class = "DRUID",   targetType = "any",    maxTargets = 1, key = "SymbioticRelationship", secret = false, talentId = 474750, selfBuffSpellId = 474754 },
 
     { spellId = 434763, class = "MONK",    specId = 270,  targetType = "any",    maxTargets = 1, key = "LinkedSpirits",         secret = true,  talentId = 434774 },
 }
