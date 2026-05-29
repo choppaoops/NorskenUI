@@ -36,7 +36,7 @@ local GMChatFrame_IsGM = GMChatFrame_IsGM
 local C_ClassColor_GetClassColor = C_ClassColor and C_ClassColor.GetClassColor
 
 local ChatEditSetLastTellTarget = (ChatFrameUtil and ChatFrameUtil.SetLastTellTarget) or ChatEdit_SetLastTellTarget
-local ShouldColorChatByClass = (ChatFrameUtil and ChatFrameUtil.ShouldColorChatByClass) or Chat_ShouldColorChatByClass
+local ShouldColorChatByClass = (ChatFrameUtil and ChatFrameUtil.ShouldColorChatByClass) or Chat_ShouldColorChatByClass or function(info) return info and info.colorNameByClass end
 local ResolvePrefixedChannelName = (ChatFrameUtil and ChatFrameUtil.ResolvePrefixedChannelName) or
     ChatFrame_ResolvePrefixedChannelName
 local GetMobileEmbeddedTexture = (ChatFrameUtil and ChatFrameUtil.GetMobileEmbeddedTexture) or
@@ -261,13 +261,9 @@ function CMH:MessageFormatter(frame, info, chatType, chatGroup, chatTarget, chan
     local isProtected = NRSKNUI:IsSecretValue(arg1)
     local bossMonster = strsub(chatType, 1, 9) == 'RAID_BOSS' or strsub(chatType, 1, 7) == 'MONSTER'
 
-    if bossMonster then
-        if not isProtected then
-            arg1 = gsub(arg1, '(%d%s?%%)([^%%%a])', '%1%%%2')
-            arg1 = gsub(arg1, '(%d%s?%%)$', '%1%%')
-        end
-    elseif not isProtected then
-        arg1 = gsub(arg1, '%%', '%%%%')
+    if bossMonster and not isProtected then
+        arg1 = gsub(arg1, '(%d%s?%%)([^%%%a])', '%1%%%2')
+        arg1 = gsub(arg1, '(%d%s?%%)$', '%1%%')
     end
 
     if not isProtected then
