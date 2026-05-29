@@ -56,6 +56,7 @@
     <Script file="GUITabs\GUI-Combat\GUI-RangeChecker.lua" />
     <Script file="GUITabs\GUI-Combat\GUI-TimeSpiral.lua" />
     <Script file="GUITabs\GUI-Combat\GUI-FocusCastbar.lua" />
+    <Script file="GUITabs\GUI-Combat\GUI-PotionReady.lua" />
 
     <!-- GUI Missing Buffs Tabs -->
     <Script file="GUITabs\GUI-MissingBuffs\GUI-MissingBuffsTab.lua" />

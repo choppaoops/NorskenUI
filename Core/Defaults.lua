@@ -206,6 +206,30 @@ local Defaults = {
             PrintEnd = false,
         },
 
+        PotionReady = {
+            Enabled = true,
+            Text = "POT READY",
+            Color = { 1, 1, 1, 1 },
+            FontFace = "Expressway",
+            FontSize = 14,
+            FontOutline = "SOFTOUTLINE",
+            FontShadow = {
+                Enabled = false,
+                Color = { 0, 0, 0, 1 },
+                OffsetX = 1,
+                YOffset = -1,
+            },
+            Strata = "HIGH",
+            anchorFrameType = "UIPARENT",
+            ParentFrame = "UIParent",
+            Position = {
+                AnchorFrom = "CENTER",
+                AnchorTo = "CENTER",
+                XOffset = 0,
+                YOffset = 0,
+            },
+        },
+
         -- Combat Message Settings
         CombatMessage = {
             Enabled = true,               -- Enable/disable combat messages

@@ -28,6 +28,7 @@ GUIFrame.SidebarConfig = {
                 { id = "FocusCastbar",  text = "Focus Castbar" },
                 { id = "RangeChecker",  text = "Range Checker Text" },
                 { id = "TimeSpiral",    text = "Time Spiral" },
+                { id = "PotionReady",   text = "Potion Ready" },
             }
         },
         {
