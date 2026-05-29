@@ -40,7 +40,7 @@ externals:
         url: https://github.com/Stanzilla/LibCustomGlow.git
         branch: master
     Libs/LibSpecialization:
-        url: https://github.com/funkydude/LibSpecialization.git
+        url: https://github.com/BigWigsMods/LibSpecialization.git
         tag: master
 
 ignore:
