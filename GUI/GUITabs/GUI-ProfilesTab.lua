@@ -1,15 +1,14 @@
--- NorskenUI namespace
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
 local GUIFrame = NRSKNUI.GUIFrame
 local Theme = NRSKNUI.Theme
 
---TODO: Update
-
--- Localization
 local pairs = pairs
+local ipairs = ipairs
+local GetNumSpecializations = GetNumSpecializations
+local GetSpecializationInfo = GetSpecializationInfo
+local GetSpecialization = GetSpecialization
 
--- Build profile options for dropdowns
 local function BuildProfileOptions()
     local PM = NRSKNUI.ProfileManager
     if not PM then return {} end
@@ -22,39 +21,45 @@ local function BuildProfileOptions()
     return options
 end
 
--- Register ProfileManager content
-GUIFrame:RegisterContent("ProfileManager", function(scrollChild, yOffset)
-    local PM = NRSKNUI.ProfileManager
-    if not PM then
-        local errorCard = GUIFrame:CreateCard(scrollChild, "Error", yOffset)
-        errorCard:AddLabel("ProfileManager not initialized. Please reload UI.")
-        return yOffset + errorCard:GetContentHeight() + Theme.paddingSmall
+local function GetSpecInfo()
+    local specs = {}
+    local numSpecs = GetNumSpecializations()
+    local currentSpec = GetSpecialization()
+    for i = 1, numSpecs do
+        local _, name = GetSpecializationInfo(i)
+        specs[i] = { index = i, name = name, isCurrent = (i == currentSpec) }
     end
+    return specs, currentSpec
+end
 
-    ----------------------------------------------------------------
-    -- Card 1: Current Profile
-    ----------------------------------------------------------------
-    local card1 = GUIFrame:CreateCard(scrollChild, "Current Profile", yOffset)
+GUIFrame:RegisterContent("ProfileSelector", function(scrollChild, yOffset)
+    local PM = NRSKNUI.ProfileManager
+    if not PM then return GUIFrame:ShowDBError(scrollChild, yOffset) end
 
+    local db = NRSKNUI.db
     local useGlobal = PM:GetUseGlobalProfile()
     local currentProfile = PM:GetCurrentProfile()
     local profileOptions = BuildProfileOptions()
-    local noGlobal = useGlobal == false
+    local manager = GUIFrame:CreateWidgetStateManager()
+    local specEnabled = db and db.IsDualSpecEnabled and db:IsDualSpecEnabled() or false
 
-    local row1 = GUIFrame:CreateRow(card1.content, 40)
+    -- Card 1
+    local card1 = GUIFrame:CreateCard(scrollChild, "Current Profile", yOffset)
+
+    local row1 = GUIFrame:CreateRow(card1.content, Theme.rowHeightLast)
     local profileDropdown = GUIFrame:CreateDropdown(row1, "Active Profile", {
         options = profileOptions,
         value = currentProfile,
         callback = function(key)
             if key == currentProfile then return end
-
             local success, err = PM:SetProfile(key)
             if not success then
                 NRSKNUI:Print("Failed to switch profile: " .. (err or "Unknown error"))
             else
                 NRSKNUI:CreatePrompt({
                     title = "Profile Changed",
-                    text = "Profile switched to '" .. key .. "'.\n\nA UI reload is recommended to fully apply all settings.",
+                    text = "Profile switched to '" ..
+                        key .. "'.\n\nA UI reload is recommended to fully apply all settings.",
                     onAccept = function() ReloadUI() end,
                     acceptText = "Reload Now",
                     cancelText = "Later",
@@ -63,24 +68,18 @@ GUIFrame:RegisterContent("ProfileManager", function(scrollChild, yOffset)
         end
     })
     row1:AddWidget(profileDropdown, 1)
-    card1:AddRow(row1, 40)
+    card1:AddRow(row1, Theme.rowHeightLast, 0)
 
-    profileDropdown:SetEnabled(noGlobal)
+    profileDropdown:SetEnabled(not useGlobal and not specEnabled)
 
-    local descLabel = card1:AddLabel("Select which profile to use for this character.")
-    descLabel:SetTextColor(Theme.textMuted[1], Theme.textMuted[2], Theme.textMuted[3], 1)
+    yOffset = card1:GetNextOffset()
 
-    yOffset = yOffset + card1:GetContentHeight() + Theme.paddingSmall
-
-    ----------------------------------------------------------------
-    -- Card 2: Global Profile
-    ----------------------------------------------------------------
+    -- Card 2
     local card2 = GUIFrame:CreateCard(scrollChild, "Global Profile", yOffset)
 
     local globalProfile = PM:GetGlobalProfile()
 
-    -- Toggle for global mode
-    local row2a = GUIFrame:CreateRow(card2.content, 36)
+    local row2a = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast)
     local globalToggle = GUIFrame:CreateCheckbox(row2a, "Use Global Profile", {
         value = useGlobal,
         callback = function(newState)
@@ -91,6 +90,13 @@ GUIFrame:RegisterContent("ProfileManager", function(scrollChild, yOffset)
                         title = "Global Profile Enabled",
                         text = "Global profile mode enabled.\n\nA UI reload is recommended to fully apply all settings.",
                         onAccept = function() ReloadUI() end,
+                        onCancel = function()
+                            C_Timer.After(0.1, function()
+                                if GUIFrame.mainFrame and GUIFrame.mainFrame:IsShown() then
+                                    GUIFrame:RefreshContent()
+                                end
+                            end)
+                        end,
                         acceptText = "Reload Now",
                         cancelText = "Later",
                     })
@@ -105,12 +111,9 @@ GUIFrame:RegisterContent("ProfileManager", function(scrollChild, yOffset)
             end
         end
     })
-    row2a:AddWidget(globalToggle, 1)
-    card2:AddRow(row2a, 36)
+    row2a:AddWidget(globalToggle, 0.5)
 
-    -- Global profile selection
-    local row2b = GUIFrame:CreateRow(card2.content, 40)
-    local globalDropdown = GUIFrame:CreateDropdown(row2b, "Global Profile", {
+    local globalDropdown = GUIFrame:CreateDropdown(row2a, "Global Profile", {
         options = profileOptions,
         value = globalProfile,
         callback = function(key)
@@ -119,10 +122,10 @@ GUIFrame:RegisterContent("ProfileManager", function(scrollChild, yOffset)
                 NRSKNUI:Print("Failed to set global profile: " .. (err or "Unknown error"))
             else
                 if useGlobal then
-                    -- Global mode is active, so this actually switches the profile
                     NRSKNUI:CreatePrompt({
                         title = "Global Profile Changed",
-                        text = "Global profile switched to '" .. key .. "'.\n\nA UI reload is recommended to fully apply all settings.",
+                        text = "Global profile switched to '" ..
+                            key .. "'.\n\nA UI reload is recommended to fully apply all settings.",
                         onAccept = function() ReloadUI() end,
                         acceptText = "Reload Now",
                         cancelText = "Later",
@@ -133,31 +136,114 @@ GUIFrame:RegisterContent("ProfileManager", function(scrollChild, yOffset)
             end
         end
     })
-    row2b:AddWidget(globalDropdown, 1)
-    card2:AddRow(row2b, 40)
+    row2a:AddWidget(globalDropdown, 0.5)
+    manager:Register(globalDropdown, "all")
+    card2:AddRow(row2a, Theme.rowHeightLast, 0)
 
-    -- Enable/disable global dropdown based on toggle state
-    globalDropdown:SetEnabled(useGlobal)
+    manager:UpdateAll(useGlobal)
 
-    card2:AddSpacing(Theme.paddingSmall)
-    local globalDesc = card2:AddLabel("When enabled, all characters will use the same profile.")
-    globalDesc:SetTextColor(Theme.textMuted[1], Theme.textMuted[2], Theme.textMuted[3], 1)
+    yOffset = card2:GetNextOffset()
 
-    yOffset = yOffset + card2:GetContentHeight() + Theme.paddingSmall
+    -- Card 3: Specialization Profiles
+    local specProfilesAvailable = db and db.IsDualSpecEnabled
 
-    ----------------------------------------------------------------
-    -- Card 3: Profile Actions
-    ----------------------------------------------------------------
-    local card3 = GUIFrame:CreateCard(scrollChild, "Profile Actions", yOffset)
+    if specProfilesAvailable then
+        local card3 = GUIFrame:CreateCard(scrollChild, "Specialization Profiles", yOffset)
+        local specs = GetSpecInfo()
+        local specWidgets = {}
 
-    -- Create New Profile
-    card3:AddLabel("Create New Profile")
+        local row3a = GUIFrame:CreateRow(card3.content, Theme.rowHeight)
+        local specToggle = GUIFrame:CreateCheckbox(row3a, "Enable Spec Profiles", {
+            value = specEnabled,
+            callback = function(newState)
+                db:SetDualSpecEnabled(newState)
+                profileDropdown:SetEnabled(not useGlobal and not newState)
+                for _, widget in ipairs(specWidgets) do
+                    widget:SetEnabled(newState)
+                end
+            end
+        })
+        row3a:AddWidget(specToggle, 0.5)
+        card3:AddRow(row3a, Theme.rowHeight)
 
-    local row3a = GUIFrame:CreateRow(card3.content, 40)
-    local newProfileInput = GUIFrame:CreateEditBox(row3a, "Profile Name", { value = "" })
-    row3a:AddWidget(newProfileInput, 0.65)
+        specToggle:SetEnabled(not useGlobal)
 
-    local createBtn = GUIFrame:CreateButton(row3a, "Create", {
+        local sepSpec = GUIFrame:CreateSeparator(card3.content)
+        card3:AddRow(sepSpec, Theme.rowHeightSeparator)
+
+        local numSpecs = #specs
+        local widthPerSpec = numSpecs == 2 and 0.5 or (numSpecs == 3 and 0.33 or 0.25)
+
+        local row3b = GUIFrame:CreateRow(card3.content, Theme.rowHeightLast)
+        for _, spec in ipairs(specs) do
+            local label = spec.isCurrent and (spec.name .. " (Active)") or spec.name
+            local specDropdown = GUIFrame:CreateDropdown(row3b, label, {
+                options = profileOptions,
+                value = db:GetDualSpecProfile(spec.index),
+                callback = function(key)
+                    db:SetDualSpecProfile(key, spec.index)
+                end
+            })
+            row3b:AddWidget(specDropdown, widthPerSpec)
+            specDropdown:SetEnabled(specEnabled and not useGlobal)
+            specWidgets[#specWidgets + 1] = specDropdown
+        end
+        card3:AddRow(row3b, Theme.rowHeightLast, 0)
+
+        yOffset = card3:GetNextOffset()
+    end
+
+    return yOffset
+end)
+
+GUIFrame:RegisterContent("ProfileActions", function(scrollChild, yOffset)
+    local PM = NRSKNUI.ProfileManager
+    if not PM then return GUIFrame:ShowDBError(scrollChild, yOffset) end
+
+    local profileOptions = BuildProfileOptions()
+    local currentProfile = PM:GetCurrentProfile()
+
+    -- Card 1: Reset Profile
+    local card1 = GUIFrame:CreateCard(scrollChild, "Reset Profile", yOffset)
+
+    local row1 = GUIFrame:CreateRow(card1.content, Theme.rowHeightLast - 9)
+
+    local profileLabel = GUIFrame:CreateText(row1, "Current Profile: " .. NRSKNUI:ColorTextByTheme(currentProfile), {
+        height = Theme.rowHeightLast - 9,
+        bgMode = "hide",
+    })
+    row1:AddWidget(profileLabel, 0.5, nil, 0, -6)
+
+    local resetBtn = GUIFrame:CreateButton(row1, "Reset to Defaults", {
+        height = 30,
+        callback = function()
+            NRSKNUI:CreatePrompt({
+                title = "Reset Profile",
+                text = "Reset all settings in current profile to defaults?\nThis cannot be undone.",
+                onAccept = function()
+                    local success = PM:ResetProfile()
+                    if not success then
+                        NRSKNUI:Print("Failed to reset profile")
+                    end
+                end,
+                acceptText = "Reset",
+                cancelText = "Cancel",
+            })
+        end
+    })
+    row1:AddWidget(resetBtn, 0.5, nil, 0, -2)
+    card1:AddRow(row1, Theme.rowHeightLast - 9, 0)
+
+    yOffset = card1:GetNextOffset()
+
+    -- Card 2: Create New Profile
+    local card2 = GUIFrame:CreateCard(scrollChild, "Create New Profile", yOffset)
+
+    local row2 = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast)
+    local newProfileInput = GUIFrame:CreateEditBox(row2, "Profile Name", { value = "" })
+    row2:AddWidget(newProfileInput, 0.5)
+
+    local createBtn = GUIFrame:CreateButton(row2, "Create", {
         width = 80,
         height = 24,
         callback = function()
@@ -180,26 +266,22 @@ GUIFrame:RegisterContent("ProfileManager", function(scrollChild, yOffset)
             end
         end
     })
-    row3a:AddWidget(createBtn, 0.35, nil, 0, -14)
-    card3:AddRow(row3a, 40)
+    row2:AddWidget(createBtn, 0.5, nil, 0, -14)
+    card2:AddRow(row2, Theme.rowHeightLast, 0)
 
-    -- Separator
-    local row3asep = GUIFrame:CreateRow(card3.content, 8)
-    local seprow5Card = GUIFrame:CreateSeparator(row3asep)
-    row3asep:AddWidget(seprow5Card, 1)
-    card3:AddRow(row3asep, 8)
+    yOffset = card2:GetNextOffset()
 
-    -- Copy Profile
-    card3:AddLabel("Copy From Profile")
+    -- Card 2a
+    local card2a = GUIFrame:CreateCard(scrollChild, "Copy Profile", yOffset)
 
-    local row3b = GUIFrame:CreateRow(card3.content, 40)
-    local copyDropdown = GUIFrame:CreateDropdown(row3b, "Source Profile", {
+    local row2a = GUIFrame:CreateRow(card2a.content, Theme.rowHeightLast)
+    local copyDropdown = GUIFrame:CreateDropdown(row2a, "Source Profile", {
         options = profileOptions,
         value = ""
     })
-    row3b:AddWidget(copyDropdown, 0.65)
+    row2a:AddWidget(copyDropdown, 0.5)
 
-    local copyBtn = GUIFrame:CreateButton(row3b, "Copy", {
+    local copyBtn = GUIFrame:CreateButton(row2a, "Copy", {
         width = 80,
         height = 24,
         callback = function()
@@ -207,7 +289,8 @@ GUIFrame:RegisterContent("ProfileManager", function(scrollChild, yOffset)
             if source and source ~= "" then
                 NRSKNUI:CreatePrompt({
                     title = "Copy Profile",
-                    text = "Copy all settings from '" .. source .. "' to current profile?\nThis will overwrite your current settings.",
+                    text = "Copy all settings from '" ..
+                        source .. "' to current profile?\nThis will overwrite your current settings.",
                     onAccept = function()
                         local success, err = PM:CopyProfile(source)
                         if not success then
@@ -222,26 +305,73 @@ GUIFrame:RegisterContent("ProfileManager", function(scrollChild, yOffset)
             end
         end
     })
-    row3b:AddWidget(copyBtn, 0.35, nil, 0, -14)
-    card3:AddRow(row3b, 40)
+    row2a:AddWidget(copyBtn, 0.5, nil, 0, -14)
+    card2a:AddRow(row2a, Theme.rowHeightLast, 0)
 
-    -- Separator
-    local row3bsep = GUIFrame:CreateRow(card3.content, 8)
-    local seprow3bCard = GUIFrame:CreateSeparator(row3bsep)
-    row3bsep:AddWidget(seprow3bCard, 1)
-    card3:AddRow(row3bsep, 8)
+    yOffset = card2a:GetNextOffset()
 
-    -- Delete Profile
-    card3:AddLabel("Delete Profile")
+    -- Card 3
+    local card3 = GUIFrame:CreateCard(scrollChild, "Rename Profile", yOffset)
 
-    local row3c = GUIFrame:CreateRow(card3.content, 40)
-    local deleteDropdown = GUIFrame:CreateDropdown(row3c, "Profile to Delete", {
+    local row3a = GUIFrame:CreateRow(card3.content, Theme.rowHeight)
+    local renameDropdown = GUIFrame:CreateDropdown(row3a, "Profile to Rename", {
         options = profileOptions,
         value = ""
     })
-    row3c:AddWidget(deleteDropdown, 0.65)
+    row3a:AddWidget(renameDropdown, 1)
+    card3:AddRow(row3a, Theme.rowHeight)
 
-    local deleteBtn = GUIFrame:CreateButton(row3c, "Delete", {
+    local row3b = GUIFrame:CreateRow(card3.content, Theme.rowHeightLast)
+    local newNameInput = GUIFrame:CreateEditBox(row3b, "New Name", { value = "" })
+    row3b:AddWidget(newNameInput, 0.5)
+
+    local renameBtn = GUIFrame:CreateButton(row3b, "Rename", {
+        width = 80,
+        height = 24,
+        callback = function()
+            local oldName = renameDropdown:GetValue()
+            local newName = newNameInput:GetValue()
+
+            if not oldName or oldName == "" then
+                NRSKNUI:Print("Please select a profile to rename")
+                return
+            end
+
+            if not newName or newName == "" then
+                NRSKNUI:Print("Please enter a new name")
+                return
+            end
+
+            local success, err = PM:RenameProfile(oldName, newName)
+            if success then
+                NRSKNUI:Print("Renamed '" .. oldName .. "' to '" .. newName .. "'")
+                newNameInput:SetValue("")
+                C_Timer.After(0.1, function()
+                    if GUIFrame.mainFrame and GUIFrame.mainFrame:IsShown() then
+                        GUIFrame:RefreshContent()
+                    end
+                end)
+            else
+                NRSKNUI:Print("Failed to rename: " .. (err or "Unknown error"))
+            end
+        end
+    })
+    row3b:AddWidget(renameBtn, 0.5, nil, 0, -14)
+    card3:AddRow(row3b, Theme.rowHeightLast, 0)
+
+    yOffset = card3:GetNextOffset()
+
+    -- Card 4
+    local card4 = GUIFrame:CreateCard(scrollChild, "Delete Profile", yOffset)
+
+    local row4 = GUIFrame:CreateRow(card4.content, Theme.rowHeightLast)
+    local deleteDropdown = GUIFrame:CreateDropdown(row4, "Profile to Delete", {
+        options = profileOptions,
+        value = ""
+    })
+    row4:AddWidget(deleteDropdown, 0.5)
+
+    local deleteBtn = GUIFrame:CreateButton(row4, "Delete", {
         width = 80,
         height = 24,
         callback = function()
@@ -275,48 +405,24 @@ GUIFrame:RegisterContent("ProfileManager", function(scrollChild, yOffset)
             end
         end
     })
-    row3c:AddWidget(deleteBtn, 0.35, nil, 0, -14)
-    card3:AddRow(row3c, 40)
+    row4:AddWidget(deleteBtn, 0.5, nil, 0, -14)
+    card4:AddRow(row4, Theme.rowHeightLast, 0)
 
-    -- Separator
-    local row3dsep = GUIFrame:CreateRow(card3.content, 8)
-    local seprow3dCard = GUIFrame:CreateSeparator(row3dsep)
-    row3dsep:AddWidget(seprow3dCard, 1)
-    card3:AddRow(row3dsep, 8)
+    yOffset = card4:GetNextOffset()
 
-    -- Reset Profile
-    local row3d = GUIFrame:CreateRow(card3.content, 36)
-    local resetBtn = GUIFrame:CreateButton(row3d, "Reset Current Profile to Defaults", {
-        callback = function()
-            NRSKNUI:CreatePrompt({
-                title = "Reset Profile",
-                text = "Reset all settings in current profile to defaults?\nThis cannot be undone.",
-                onAccept = function()
-                    local success = PM:ResetProfile()
-                    if not success then
-                        NRSKNUI:Print("Failed to reset profile")
-                    end
-                end,
-                acceptText = "Reset",
-                cancelText = "Cancel",
-            })
-        end
-    })
-    row3d:AddWidget(resetBtn, 1)
-    card3:AddRow(row3d, 36)
+    return yOffset
+end)
 
-    yOffset = yOffset + card3:GetContentHeight() + Theme.paddingSmall
+GUIFrame:RegisterContent("ProfileImportExport", function(scrollChild, yOffset)
+    local PM = NRSKNUI.ProfileManager
+    if not PM then return GUIFrame:ShowDBError(scrollChild, yOffset) end
 
-    ----------------------------------------------------------------
-    -- Card 4: Import/Export
-    ----------------------------------------------------------------
-    local card4 = GUIFrame:CreateCard(scrollChild, "Import / Export", yOffset)
+    -- Card 1
+    local card1 = GUIFrame:CreateCard(scrollChild, "Export Profile", yOffset)
 
-    -- Export section
-    card4:AddLabel("Export Current Profile")
-
-    local row4a = GUIFrame:CreateRow(card4.content, 36)
-    local exportBtn = GUIFrame:CreateButton(row4a, "Export Profile to String", {
+    local row1 = GUIFrame:CreateRow(card1.content, Theme.rowHeightLast - 9)
+    local exportBtn = GUIFrame:CreateButton(row1, "Export Current Profile", {
+        height = 30,
         callback = function()
             local exportString, err = PM:ExportProfile()
             if exportString then
@@ -327,113 +433,61 @@ GUIFrame:RegisterContent("ProfileManager", function(scrollChild, yOffset)
             end
         end
     })
-    row4a:AddWidget(exportBtn, 1)
-    card4:AddRow(row4a, 36)
+    row1:AddWidget(exportBtn, 1, nil, 0, -2)
+    card1:AddRow(row1, Theme.rowHeightLast - 9, 0)
 
-    -- Separator
-    local row4asep = GUIFrame:CreateRow(card4.content, 8)
-    local seprow4aCard = GUIFrame:CreateSeparator(row4asep)
-    row4asep:AddWidget(seprow4aCard, 1)
-    card4:AddRow(row4asep, 8)
+    yOffset = card1:GetNextOffset()
 
-    -- Import section
-    card4:AddLabel("Import Profile")
+    -- Card 2
+    local card2 = GUIFrame:CreateCard(scrollChild, "Import Profile", yOffset)
 
-    local row4b = GUIFrame:CreateRow(card4.content, 40)
-    local importNameInput = GUIFrame:CreateEditBox(row4b, "Profile Name (leave empty for default)", { value = "" })
-    row4b:AddWidget(importNameInput, 1)
-    card4:AddRow(row4b, 40)
-
-    local row4c = GUIFrame:CreateRow(card4.content, 36)
-    local importBtn = GUIFrame:CreateButton(row4c, "Import Profile from String", {
+    local row2 = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast - 9)
+    local importBtn = GUIFrame:CreateButton(row2, "Import from String", {
+        height = 30,
         callback = function()
             NRSKNUI:CreatePrompt({
                 title = "Import Profile",
                 text = "",
                 editBox = true,
-                editBoxLabel = "Paste import string and press Enter",
+                editBoxLabel = "Paste import string",
                 onAccept = function(importString)
-                    if importString and importString ~= "" then
-                        local targetName = importNameInput:GetValue()
-                        if targetName == "" then targetName = nil end
+                    if not importString or importString == "" then return end
 
-                        local success, nameOrErr = PM:ImportProfile(importString, targetName)
-                        if success then
-                            NRSKNUI:Print("Imported profile: " .. nameOrErr)
-                            importNameInput:SetValue("")
-                            C_Timer.After(0.1, function()
-                                if GUIFrame.mainFrame and GUIFrame.mainFrame:IsShown() then
-                                    GUIFrame:RefreshContent()
+                    C_Timer.After(0.1, function()
+                        NRSKNUI:CreatePrompt({
+                            title = "Profile Name",
+                            text = "",
+                            editBox = true,
+                            editBoxLabel = "Enter profile name (leave empty for original)",
+                            onAccept = function(profileName)
+                                local targetName = (profileName and profileName ~= "") and profileName or nil
+
+                                local success, nameOrErr = PM:ImportProfile(importString, targetName)
+                                if success then
+                                    NRSKNUI:Print("Imported profile: " .. nameOrErr)
+                                    C_Timer.After(0.1, function()
+                                        if GUIFrame.mainFrame and GUIFrame.mainFrame:IsShown() then
+                                            GUIFrame:RefreshContent()
+                                        end
+                                    end)
+                                else
+                                    NRSKNUI:Print("Import failed: " .. (nameOrErr or "Unknown error"))
                                 end
-                            end)
-                        else
-                            NRSKNUI:Print("Import failed: " .. (nameOrErr or "Unknown error"))
-                        end
-                    end
+                            end,
+                            acceptText = "Import",
+                            cancelText = "Cancel",
+                        })
+                    end)
                 end,
-                acceptText = "Import",
+                acceptText = "Next",
                 cancelText = "Cancel",
             })
         end
     })
-    row4c:AddWidget(importBtn, 1)
-    card4:AddRow(row4c, 36)
+    row2:AddWidget(importBtn, 1, nil, 0, -2)
+    card2:AddRow(row2, Theme.rowHeightLast - 9, 0)
 
-    yOffset = yOffset + card4:GetContentHeight() + Theme.paddingSmall
+    yOffset = card2:GetNextOffset()
 
-    ----------------------------------------------------------------
-    -- Card 5: Rename Profile
-    ----------------------------------------------------------------
-    local card5 = GUIFrame:CreateCard(scrollChild, "Rename Profile", yOffset)
-
-    local row5a = GUIFrame:CreateRow(card5.content, 40)
-    local renameDropdown = GUIFrame:CreateDropdown(row5a, "Profile to Rename", {
-        options = profileOptions,
-        value = ""
-    })
-    row5a:AddWidget(renameDropdown, 1)
-    card5:AddRow(row5a, 40)
-
-    local row5b = GUIFrame:CreateRow(card5.content, 40)
-    local newNameInput = GUIFrame:CreateEditBox(row5b, "New Name", { value = "" })
-    row5b:AddWidget(newNameInput, 0.65)
-
-    local renameBtn = GUIFrame:CreateButton(row5b, "Rename", {
-        width = 80,
-        height = 24,
-        callback = function()
-            local oldName = renameDropdown:GetValue()
-            local newName = newNameInput:GetValue()
-
-            if not oldName or oldName == "" then
-                NRSKNUI:Print("Please select a profile to rename")
-                return
-            end
-
-            if not newName or newName == "" then
-                NRSKNUI:Print("Please enter a new name")
-                return
-            end
-
-            local success, err = PM:RenameProfile(oldName, newName)
-            if success then
-                NRSKNUI:Print("Renamed '" .. oldName .. "' to '" .. newName .. "'")
-                newNameInput:SetValue("")
-                C_Timer.After(0.1, function()
-                    if GUIFrame.mainFrame and GUIFrame.mainFrame:IsShown() then
-                        GUIFrame:RefreshContent()
-                    end
-                end)
-            else
-                NRSKNUI:Print("Failed to rename: " .. (err or "Unknown error"))
-            end
-        end
-    })
-    row5b:AddWidget(renameBtn, 0.35, nil, 0, -14)
-    card5:AddRow(row5b, 40)
-
-    yOffset = yOffset + card5:GetContentHeight() + Theme.paddingSmall
-
-    yOffset = yOffset - (Theme.paddingSmall * 2)
     return yOffset
 end)

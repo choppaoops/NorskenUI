@@ -11,7 +11,9 @@ GUIFrame.SidebarConfig = {
             text = "Profiles",
             defaultExpanded = false,
             items = {
-                { id = "ProfileManager", text = "Profile Manager" },
+                { id = "ProfileSelector", text = "Profile Selector" },
+                { id = "ProfileActions", text = "Profile Actions" },
+                { id = "ProfileImportExport", text = "Import / Export" },
             }
         },
         {
