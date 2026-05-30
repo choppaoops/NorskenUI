@@ -197,7 +197,7 @@ GUIFrame:RegisterContent("CharacterPanel", function(scrollChild, yOffset)
     manager:Register(spacingSlider, "all", "gemUtil")
     card3:AddRow(row4, Theme.rowHeight)
 
-    local row5 = GUIFrame:CreateRow(card3.content, Theme.rowHeightLast)
+    local row5 = GUIFrame:CreateRow(card3.content, Theme.rowHeight)
     local emptyOnlyCheck = GUIFrame:CreateCheckbox(row5, "Show Only Empty Sockets", {
         value = gemDb.ShowOnlyEmpty,
         callback = function(checked)
@@ -210,7 +210,22 @@ GUIFrame:RegisterContent("CharacterPanel", function(scrollChild, yOffset)
     })
     row5:AddWidget(emptyOnlyCheck, 1)
     manager:Register(emptyOnlyCheck, "all", "gemUtil")
-    card3:AddRow(row5, Theme.rowHeightLast, 0)
+    card3:AddRow(row5, Theme.rowHeight)
+
+    local row6 = GUIFrame:CreateRow(card3.content, Theme.rowHeightLast)
+    local enchantCheck = GUIFrame:CreateCheckbox(row6, "Show Enchant Helper Button", {
+        value = gemDb.EnchantHelper,
+        callback = function(checked)
+            gemDb.EnchantHelper = checked
+            if CharacterPanel and CharacterPanel.RefreshSocketButtons then
+                CharacterPanel:RefreshSocketButtons()
+            end
+        end,
+        tooltip = "Adds a button to quickly apply enchants from your bags to equipped items",
+    })
+    row6:AddWidget(enchantCheck, 1)
+    manager:Register(enchantCheck, "all", "gemUtil")
+    card3:AddRow(row6, Theme.rowHeightLast, 0)
 
     yOffset = card3:GetNextOffset()
 
