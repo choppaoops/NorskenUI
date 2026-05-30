@@ -179,7 +179,23 @@ GUIFrame:RegisterContent("CustomSkin_Debuffs", function(scrollChild, yOffset)
     })
     rowSwipe:AddWidget(reverseCheck, 0.5)
     manager:Register(reverseCheck, "all", "swipeOn")
-    card2:AddRow(rowSwipe, Theme.rowHeightLast, 0)
+    card2:AddRow(rowSwipe, Theme.rowHeight)
+
+    local separator3c = GUIFrame:CreateSeparator(card2.content)
+    card2:AddRow(separator3c, Theme.rowHeightSeparator)
+
+    local rowInteraction = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast)
+    local tooltipCheck = GUIFrame:CreateCheckbox(rowInteraction, "Show Tooltips", {
+        tooltip = "Show tooltips when hovering over debuff icons.",
+        value = db.ShowTooltips,
+        callback = function(checked)
+            db.ShowTooltips = checked
+            ApplySettings()
+        end
+    })
+    rowInteraction:AddWidget(tooltipCheck, 0.5)
+    manager:Register(tooltipCheck, "all")
+    card2:AddRow(rowInteraction, Theme.rowHeightLast, 0)
 
     yOffset = card2:GetNextOffset()
 

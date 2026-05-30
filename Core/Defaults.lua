@@ -64,6 +64,7 @@ local Defaults = {
                 SocketButtonSize = 24,
                 SocketButtonSpacing = 1,
                 ShowOnlyEmpty = false,
+                EnchantHelper = true,
             },
             TrackIndicators = {
                 Enabled = true,
@@ -1817,6 +1818,9 @@ local Defaults = {
                 -- Growth direction
                 GrowHorizontal = "LEFT", -- "LEFT" or "RIGHT"
                 GrowVertical = "DOWN",   -- "UP" or "DOWN"
+
+                -- Interaction
+                ShowTooltips = true,
 
                 -- Filtering
                 Filters = {

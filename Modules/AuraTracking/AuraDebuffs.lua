@@ -155,6 +155,7 @@ local function ApplyCooldownTextStyle(cooldown, db)
 end
 
 local function auraOnEnter(button)
+    if not DEBUFFS.db.ShowTooltips then return end
     if not button.auraInstanceID then return end
     GameTooltip:SetOwner(button, "ANCHOR_BOTTOMLEFT")
     GameTooltip:SetUnitAuraByAuraInstanceID("player", button.auraInstanceID)
@@ -165,12 +166,23 @@ local function auraOnLeave()
     GameTooltip:Hide()
 end
 
+local function ApplyMouseSettings(frame, db)
+    local allowMotion = db.ShowTooltips
+    frame:EnableMouse(allowMotion)
+    if frame.SetMouseClickEnabled then frame:SetMouseClickEnabled(false) end
+    if frame.SetMouseMotionEnabled then frame:SetMouseMotionEnabled(allowMotion) end
+    for _, child in ipairs({ frame:GetChildren() }) do
+        child:EnableMouse(false)
+        if child.SetMouseClickEnabled then child:SetMouseClickEnabled(false) end
+        if child.SetMouseMotionEnabled then child:SetMouseMotionEnabled(false) end
+    end
+end
+
 local function CreateAuraButton(parent)
     local db = DEBUFFS.db
 
     local button = CreateFrame("Button", nil, parent)
     button:SetSize(db.IconSize, db.IconSize)
-    button:EnableMouse(true)
 
     DEBUFFS.buttons[button] = true
 
@@ -225,6 +237,8 @@ local function CreateAuraButton(parent)
         icon:SetAlpha(0)
         button.DispelIcons[dispelIndex] = icon
     end
+
+    ApplyMouseSettings(button, db)
 
     return button
 end
@@ -423,6 +437,7 @@ end
 
 local function ApplyButtonSettings(button, db)
     button:SetSize(db.IconSize, db.IconSize)
+    ApplyMouseSettings(button, db)
     if button.Count then
         NRSKNUI:ApplyFont(button.Count, db.FontFace, db.FontSize, db.FontOutline)
         button.Count:SetShadowOffset(0, 0)
@@ -458,6 +473,7 @@ function DEBUFFS:CreateFrame()
 
     self.frame = CreateFrame("Frame", "NorskenUIDebuffFrame", UIParent)
     self.frame:SetSize(GetFrameSize(self.db))
+    self.frame:EnableMouse(false)
     NRSKNUI:ApplyFramePosition(self.frame, self.db.Position, self.db)
     self.frame:Show()
 end
