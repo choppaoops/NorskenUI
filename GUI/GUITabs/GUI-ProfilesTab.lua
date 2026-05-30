@@ -172,7 +172,7 @@ GUIFrame:RegisterContent("ProfileSelector", function(scrollChild, yOffset)
         card3:AddRow(sepSpec, Theme.rowHeightSeparator)
 
         local numSpecs = #specs
-        local widthPerSpec = numSpecs == 2 and 0.5 or (numSpecs == 3 and 0.33 or 0.25)
+        local widthPerSpec = numSpecs == 2 and 0.5 or (numSpecs == 3 and (1 / 3) or 0.25)
 
         local row3b = GUIFrame:CreateRow(card3.content, Theme.rowHeightLast)
         for _, spec in ipairs(specs) do
