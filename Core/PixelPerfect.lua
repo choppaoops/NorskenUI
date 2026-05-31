@@ -164,6 +164,15 @@ do
 
     local function DisablePixelSnap(frame)
         if frame and not frame:IsForbidden() and not frame.NUIPixelSnapDisabled then
+            -- Skip if frame belongs to a secure/protected parent (action buttons, etc.)
+            -- This prevents taint from spreading during protected operations like form switches
+            local parent = frame.GetParent and frame:GetParent()
+            if parent and parent.GetName then
+                local name = parent:GetName() or ""
+                if name:match("^ActionButton") or name:match("^MultiBar") or name:match("^StanceButton") or name:match("^PetActionButton") then
+                    return
+                end
+            end
             if frame.SetSnapToPixelGrid then
                 frame:SetSnapToPixelGrid(false)
                 frame:SetTexelSnappingBias(0)
