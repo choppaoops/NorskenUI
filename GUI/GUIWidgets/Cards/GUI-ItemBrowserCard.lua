@@ -15,6 +15,12 @@ local TRACK_MODES = {
     { key = "manual", text = "Any Rank (Manual)" },
 }
 
+local function ParseItemID(val)
+    local id = tonumber(val)
+    if not id then id = tonumber(val:match("item:(%d+)")) end
+    return id and id > 0 and id or nil
+end
+
 ---Item browser card with tracking modes, icons, quality overlays, and add/remove buttons
 ---@param scrollChild Frame
 ---@param yOffset number
@@ -154,27 +160,22 @@ function GUIFrame:CreateItemBrowserCard(scrollChild, yOffset, config)
             card:AddRow(separatorAdd, Theme.rowHeightSeparator)
 
             local addRow = GUIFrame:CreateRow(card.content, Theme.rowHeight)
-            local addInput = GUIFrame:CreateEditBox(addRow, "Item ID", {
+            local addInput
+            addInput = GUIFrame:CreateEditBox(addRow, "Item ID", {
                 value = "",
+                callback = function()
+                    local id = ParseItemID(addInput:GetValue())
+                    if id and onItemAdd then onItemAdd(id); addInput:SetValue("") end
+                end,
             })
             addRow:AddWidget(addInput, 0.7)
 
             local addBtn = GUIFrame:CreateButton(addRow, "Set", {
                 height = 24,
                 callback = function()
-                    local val = addInput:GetValue()
-                    local newID = tonumber(val)
-                    if not newID then
-                        local linkID = val:match("item:(%d+)")
-                        if linkID then newID = tonumber(linkID) end
-                    end
-                    if newID and newID > 0 then
-                        if onItemAdd then
-                            onItemAdd(newID)
-                        end
-                        addInput:SetValue("")
-                    end
-                end
+                    local id = ParseItemID(addInput:GetValue())
+                    if id and onItemAdd then onItemAdd(id); addInput:SetValue("") end
+                end,
             })
             addRow:AddWidget(addBtn, 0.3, nil, 0, -14)
             card:AddRow(addRow, Theme.rowHeight)
@@ -208,27 +209,22 @@ function GUIFrame:CreateItemBrowserCard(scrollChild, yOffset, config)
             card:AddRow(separatorAdd, Theme.rowHeightSeparator)
 
             local addRow = GUIFrame:CreateRow(card.content, Theme.rowHeight)
-            local addInput = GUIFrame:CreateEditBox(addRow, "Item ID", {
+            local addInput
+            addInput = GUIFrame:CreateEditBox(addRow, "Item ID", {
                 value = "",
+                callback = function()
+                    local id = ParseItemID(addInput:GetValue())
+                    if id and onItemAdd then onItemAdd(id); addInput:SetValue("") end
+                end,
             })
             addRow:AddWidget(addInput, 0.7)
 
             local addBtn = GUIFrame:CreateButton(addRow, "Set", {
                 height = 24,
                 callback = function()
-                    local val = addInput:GetValue()
-                    local newID = tonumber(val)
-                    if not newID then
-                        local linkID = val:match("item:(%d+)")
-                        if linkID then newID = tonumber(linkID) end
-                    end
-                    if newID and newID > 0 then
-                        if onItemAdd then
-                            onItemAdd(newID)
-                        end
-                        addInput:SetValue("")
-                    end
-                end
+                    local id = ParseItemID(addInput:GetValue())
+                    if id and onItemAdd then onItemAdd(id); addInput:SetValue("") end
+                end,
             })
             addRow:AddWidget(addBtn, 0.3, nil, 0, -14)
             card:AddRow(addRow, Theme.rowHeight)
@@ -253,27 +249,22 @@ function GUIFrame:CreateItemBrowserCard(scrollChild, yOffset, config)
         card:AddRow(separatorAdd, Theme.rowHeightSeparator)
 
         local addRow = GUIFrame:CreateRow(card.content, Theme.rowHeight)
-        local addInput = GUIFrame:CreateEditBox(addRow, "Add Item ID", {
+        local addInput
+        addInput = GUIFrame:CreateEditBox(addRow, "Add Item ID", {
             value = "",
+            callback = function()
+                local id = ParseItemID(addInput:GetValue())
+                if id and onItemAdd then onItemAdd(id); addInput:SetValue("") end
+            end,
         })
         addRow:AddWidget(addInput, 0.7)
 
         local addBtn = GUIFrame:CreateButton(addRow, "Add", {
             height = 24,
             callback = function()
-                local val = addInput:GetValue()
-                local newID = tonumber(val)
-                if not newID then
-                    local linkID = val:match("item:(%d+)")
-                    if linkID then newID = tonumber(linkID) end
-                end
-                if newID and newID > 0 then
-                    if onItemAdd then
-                        onItemAdd(newID)
-                    end
-                    addInput:SetValue("")
-                end
-            end
+                local id = ParseItemID(addInput:GetValue())
+                if id and onItemAdd then onItemAdd(id); addInput:SetValue("") end
+            end,
         })
         addRow:AddWidget(addBtn, 0.3, nil, 0, -14)
         card:AddRow(addRow, Theme.rowHeight)

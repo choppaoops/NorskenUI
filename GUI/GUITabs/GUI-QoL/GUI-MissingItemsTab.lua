@@ -179,7 +179,9 @@ GUIFrame:RegisterPanel("missingItems", function(container)
             btn._label:SetShadowColor(0, 0, 0, 0)
             btn._label:SetText(item.name)
 
-            if isSelected then
+            if item.settings and item.settings.enabled == false then
+                btn._label:SetTextColor(Theme.textMuted[1], Theme.textMuted[2], Theme.textMuted[3], 1)
+            elseif isSelected then
                 btn._label:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
             else
                 btn._label:SetTextColor(Theme.textSecondary[1], Theme.textSecondary[2], Theme.textSecondary[3], 1)
