@@ -644,22 +644,67 @@ GUIFrame:RegisterPanel("ActionBars", function(container)
 
         yOffset = card1:GetNextOffset()
 
-        -- Card 2: Position
-        local card2
-        card2, yOffset = GUIFrame:CreatePositionCard(scrollChild, yOffset, {
-            title = "Position",
-            db = barDB.Position,
-            showAnchorFrameType = false,
-            showStrata = false,
-            onChangeCallback = ApplyBarSettings,
-        })
+        -- Card 2: Position (using edge-relative AnchorPoint)
+        local card2 = GUIFrame:CreateCard(scrollChild, "Position", yOffset)
         table_insert(activeCards, card2)
-        if card2.positionWidgets then
-            for _, widget in ipairs(card2.positionWidgets) do
-                manager:Register(widget, "main", "bar")
-            end
-        end
         manager:Register(card2, "main", "bar")
+
+        -- Ensure Position table exists
+        barDB.Position = barDB.Position or {}
+
+        local row2a = GUIFrame:CreateRow(card2.content, Theme.rowHeight)
+        local anchorDropdown = GUIFrame:CreateDropdown(row2a, "Screen Anchor", {
+            options = ANCHOR_OPTIONS,
+            value = barDB.Position.AnchorPoint or "BOTTOM",
+            callback = function(key)
+                local bdb = GetCurrentBarDB()
+                if bdb and bdb.Position then
+                    bdb.Position.AnchorPoint = key
+                end
+                ApplyBarSettings()
+            end
+        })
+        row2a:AddWidget(anchorDropdown, 1)
+        manager:Register(anchorDropdown, "main", "bar")
+        card2:AddRow(row2a, Theme.rowHeight)
+
+        local row2b = GUIFrame:CreateRow(card2.content, Theme.rowHeight)
+        local xSlider = GUIFrame:CreateSlider(row2b, "X Offset", {
+            min = -2000,
+            max = 2000,
+            step = 1,
+            value = barDB.Position.XOffset or 0,
+            labelWidth = 55,
+            callback = function(val)
+                local bdb = GetCurrentBarDB()
+                if bdb and bdb.Position then
+                    bdb.Position.XOffset = val
+                end
+                ApplyBarSettings()
+            end
+        })
+        row2b:AddWidget(xSlider, 0.5)
+        manager:Register(xSlider, "main", "bar")
+
+        local ySlider = GUIFrame:CreateSlider(row2b, "Y Offset", {
+            min = -2000,
+            max = 2000,
+            step = 1,
+            value = barDB.Position.YOffset or 0,
+            labelWidth = 55,
+            callback = function(val)
+                local bdb = GetCurrentBarDB()
+                if bdb and bdb.Position then
+                    bdb.Position.YOffset = val
+                end
+                ApplyBarSettings()
+            end
+        })
+        row2b:AddWidget(ySlider, 0.5)
+        manager:Register(ySlider, "main", "bar")
+        card2:AddRow(row2b, Theme.rowHeight)
+
+        yOffset = card2:GetNextOffset()
 
         -- Card 3: Mouseover
         local card3 = GUIFrame:CreateCard(scrollChild, "Mouseover", yOffset)

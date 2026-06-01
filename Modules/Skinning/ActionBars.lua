@@ -79,8 +79,6 @@ local function BuildBarConfig(barKey, barDB, globalMouseover)
         mouseoverAlpha = (barDB.Mouseover and barDB.Mouseover.Alpha) or 1
     end
 
-    -- Determine point (corner) from layout and growth direction
-    -- This matches ElvUI's db.point which controls both start corner and growth
     local layout = barDB.Layout or "HORIZONTAL"
     local growth = barDB.GrowthDirection or "RIGHT"
     local point
@@ -101,6 +99,7 @@ local function BuildBarConfig(barKey, barDB, globalMouseover)
         totalButtons = barDB.TotalButtons or 12,
         point = point,
         buttonsPerLine = barDB.ButtonsPerLine or 12,
+        anchorPoint = barDB.Position and barDB.Position.AnchorPoint or "BOTTOM",
         x = barDB.Position and barDB.Position.XOffset or 0,
         y = barDB.Position and barDB.Position.YOffset or 0,
         enabled = barDB.Enabled ~= false,
@@ -565,8 +564,7 @@ function ACB:CreateButtonBackdrop(button, barName, index, buttonSize)
     return backdrop
 end
 
--- Get growth directions from point (matching ElvUI's GetGrowth)
--- point is a corner: BOTTOMLEFT, BOTTOMRIGHT, TOPLEFT, TOPRIGHT
+-- Get growth directions from point
 local function GetGrowth(point)
     local vertical = (point == "TOPLEFT" or point == "TOPRIGHT") and "DOWN" or "UP"
     local horizontal = (point == "BOTTOMLEFT" or point == "TOPLEFT") and "RIGHT" or "LEFT"
@@ -575,7 +573,75 @@ local function GetGrowth(point)
     return vertical, horizontal, anchorUp, anchorLeft
 end
 
--- Position backdrop using raw SetPoint with integer pixel values (matching ElvUI approach)
+-- Calculate edge-relative anchor point and offsets from frame position
+-- This ensures bars stay in the same relative screen position across resolutions
+local function CalculateEdgePosition(frame)
+    local centerX, centerY = UIParent:GetCenter()
+    local screenWidth = UIParent:GetRight()
+    local frameX, frameY = frame:GetCenter()
+
+    if not frameX or not frameY then
+        return "BOTTOM", 0, 0
+    end
+
+    local point = "BOTTOM"
+    local x, y
+
+    if frameY >= centerY then
+        point = "TOP"
+        y = -(UIParent:GetTop() - frame:GetTop())
+    else
+        y = frame:GetBottom()
+    end
+
+    if frameX >= (screenWidth * 2 / 3) then
+        point = point .. "RIGHT"
+        x = frame:GetRight() - screenWidth
+    elseif frameX <= (screenWidth / 3) then
+        point = point .. "LEFT"
+        x = frame:GetLeft()
+    else
+        x = frameX - centerX
+    end
+
+    return point, math.floor(x + 0.5), math.floor(y + 0.5)
+end
+
+-- Apply edge-relative position to a frame
+-- Uses BOTTOMLEFT anchoring internally for pixel-perfect positioning
+local function ApplyEdgePosition(frame, anchorPoint, xOffset, yOffset)
+    local screenWidth = math.floor(UIParent:GetWidth() + 0.5)
+    local screenHeight = math.floor(UIParent:GetHeight() + 0.5)
+    local frameWidth, frameHeight = frame:GetSize()
+    frameWidth = math.floor(frameWidth + 0.5)
+    frameHeight = math.floor(frameHeight + 0.5)
+
+    -- Convert edge-relative anchor to absolute BOTTOMLEFT position
+    local left, bottom
+
+    -- Calculate horizontal position
+    if anchorPoint:find("LEFT") then
+        left = xOffset
+    elseif anchorPoint:find("RIGHT") then
+        left = screenWidth + xOffset - frameWidth
+    else
+        left = math.floor(screenWidth / 2) + xOffset - math.floor(frameWidth / 2)
+    end
+
+    -- Calculate vertical position
+    if anchorPoint:find("BOTTOM") then
+        bottom = yOffset
+    elseif anchorPoint:find("TOP") then
+        bottom = screenHeight + yOffset - frameHeight
+    else
+        bottom = math.floor(screenHeight / 2) + yOffset - math.floor(frameHeight / 2)
+    end
+
+    frame:ClearAllPoints()
+    frame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", left, bottom)
+end
+
+-- Position backdrop using raw SetPoint with integer pixel values
 -- Uses direct positioning without widget methods to ensure exact pixel alignment
 local function PositionBackdrop(bar, backdrop, index, buttonsPerRow, point, buttonSpacing, lastBackdrop, lastRowBackdrop)
     local _, _, anchorUp, anchorLeft = GetGrowth(point)
@@ -603,9 +669,8 @@ local function PositionBackdrop(bar, backdrop, index, buttonsPerRow, point, butt
     backdrop:SetPoint(anchorPoint, relFrame, relPoint, x, y)
 end
 
--- Layout function using ElvUI pattern:
--- 1. Create sizer frame anchored to first/last backdrops (siblings)
--- 2. Copy sizer's derived size to container
+-- Create sizer frame anchored to first/last backdrops
+-- Copy sizer's derived size to container
 local function SkinBar(cfg)
     if not cfg or not cfg.frame then return end
 
@@ -631,12 +696,11 @@ local function SkinBar(cfg)
     container:SetSize(containerWidth, containerHeight)
     cfg.nrsknui_container = container
 
-    -- Position at screen center + offset using integer pixel values
-    local screenCenterX = UIParent:GetWidth() / 2
-    local screenCenterY = UIParent:GetHeight() / 2
-    local left = math.floor(screenCenterX + cfg.x - containerWidth / 2 + 0.5)
-    local bottom = math.floor(screenCenterY + cfg.y - containerHeight / 2 + 0.5)
-    container:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", left, bottom)
+    -- Position using edge-relative anchoring for resolution independence
+    local anchorPoint = cfg.anchorPoint or "BOTTOM"
+    local xOffset = cfg.x or 0
+    local yOffset = cfg.y or 0
+    ApplyEdgePosition(container, anchorPoint, xOffset, yOffset)
 
     -- Mouseover settings
     local mouseoverEnabled = cfg.mouseover and cfg.mouseover.enabled
@@ -957,8 +1021,9 @@ local function RegisterBarWithEditMode(barName, barDB, barContainer)
         frame = frame,
 
         getPosition = function()
-            -- Just return X/Y offsets from center
             return {
+                AnchorFrom = db.Position and db.Position.AnchorPoint or "BOTTOM",
+                AnchorTo = db.Position and db.Position.AnchorPoint or "BOTTOM",
                 XOffset = (db.Position and db.Position.XOffset) or 0,
                 YOffset = (db.Position and db.Position.YOffset) or 0,
             }
@@ -967,24 +1032,19 @@ local function RegisterBarWithEditMode(barName, barDB, barContainer)
         setPosition = function(pos)
             if not db.Position then db.Position = {} end
 
-            -- Update the SavedVariables (just X/Y)
-            db.Position.XOffset = pos.XOffset
-            db.Position.YOffset = pos.YOffset
+            -- Recalculate edge-relative position from current frame location
+            local anchorPoint, x, y = CalculateEdgePosition(frame)
 
-            -- Position using raw SetPoint with BOTTOMLEFT anchor
-            local containerWidth, containerHeight = frame:GetSize()
-            local screenCenterX = UIParent:GetWidth() / 2
-            local screenCenterY = UIParent:GetHeight() / 2
-            local left = screenCenterX + pos.XOffset - containerWidth / 2
-            local bottom = screenCenterY + pos.YOffset - containerHeight / 2
+            -- Save edge-relative position
+            db.Position.AnchorPoint = anchorPoint
+            db.Position.XOffset = x
+            db.Position.YOffset = y
 
-            frame:ClearAllPoints()
-            frame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", left, bottom)
+            -- Apply the position
+            ApplyEdgePosition(frame, anchorPoint, x, y)
         end,
 
-        getParentFrame = function()
-            return UIParent
-        end,
+        getParentFrame = function() return UIParent end,
 
         guiPath = "ActionBars",
         guiContext = barName, -- Pass the bar key
@@ -992,37 +1052,39 @@ local function RegisterBarWithEditMode(barName, barDB, barContainer)
     NRSKNUI.EditMode:RegisterElement(config)
 end
 
--- One-time migration to reset bar positions for pixel-perfect update
-local function RunPixelPerfectMigration(db)
-    if db.PixelPerfectMigrationV1 then return end
+-- Migration to edge-relative positioning (resolution-independent)
+local function RunEdgeRelativeMigration(db)
+    if db.EdgeRelativeMigrationV2 then return end
 
     local defaults = NRSKNUI:GetDefaultDB()
     local defaultBars = defaults and defaults.profile and defaults.profile.Skinning
         and defaults.profile.Skinning.ActionBars and defaults.profile.Skinning.ActionBars.Bars
 
-    if not defaultBars then return end
+    if not defaultBars or not db.Bars then
+        db.EdgeRelativeMigrationV2 = true
+        return
+    end
 
-    -- Reset all bar positions to defaults
-    if db.Bars then
-        for barKey, defaultBar in pairs(defaultBars) do
-            if db.Bars[barKey] and db.Bars[barKey].Position and defaultBar.Position then
-                db.Bars[barKey].Position.XOffset = defaultBar.Position.XOffset
-                db.Bars[barKey].Position.YOffset = defaultBar.Position.YOffset
-            end
+    -- Reset all bar positions to new edge-relative defaults
+    for barKey, defaultBar in pairs(defaultBars) do
+        if db.Bars[barKey] and defaultBar.Position then
+            db.Bars[barKey].Position = {
+                AnchorPoint = defaultBar.Position.AnchorPoint,
+                XOffset = defaultBar.Position.XOffset,
+                YOffset = defaultBar.Position.YOffset,
+            }
         end
     end
 
-    db.PixelPerfectMigrationV1 = true
+    db.EdgeRelativeMigrationV2 = true
 
     NRSKNUI:CreatePrompt({
         title = "Action Bar Update",
-        text = "Action bar positions have been reset due to pixel-perfect improvements.",
-        onAccept = function()
-        end,
-        onCancel = function()
-        end,
-        acceptText = "Yes",
-        cancelText = "Ok",
+        text = "Action bar positions have been reset for better positioning across different resolutions.",
+        onAccept = function() end,
+        onCancel = function() end,
+        acceptText = "Ok",
+        cancelText = "Oke",
     })
 end
 
@@ -1030,9 +1092,7 @@ end
 function ACB:OnEnable()
     if NRSKNUI:ShouldNotLoadModule() then return end
     if not self.db.Enabled then return end
-
-    -- Run one-time migration for pixel-perfect positioning
-    RunPixelPerfectMigration(self.db)
+    RunEdgeRelativeMigration(self.db)
 
     self:BuildConfigTable()
 
@@ -1237,33 +1297,12 @@ function ACB:UpdateBarPosition(barKey)
     local barDB, container = GetBarData(barKey)
     if not barDB or not container then return end
 
+    -- Use edge-relative positioning for resolution independence
+    local anchorPoint = barDB.Position and barDB.Position.AnchorPoint or "BOTTOM"
     local x = barDB.Position and barDB.Position.XOffset or 0
     local y = barDB.Position and barDB.Position.YOffset or 0
 
-    -- Calculate size (with mult=1, this is exact)
-    local buttonSize = barDB.ButtonSize or 40
-    local buttonSpacing = barDB.Spacing or 1
-    local buttonsPerLine = barDB.ButtonsPerLine or 12
-    local totalButtons = barDB.TotalButtons or 12
-
-    local numButtons = totalButtons
-    local buttonsPerRow = math.max(1, math.min(buttonsPerLine, numButtons))
-    if numButtons < buttonsPerRow then buttonsPerRow = numButtons end
-    local rows = math.ceil(numButtons / buttonsPerRow)
-    local columns = buttonsPerRow
-
-    local containerWidth = columns * buttonSize + (columns - 1) * buttonSpacing
-    local containerHeight = rows * buttonSize + (rows - 1) * buttonSpacing
-
-    -- Position using raw SetPoint with BOTTOMLEFT anchor
-    -- X/Y are offsets from screen center
-    local screenCenterX = UIParent:GetWidth() / 2
-    local screenCenterY = UIParent:GetHeight() / 2
-    local left = math.floor(screenCenterX + x - containerWidth / 2 + 0.5)
-    local bottom = math.floor(screenCenterY + y - containerHeight / 2 + 0.5)
-
-    container:ClearAllPoints()
-    container:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", left, bottom)
+    ApplyEdgePosition(container, anchorPoint, x, y)
 end
 
 -- Update all bar positions
@@ -1318,7 +1357,6 @@ function ACB:UpdateAllMouseover()
     end
 end
 
--- Update bar size and layout using widget methods with UNSCALED values (like ElvUI)
 function ACB:UpdateBarLayout(barKey)
     local barDB, container = GetBarData(barKey)
     if not barDB or not container then return end
