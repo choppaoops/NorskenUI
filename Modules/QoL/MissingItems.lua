@@ -321,7 +321,7 @@ local function UpdateDisplay()
 
                     if count <= threshold then
                         local itemName = C_Item.GetItemNameByID(itemID)
-                        if not itemName then
+                        if not itemName and itemID > 0 then
                             if not pendingItemLoads[itemID] then
                                 pendingItemLoads[itemID] = true
                                 local item = Item:CreateFromItemID(itemID)
@@ -330,7 +330,7 @@ local function UpdateDisplay()
                                     UpdateDisplay()
                                 end)
                             end
-                        else
+                        elseif itemName then
                             table_insert(missingItems, {
                                 itemID = itemID,
                                 name = itemName,
@@ -348,7 +348,7 @@ local function UpdateDisplay()
 
     table_sort(missingItems, function(a, b) return a.name < b.name end)
 
-    if #missingItems >= 0 then
+    if #missingItems > 0 then
         if not containerFrame then CreateContainerFrame() end
 
         for _, item in ipairs(missingItems) do
@@ -385,7 +385,7 @@ local function PreCacheItems()
     if not db or not db.Items then return end
 
     for itemID in pairs(db.Items) do
-        if not C_Item.GetItemNameByID(itemID) then
+        if itemID > 0 and not C_Item.GetItemNameByID(itemID) then
             local item = Item:CreateFromItemID(itemID)
             item:ContinueOnItemLoad(function() end)
         end
@@ -495,7 +495,7 @@ local function GetItemsBelowThreshold()
                                 threshold = threshold,
                                 buyQuantity = buyQty,
                             })
-                        elseif not pendingItemLoads[itemID] then
+                        elseif itemID > 0 and not pendingItemLoads[itemID] then
                             pendingItemLoads[itemID] = true
                             local item = Item:CreateFromItemID(itemID)
                             item:ContinueOnItemLoad(function()

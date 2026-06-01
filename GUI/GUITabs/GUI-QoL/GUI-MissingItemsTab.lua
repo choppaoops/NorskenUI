@@ -101,10 +101,7 @@ GUIFrame:RegisterPanel("missingItems", function(container)
 
             local itemList = {}
             for itemID, settings in pairs(db.Items) do
-                local groups = settings.groups or {}
-                if tContains(groups, activeGroup) then
-                    table_insert(itemList, { itemID = itemID, settings = settings })
-                end
+                table_insert(itemList, { itemID = itemID, settings = settings })
             end
 
             table_sort(itemList, function(a, b) return a.itemID > b.itemID end)
@@ -125,7 +122,7 @@ GUIFrame:RegisterPanel("missingItems", function(container)
 
                 table_insert(items, {
                     key = "item_" .. itemID,
-                    name = itemName or ("Item " .. itemID),
+                    name = (itemID < 0 and "New Item") or itemName or ("Item " .. itemID),
                     icon = itemIcon,
                     order = order,
                     type = "item",
@@ -395,15 +392,26 @@ GUIFrame:RegisterPanel("missingItems", function(container)
                 height = 24,
                 callback = function()
                     local groupToDelete = deleteDropdown:GetValue()
-                    if groupToDelete then
-                        local mod = GetModule()
-                        if mod and mod.DeleteGroup then mod:DeleteGroup(groupToDelete) end
-                        if db.ActiveGroup == groupToDelete then
-                            db.ActiveGroup = db.Groups[1]
-                        end
-                        Refresh()
-                        RefreshContent()
+                    if not groupToDelete then return end
+                    if #db.Groups <= 1 then
+                        NRSKNUI:Print("Cannot delete the last loadout.")
+                        return
                     end
+                    NRSKNUI:CreatePrompt({
+                        title = "Delete Loadout",
+                        text = "Are you sure you want to delete: " .. groupToDelete .. "?",
+                        onAccept = function()
+                            local mod = GetModule()
+                            if mod and mod.DeleteGroup then mod:DeleteGroup(groupToDelete) end
+                            if db.ActiveGroup == groupToDelete then
+                                db.ActiveGroup = db.Groups[1]
+                            end
+                            Refresh()
+                            RefreshContent()
+                        end,
+                        acceptText = "Delete",
+                        cancelText = "Cancel",
+                    })
                 end
             })
             row2:AddWidget(deleteBtn, 0.3, nil, 0, -14)
@@ -544,7 +552,7 @@ GUIFrame:RegisterPanel("missingItems", function(container)
         manager:Register(thresholdSlider, "all", "loaded")
 
         local colorPicker = GUIFrame:CreateColorPicker(row2, "Text Color", {
-            color = settings.color,
+            color = settings.color or db.Display.DefaultColor,
             callback = function(r, g, b, a)
                 settings.color = { r, g, b, a }
                 Refresh()
