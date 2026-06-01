@@ -28,7 +28,7 @@ local Defaults = {
 
         -- GUI State (only frame position/size persists across logins)
         GUIState = {
-            GUIFrameLayoutVersion = 1, -- Bump this to force a one-time frame size reset for all users
+            GUIFrameLayoutVersion = 67, -- Bump this to force a one-time frame size reset for all users
             frame = {
                 point = nil,         -- Anchor point
                 relativePoint = nil, -- Relative anchor point

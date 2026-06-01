@@ -176,6 +176,15 @@ end
 
 -- OnEnable: Called when the addon is enabled
 function NorskenUI:OnEnable()
+    -- Method to fix old frame sizing data that messes up sidebar width
+    local currentVersion = NRSKNUI:GetDefaultDB().global.GUIState.GUIFrameLayoutVersion or 1
+    local rawState = _G.NorskenUIDB and _G.NorskenUIDB.global and _G.NorskenUIDB.global.GUIState
+    if (rawState and rawState.GUIFrameLayoutVersion or 0) < currentVersion then
+        local frame = NRSKNUI.db.global.GUIState.frame
+        if frame then frame.width, frame.height = nil, nil end
+        NRSKNUI.db.global.GUIState.GUIFrameLayoutVersion = currentVersion
+    end
+
     if NRSKNUI.RefreshTheme then NRSKNUI:RefreshTheme() end
     SetupSlashCommands()
 
