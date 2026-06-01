@@ -36,11 +36,17 @@ local TRACK_MODES = {
     MANUAL = "manual",
 }
 
-local qualityAtlasPattern = "|A:(Professions%-ChatIcon%-Quality%-Tier%d):%d+:%d+"
+local qualityAtlasPattern = "|A:(Professions%-ChatIcon%-Quality%-[^:]+):%d+:%d+"
 
 local function GetQualityAtlasFromLink(link)
     if not link then return nil end
     return link:match(qualityAtlasPattern)
+end
+
+local function GetTierFromLink(link)
+    if not link then return nil end
+    local tier = link:match("Tier(%d)")
+    return tier and tonumber(tier)
 end
 
 local containerFrame = nil
@@ -288,6 +294,14 @@ local function UpdateDisplay()
 
     ScanBags()
 
+    -- Backfill link cache for tracked items not in bags
+    for trackedID in pairs(items) do
+        if not itemLinkCache[trackedID] and trackedID > 0 then
+            local _, link = C_Item.GetItemInfo(trackedID)
+            if link then itemLinkCache[trackedID] = link end
+        end
+    end
+
     local missingItems = {}
     local currentSpecID = NRSKNUI.MySpec and NRSKNUI.MySpec.id
 
@@ -321,7 +335,7 @@ local function UpdateDisplay()
 
                     if count <= threshold then
                         local itemName = C_Item.GetItemNameByID(itemID)
-                        if not itemName then
+                        if not itemName and itemID > 0 then
                             if not pendingItemLoads[itemID] then
                                 pendingItemLoads[itemID] = true
                                 local item = Item:CreateFromItemID(itemID)
@@ -330,7 +344,7 @@ local function UpdateDisplay()
                                     UpdateDisplay()
                                 end)
                             end
-                        else
+                        elseif itemName then
                             table_insert(missingItems, {
                                 itemID = itemID,
                                 name = itemName,
@@ -348,7 +362,7 @@ local function UpdateDisplay()
 
     table_sort(missingItems, function(a, b) return a.name < b.name end)
 
-    if #missingItems >= 0 then
+    if #missingItems > 0 then
         if not containerFrame then CreateContainerFrame() end
 
         for _, item in ipairs(missingItems) do
@@ -385,7 +399,7 @@ local function PreCacheItems()
     if not db or not db.Items then return end
 
     for itemID in pairs(db.Items) do
-        if not C_Item.GetItemNameByID(itemID) then
+        if itemID > 0 and not C_Item.GetItemNameByID(itemID) then
             local item = Item:CreateFromItemID(itemID)
             item:ContinueOnItemLoad(function() end)
         end
@@ -469,6 +483,14 @@ local function GetItemsBelowThreshold()
 
     ScanBags()
 
+    -- Backfill link cache for tracked items not in bags
+    for trackedID in pairs(items) do
+        if not itemLinkCache[trackedID] and trackedID > 0 then
+            local _, link = C_Item.GetItemInfo(trackedID)
+            if link then itemLinkCache[trackedID] = link end
+        end
+    end
+
     for itemID, itemSettings in pairs(items) do
         if itemSettings.enabled ~= false then
             local groups = itemSettings.groups or {}
@@ -494,8 +516,9 @@ local function GetItemsBelowThreshold()
                                 count = count,
                                 threshold = threshold,
                                 buyQuantity = buyQty,
+                                tier = GetTierFromLink(itemLinkCache[itemID]),
                             })
-                        elseif not pendingItemLoads[itemID] then
+                        elseif itemID > 0 and not pendingItemLoads[itemID] then
                             pendingItemLoads[itemID] = true
                             local item = Item:CreateFromItemID(itemID)
                             item:ContinueOnItemLoad(function()
@@ -618,6 +641,7 @@ function MITEMS:GenerateAuctionatorList()
             searchString = item.name,
             isExact = true,
             quantity = item.buyQuantity,
+            tier = item.tier,
         })
         table_insert(searchStrings, searchTerm)
     end
