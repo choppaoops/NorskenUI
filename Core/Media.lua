@@ -9,6 +9,7 @@ NRSKNUI.PATH = ([[Interface\AddOns\%s\Media\]]):format(addonName)
 
 local BLIZZARD_FONT = "Fonts\\FRIZQT__.TTF"
 local ADDON_FONT_PATH = NRSKNUI.PATH .. [[Fonts\Expressway.TTF]]
+local QUAZII_FONT_PATH = NRSKNUI.PATH .. [[Fonts\Quazii.TTF]]
 local ADDON_STATUSBAR_PATH = NRSKNUI.PATH .. [[Statusbars\NorskenUI.blp]]
 local DEFAULT_FONT_NAME = "Expressway"
 
@@ -24,6 +25,7 @@ NRSKNUI.LSM = LibStub("LibSharedMedia-3.0")
 
 if NRSKNUI.LSM then
     NRSKNUI.LSM:Register("font", "Expressway", ADDON_FONT_PATH)
+    NRSKNUI.LSM:Register("font", "Quazii", QUAZII_FONT_PATH)
     NRSKNUI.LSM:Register("statusbar", "NorskenUI", ADDON_STATUSBAR_PATH)
     NRSKNUI.LSM:Register("sound", "|cffe51039NorskenWhisper|r", [[Interface\AddOns\NorskenUI\Media\Sounds\Whisper.ogg]])
     NRSKNUI.LSM:Register("border", "WHITE8X8", [[Interface\Buttons\WHITE8X8]])
