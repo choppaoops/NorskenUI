@@ -2,7 +2,7 @@
 
 [![Download](https://img.shields.io/github/v/release/Nrsken/NorskenUI?label=Download&style=for-the-badge)](https://github.com/Nrsken/NorskenUI/releases/latest)
 
-<img width="2560" height="1440" alt="Skärmbild 2026-02-09 232116" src="https://github.com/user-attachments/assets/ccf8d6ac-30f1-4f80-8d93-b8b8cc4e0e7a" />
+<img width="2560" height="1440" alt="Skärmbild 2026-06-02 230327" src="https://github.com/user-attachments/assets/5f0509f9-8a6a-4b81-b845-070e55f2bcac" />
 
 ## About
 - Personal collection of Skinning, QoL and Features that i personally want, shared for others to use.
