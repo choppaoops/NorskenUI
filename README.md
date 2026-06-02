@@ -9,49 +9,76 @@
 - Still very much learning, so finding flaws will most likely not be impossible:), always open for suggestions and critique.
 
 ## Feature List
-- Focus Castbar:
-    - Focus Castbar that has coloring based on your current kick state with a tick indicator that tells you if kick will be ready for the current cast, newly added so still kinda WIP.
-    
-        <img width="268" height="51" alt="BARPreview-KickCD" src="https://github.com/user-attachments/assets/72d68d3f-5d1f-4fe7-bef2-449aa03e8639" />
-        <img width="268" height="51" alt="BARPreview-Tick" src="https://github.com/user-attachments/assets/676bacc0-68f7-4ba2-833f-acec902ebf16" />
-        <img width="268" height="51" alt="BARPreview-KickReady" src="https://github.com/user-attachments/assets/6b2eddd0-97e7-4785-963c-cb94eb42894f" />
-- Combat Features:
-    - Combat Timer
-    - Combat Cross
-    - Combat Res
-    - Cursor Circle w/ GCD
-    - Combat Texts (Entering combat/Leaving Combat/In combat and no current target)
-    - Pet Status Texts (Missing, Passive and Dead Pet)
-- Custom Buffs:
-    - Simple module that allows custom buff tracking via succeeded spell casts then start X long timer.
-    - Buff Icons
-    - Buff Bars
-- Quality of Life:
-    - Gateway Usable text
-    - Automation (Skip cinematics, auto sell, auto-fill delete texts and more)
-    - Copy Anything (Copy ID's on mouseover)
-    - CDM Profile Strings (Backup CDM strings in savedVariables, useful if you have more than 1 of X class)
-    - Whisper Sounds
-    - Dragon Riding UI
-    - Missing Buffs (Tracks missing buffs fully in non secret enviorments, uses raid buff glow in secret enviorments)
-    - XP Bar
-    - Durability Util (Repair now warning and current durability data text)
-- Skinning:
-    - General Ui cleanup
-    - Buff, Debuffs and Externals
-    - Chat
-    - Action Bars
-    - Minimap
-    - Micro Menu
-    - Blizzard Mouseover
-    - Blizzard Texts
-    - Tooltips
-    - Details Backdrops
-- CDM Enhancements:
-    - Aura Overlay & Fonts (Removes yellow aura overlay swipe)
-    - Hide Proc Animation (Removes proc animation and plays normal glow instead)
-- Custom Edit Mode:
-    - /nui edit, Homepage Button or minimap button opens a custom Edit Mode with nudge tool, drag to position and quick open settings for each element.
-    - Edit mode still very much a WIP, not 100% happy with it but it does the basic job for now.
-- Customizeable Ingame Settings:
-    - Press the paint bucket in the header section to modify the addon theme look, this theme coloring can then be used on some features in the addon.
+
+### Combat
+- **Focus Castbar** - Focus castbar with kick cooldown indicator and tick showing when interrupt will be ready
+- **Combat Timer** - Time spent in combat with optional milliseconds
+- **Combat Cross** - Crosshair that appears in combat with optional range coloring
+- **Combat Res** - Battle res charge and cooldown tracker
+- **Cursor Circle** - Circle following cursor with optional GCD swipe
+- **Combat Messages** - Alerts for entering/leaving combat, no target, party deaths, focus death
+- **Range Checker** - Distance to target text with gradient coloring
+- **Time Spiral** - Tracks Time Spiral M+ affix movement ability resets
+- **Potion Ready** - Alert when damage potion is off cooldown
+
+### Dungeon Tools
+- **Dungeon Timers** - Custom timers from BigWigs bars with spell/message/time filtering and role conditions
+- **Dungeon Casts** - Enemy castbars on nameplates with raid markers and cast targets
+- **Healer Mana** - Healer mana display with spec icons
+- **Instance Reset** - Announces instance resets to party/raid chat
+
+### Aura Tracking
+- **Buff Icons & Bars** - Custom buff tracking triggered by spell casts
+- **Debuff Tracking** - Customizable debuff display
+- **External Tracking** - Track external defensives cast on you
+
+### Class Utilities
+- **Pet Texts** - Warning for missing, passive, or dead pets
+- **Gateway Usable** - Shows when Warlock gateway is usable
+- **Totem Tracker** - Shaman totem bar with durations and right-click destroy
+- **Burning Rush** - Icon when Burning Rush is active
+- **Hunter's Mark** - Warning when target missing Hunter's Mark in raids
+- **Incarn Stacks** - Tracks Wild Guardian buff stacks with timer
+- **Bloodlust Tracker** - Time until sated debuff expires
+- **Spell Alert** - Customize Blizzard proc overlay scale/alpha per spec
+
+### Missing Buffs
+- **Missing Buffs** - Tracks missing raid buffs (glow-based in instances)
+- **Stance Texts** - Warning for missing Warrior stance or Paladin aura
+- **Stance Icons** - Icon for missing stances/auras with timer
+
+### Quality of Life
+- **Automation** - Skip cinematics, auto sell, auto-fill delete text, and more
+- **Copy Anything** - Modifier + mouseover to copy spell/item/NPC IDs
+- **Cooldown Strings** - Backup Cell/CDM profile strings in savedVariables
+- **Whisper Sounds** - Custom sounds for whispers
+- **Dragon Riding** - Vigor bar and speed display
+- **XP Bar** - Experience bar with rested indicator
+- **Durability** - Low durability warning and data text
+- **Missing Items** - Track consumables with low count warnings and Auctionator integration
+- **Recuperate Button** - Button for Recuperate when health is low out of combat
+- **Character Panel** - Item level per slot, upgrade track, and gem socketing helper
+- **Auction House Filter** - Auto-applies current expansion filter
+- **WayFinder** - Converts /way coordinates to Blizzard map pins
+
+### Miscellaneous
+- **Bench Alert** - Alert when in raid group but not active roster
+
+### Skinning
+- **UI Cleanup** - General interface cleanup
+- **Buffs, Debuffs & Externals** - Aura frame styling
+- **Chat** - Chat frame customization
+- **Action Bars** - Action bar skinning
+- **Minimap** - Minimap styling
+- **Micro Menu** - Micro menu customization
+- **Blizzard Mouseover** - Mouseover highlight styling
+- **Blizzard Messages** - System message styling
+- **Blizzard Raid Manager** - Raid control frame styling
+- **Tooltips** - Tooltip customization
+- **Details Backdrops** - Details! damage meter backdrop styling
+- **Battle.net Frame** - BNet popup frame styling
+- **UI Widgets** - UI Widget styling
+
+### Settings & Edit Mode
+- **Custom Edit Mode** - `/nui edit` opens drag-to-position editor with nudge tool and quick settings access
+- **Theme Customization** - Paint bucket icon in header to modify addon theme colors

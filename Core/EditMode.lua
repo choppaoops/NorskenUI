@@ -411,7 +411,7 @@ function EditMode:Enter()
 
     local EnterMsg =
     "Edit Mode |cff00ff00enabled|r.\nDrag elements to reposition.\nHold Shift to see through overlay.\nPress ESC or type /nui edit to exit."
-    NRSKNUI:CreateMessagePopup(20, EnterMsg, 14, UIParent, 200, 0)
+    NRSKNUI:CreateMessagePopup(20, EnterMsg, 14, UIParent, 400, 150)
 end
 
 -- Deactivate edit mode
@@ -437,7 +437,7 @@ function EditMode:Exit()
     self:StopDeselectChecker()
     local ExitMsg =
     "Edit Mode |cffff0000disabled|r."
-    NRSKNUI:CreateMessagePopup(1, ExitMsg, 14, UIParent, 200, 0)
+    NRSKNUI:CreateMessagePopup(1, ExitMsg, 14, UIParent, 400, 150)
 end
 
 -- Toggle edit mode on/off

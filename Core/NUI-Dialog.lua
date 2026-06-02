@@ -172,13 +172,12 @@ function NRSKNUI:CreateMessagePopup(timer, text, fontSize, parentFrame, xOffset,
     msgContainer:SetSize(MESSAGE_POPUP_SIZE, MESSAGE_POPUP_SIZE)
     msgContainer:SetPoint("CENTER", parent, "CENTER", xOffset or 0, yOffset or 250)
 
-    local msgText = msgContainer:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    local msgText = msgContainer:CreateFontString(nil, "OVERLAY")
     msgText:SetPoint("CENTER")
-    msgText:SetText(text)
-    msgText:SetFont(NRSKNUI.FONT, fontSize, "")
-    NRSKNUI:ApplyFontToText(msgText, "Expressway", fontSize, "SOFTOUTLINE", {})
+    NRSKNUI:ApplyFontToText(msgText, "Expressway", fontSize, "OUTLINE", {})
     msgText:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
     msgText:SetShadowColor(0, 0, 0, 0)
+    msgText:SetText(text)
 
     UIFrameFadeIn(msgText, 0.2, 0, 1)
     msgContainer:Show()
