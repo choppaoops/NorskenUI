@@ -128,14 +128,19 @@ NRSKNUI.BIGWIGS_EVENTS = {
 }
 
 NRSKNUI.DUNGEON_INFO = {
-    MagistersTerrace  = { instanceId = 2811, name = "Magisters' Terrace" },
-    MaisaraCaverns    = { instanceId = 2874, name = "Maisara Caverns" },
-    NexusPointXenas   = { instanceId = 2915, name = "Nexus-Point Xenas" },
-    WindrunnerSpire   = { instanceId = 2805, name = "Windrunner Spire" },
-    AlgetharAcademy   = { instanceId = 2526, name = "Algeth'ar Academy" },
-    PitOfSaron        = { instanceId = 658, name = "Pit of Saron" },
-    SeatOfTriumvirate = { instanceId = 1753, name = "Seat of the Triumvirate" },
-    Skyreach          = { instanceId = 1209, name = "Skyreach" },
+    -- Dungeons
+    MagistersTerrace  = { instanceId = 2811, name = "Magisters' Terrace", type = "dungeon" },
+    MaisaraCaverns    = { instanceId = 2874, name = "Maisara Caverns", type = "dungeon" },
+    NexusPointXenas   = { instanceId = 2915, name = "Nexus-Point Xenas", type = "dungeon" },
+    WindrunnerSpire   = { instanceId = 2805, name = "Windrunner Spire", type = "dungeon" },
+    AlgetharAcademy   = { instanceId = 2526, name = "Algeth'ar Academy", type = "dungeon" },
+    PitOfSaron        = { instanceId = 658, name = "Pit of Saron", type = "dungeon" },
+    SeatOfTriumvirate = { instanceId = 1753, name = "Seat of the Triumvirate", type = "dungeon" },
+    Skyreach          = { instanceId = 1209, name = "Skyreach", type = "dungeon" },
+    -- Raids
+    TheVoidspire      = { instanceId = 2912, name = "The Voidspire", type = "raid" },
+    MarchOnQuelDanas  = { instanceId = 2913, name = "March on Quel'Danas", type = "raid" },
+    TheDreamrift      = { instanceId = 2939, name = "The Dreamrift", type = "raid" },
 }
 
 NRSKNUI.GEM_SOCKET_TYPES = {

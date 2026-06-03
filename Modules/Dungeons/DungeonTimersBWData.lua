@@ -29,7 +29,7 @@ end
 function DT:GetBigWigsColors(addon, spellId)
     local barColor, textColor, bgColor
     if BigWigs and BigWigs.GetPlugin then
-        local colorModule = BigWigs:GetPlugin("Colors")
+        local colorModule = BigWigs:GetPlugin("Colors", true)
         if colorModule and colorModule.GetColorTable then
             barColor = colorModule:GetColorTable("barColor", addon, spellId)
             textColor = colorModule:GetColorTable("barText", addon, spellId)
@@ -112,23 +112,29 @@ end
 
 function DT:GetSpellsForDungeon(dungeonKey, forceRefresh, isRetry)
     self:UpdateDB()
-    if not self.db or not self.db.Dungeons then return {} end
 
-    local dungeonData = self.db.Dungeons[dungeonKey]
-    if not dungeonData or not dungeonData.instanceId then return {} end
+    local instanceInfo = NRSKNUI.DUNGEON_INFO and NRSKNUI.DUNGEON_INFO[dungeonKey]
+    if not instanceInfo or not instanceInfo.instanceId then return {} end
+
+    local instanceId = instanceInfo.instanceId
     if forceRefresh then self.spellCache[dungeonKey] = nil end
     if self.spellCache[dungeonKey] then return self.spellCache[dungeonKey] end
 
-    if BigWigs and BigWigsLoader and BigWigsLoader.LoadZone then
-        BigWigsLoader:LoadZone(dungeonData.instanceId)
-        if not isRetry and not self.spellCache[dungeonKey] then
-            C_Timer.After(0.5, function() self:GetSpellsForDungeon(dungeonKey, true, true) end)
+    if BigWigsLoader then
+        if not BigWigs then
+            C_AddOns.LoadAddOn("BigWigs_Core")
+        end
+        if BigWigs and BigWigsLoader.LoadZone then
+            BigWigsLoader:LoadZone(instanceId)
+            if not isRetry and not self.spellCache[dungeonKey] then
+                C_Timer.After(0.5, function() self:GetSpellsForDungeon(dungeonKey, true, true) end)
+            end
         end
     end
 
     local spells = {}
     local seenSpells = {}
-    local modules = self:GetBigWigsModulesForInstance(dungeonData.instanceId)
+    local modules = self:GetBigWigsModulesForInstance(instanceId)
     local bossOrder = {}
 
     for _, module in ipairs(modules) do

@@ -141,6 +141,9 @@ GUIFrame.SidebarConfig = {
                 { id = "Dungeon_PitOfSaron",        text = "Pit of Saron" },
                 { id = "Dungeon_SeatOfTriumvirate", text = "Seat of the Triumvirate" },
                 { id = "Dungeon_Skyreach",          text = "Skyreach" },
+                { id = "Raid_TheDreamrift",         text = "The Dreamrift" },
+                { id = "Raid_TheVoidspire",         text = "The Voidspire" },
+                { id = "Raid_MarchOnQuelDanas",     text = "March on Quel'Danas" },
             }
         },
         {

@@ -11,6 +11,7 @@ local CreateFrame = CreateFrame
 local C_Spell = C_Spell
 
 local DUNGEON_INFO = {
+    -- Dungeons
     Dungeon_MagistersTerrace  = { key = "MagistersTerrace", name = "Magisters' Terrace" },
     Dungeon_MaisaraCaverns    = { key = "MaisaraCaverns", name = "Maisara Caverns" },
     Dungeon_NexusPointXenas   = { key = "NexusPointXenas", name = "Nexus-Point Xenas" },
@@ -19,6 +20,10 @@ local DUNGEON_INFO = {
     Dungeon_PitOfSaron        = { key = "PitOfSaron", name = "Pit of Saron" },
     Dungeon_SeatOfTriumvirate = { key = "SeatOfTriumvirate", name = "Seat of the Triumvirate" },
     Dungeon_Skyreach          = { key = "Skyreach", name = "Skyreach" },
+    -- Raids
+    Raid_TheDreamrift         = { key = "TheDreamrift", name = "The Dreamrift" },
+    Raid_TheVoidspire         = { key = "TheVoidspire", name = "The Voidspire" },
+    Raid_MarchOnQuelDanas     = { key = "MarchOnQuelDanas", name = "March on Quel'Danas" },
 }
 
 local SUB_TABS = {
