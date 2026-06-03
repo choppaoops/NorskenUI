@@ -140,16 +140,14 @@ function GUIFrame:CreateFontSettingsCard(scrollChild, yOffset, config)
     ---@type NUICheckbox?
     local globalOverrideCheck
 
+    ---@type NUIDropdown?
+    local fontDropdownRef
+
     local function UpdateGlobalOverrideState()
         if not globalOverride then return end
         local useGlobal = db[globalOverrideKey] ~= false -- default true
-        for _, widget in ipairs(widgets) do
-            if widget ~= globalOverrideCheck and widget.SetEnabled then
-                widget:SetEnabled(not useGlobal)
-            end
-        end
-        if not useGlobal then
-            UpdateShadowState()
+        if fontDropdownRef and fontDropdownRef.SetEnabled then
+            fontDropdownRef:SetEnabled(not useGlobal)
         end
     end
 
@@ -195,6 +193,7 @@ function GUIFrame:CreateFontSettingsCard(scrollChild, yOffset, config)
     })
     row1:AddWidget(fontDropdown, 0.5)
     table_insert(widgets, fontDropdown)
+    fontDropdownRef = fontDropdown
 
     local outlineOptions = {
         { key = "NONE", text = "None" },
@@ -350,22 +349,26 @@ function GUIFrame:CreateFontSettingsCard(scrollChild, yOffset, config)
             if self.titleText then self.titleText:SetAlpha(0.5) end
         end
 
+        for _, widget in ipairs(self.fontWidgets) do
+            if widget ~= globalOverrideCheck and widget ~= fontDropdownRef and widget.SetEnabled then
+                widget:SetEnabled(enabled)
+            end
+        end
+
         -- Global override toggle always stays enabled
         if globalOverrideCheck and globalOverrideCheck.SetEnabled then
             globalOverrideCheck:SetEnabled(enabled)
         end
 
+        -- Font dropdown respects global override state when card is enabled
         if enabled and globalOverride then
             UpdateGlobalOverrideState()
-        else
-            for _, widget in ipairs(self.fontWidgets) do
-                if widget ~= globalOverrideCheck and widget.SetEnabled then
-                    widget:SetEnabled(enabled)
-                end
-            end
-            if enabled then
-                UpdateShadowState()
-            end
+        elseif fontDropdownRef and fontDropdownRef.SetEnabled then
+            fontDropdownRef:SetEnabled(enabled)
+        end
+
+        if enabled then
+            UpdateShadowState()
         end
     end
 
