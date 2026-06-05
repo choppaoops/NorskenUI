@@ -1156,8 +1156,17 @@ local function RegisterBarWithEditMode(barName, barDB, barContainer)
         setPosition = function(pos)
             if not db.Position then db.Position = {} end
 
-            -- Recalculate edge-relative position from current frame location
-            local anchorPoint, x, y = CalculateEdgePosition(frame)
+            local anchorPoint, x, y
+
+            -- If position values provided, use them directly
+            -- Otherwise recalculate from current frame location (used after drag)
+            if pos and pos.XOffset and pos.YOffset then
+                anchorPoint = pos.AnchorFrom or db.Position.AnchorPoint or "BOTTOM"
+                x = pos.XOffset
+                y = pos.YOffset
+            else
+                anchorPoint, x, y = CalculateEdgePosition(frame)
+            end
 
             -- Save edge-relative position
             db.Position.AnchorPoint = anchorPoint

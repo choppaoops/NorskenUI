@@ -184,13 +184,19 @@ function XPBar:ApplySettings()
     if not self.bar then return end
 
     local r, g, b, a = NRSKNUI:GetAccentColor(self.db.ColorMode, self.db.StatusColor)
+    local rR, gR, bR, aR = NRSKNUI:GetAccentColor(self.db.ColorModeRested, self.db.RestedColor)
+
+    if self.db.ColorModeRested == "theme" or self.db.ColorModeRested == "class" then
+        aR = 0.25
+    end
+
     local statusbar = NRSKNUI:GetStatusbarPath(NRSKNUI:GetEffectiveStatusBar(self.db))
 
     self.bar:SetStatusBarTexture(statusbar)
     self.bar.rested:SetStatusBarTexture(statusbar)
 
     self.bar:SetStatusBarColor(r, g, b, a)
-    self.bar.rested:SetStatusBarColor(unpack(self.db.RestedColor))
+    self.bar.rested:SetStatusBarColor(rR, gR, bR, aR)
 
     self.bar:SetSize(self.db.width, self.db.height)
     NRSKNUI:SnapFrameSize(self.bar)
@@ -201,9 +207,11 @@ function XPBar:ApplySettings()
 
     if self.bar.SetBorderColor then self.bar:SetBorderColor(unpack(self.db.BackdropBorderColor)) end
 
-    NRSKNUI:ApplyFontToText(self.bar.text, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline, self.db.FontShadow)
+    NRSKNUI:ApplyFontToText(self.bar.text, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline,
+        self.db.FontShadow)
     self.bar.text:SetTextColor(unpack(self.db.TextColor))
-    NRSKNUI:ApplyFontToText(self.bar.level, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline, self.db.FontShadow)
+    NRSKNUI:ApplyFontToText(self.bar.level, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline,
+        self.db.FontShadow)
     self.bar.level:SetTextColor(unpack(self.db.TextColor))
 
     self:Update()

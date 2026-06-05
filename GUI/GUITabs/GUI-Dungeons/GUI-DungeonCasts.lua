@@ -173,21 +173,24 @@ GUIFrame:RegisterContent("DungeonCasts", function(scrollChild, yOffset)
             db.Frame.GrowthDirection = selected; ApplySettings()
         end
     })
-    row2c:AddWidget(growthDropdown, 0.5)
+    row2c:AddWidget(growthDropdown, 1)
     manager:Register(growthDropdown, "all")
+    card2:AddRow(row2c, Theme.rowHeight)
 
-    local useGlobalBarCheck = GUIFrame:CreateCheckbox(row2c, "Use Global Bar", {
+    local row2d = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast)
+    local useGlobalBarCheck = GUIFrame:CreateCheckbox(row2d, "Use Global Bar", {
         value = db.BarDisplay.UseGlobalBar ~= false,
         callback = function(checked)
             db.BarDisplay.UseGlobalBar = checked
             ApplySettings()
+            UpdateAllWidgetStates()
         end
     })
-    row2c:AddWidget(useGlobalBarCheck, 0.5)
+    row2d:AddWidget(useGlobalBarCheck, 0.5)
     manager:Register(useGlobalBarCheck, "all")
-    card2:AddRow(row2c, Theme.rowHeight)
 
-    local row2d = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast)
+    manager:SetCondition("GlobalOn", function() return not db.BarDisplay.UseGlobalBar end)
+
     local statusbarDropdown = GUIFrame:CreateDropdown(row2d, "Bar Texture", {
         options = statusbarList,
         value = db.BarDisplay.StatusBarTexture,
@@ -196,8 +199,8 @@ GUIFrame:RegisterContent("DungeonCasts", function(scrollChild, yOffset)
             db.BarDisplay.StatusBarTexture = selected; ApplySettings()
         end
     })
-    row2d:AddWidget(statusbarDropdown, 1)
-    manager:Register(statusbarDropdown, "all")
+    row2d:AddWidget(statusbarDropdown, 0.5)
+    manager:Register(statusbarDropdown, "all", "GlobalOn")
     card2:AddRow(row2d, Theme.rowHeightLast, 0)
 
     yOffset = card2:GetNextOffset()
@@ -276,14 +279,18 @@ GUIFrame:RegisterContent("DungeonCasts", function(scrollChild, yOffset)
     local row4a = GUIFrame:CreateRow(card4.content, Theme.rowHeight)
     local iconCheck = GUIFrame:CreateCheckbox(row4a, "Show Spell Icon", {
         value = db.Icon.Enabled,
-        callback = function(checked) db.Icon.Enabled = checked; ApplySettings() end
+        callback = function(checked)
+            db.Icon.Enabled = checked; ApplySettings()
+        end
     })
     row4a:AddWidget(iconCheck, 0.5)
     manager:Register(iconCheck, "all")
 
     local raidIconCheck = GUIFrame:CreateCheckbox(row4a, "Show Raid Target Icon", {
         value = db.RaidIcon.Enabled,
-        callback = function(checked) db.RaidIcon.Enabled = checked; ApplySettings() end
+        callback = function(checked)
+            db.RaidIcon.Enabled = checked; ApplySettings()
+        end
     })
     row4a:AddWidget(raidIconCheck, 0.5)
     manager:Register(raidIconCheck, "all")
@@ -294,16 +301,22 @@ GUIFrame:RegisterContent("DungeonCasts", function(scrollChild, yOffset)
 
     local row4b = GUIFrame:CreateRow(card4.content, Theme.rowHeight)
     local raidIconSizeSlider = GUIFrame:CreateSlider(row4b, "Raid Icon Size", {
-        min = 12, max = 40, step = 1,
+        min = 12,
+        max = 40,
+        step = 1,
         value = db.RaidIcon.Size,
-        callback = function(value) db.RaidIcon.Size = value; ApplySettings() end
+        callback = function(value)
+            db.RaidIcon.Size = value; ApplySettings()
+        end
     })
     row4b:AddWidget(raidIconSizeSlider, 0.5)
     manager:Register(raidIconSizeSlider, "all")
 
     local sparkCheck = GUIFrame:CreateCheckbox(row4b, "Show Spark", {
         value = db.BarDisplay.SparkEnabled,
-        callback = function(checked) db.BarDisplay.SparkEnabled = checked; ApplySettings() end
+        callback = function(checked)
+            db.BarDisplay.SparkEnabled = checked; ApplySettings()
+        end
     })
     row4b:AddWidget(sparkCheck, 0.5)
     manager:Register(sparkCheck, "all")
@@ -315,7 +328,9 @@ GUIFrame:RegisterContent("DungeonCasts", function(scrollChild, yOffset)
     local row4c = GUIFrame:CreateRow(card4.content, Theme.rowHeightLast)
     local showTimeCheck = GUIFrame:CreateCheckbox(row4c, "Show Cast Time", {
         value = db.Text.ShowTime,
-        callback = function(checked) db.Text.ShowTime = checked; ApplySettings() end
+        callback = function(checked)
+            db.Text.ShowTime = checked; ApplySettings()
+        end
     })
     row4c:AddWidget(showTimeCheck, 1)
     manager:Register(showTimeCheck, "all")

@@ -797,6 +797,7 @@ local Defaults = {
                 StatusBarTexture = "NorskenUI", -- LSM statusbar texture name
 
                 -- Rested Coloring
+                ColorModeRested = "theme",
                 RestedColor = { 1, 0.5, 0, 0.25 },
 
                 -- Backdrop
@@ -976,8 +977,33 @@ local Defaults = {
                 },
             },
         },
-        -- Skinning Settings (CDM, Buffs, Action Bars, etc.)
+        -- Skinning Settings
         Skinning = {
+            BlizzardElements = {
+                Enabled = true,
+                UseGlobalFont = true,
+                FontFace = "Expressway",
+                FontOutline = "OUTLINE",
+                FontShadow = {
+                    Enabled = false,
+                    Color = { 0, 0, 0, 1 },
+                    OffsetX = 1,
+                    OffsetY = -1,
+                },
+                ObjectiveTracker = {
+                    Enabled = true,
+                    SkinHeaders = true,
+                    SkinProgressBars = true,
+                    SkinMinimizeButton = true,
+                    SkinQuestIcons = true,
+                    FontStyling = true,
+                    QuestTextSize = 12,
+                    QuestTitleSize = 13,
+                    ColorMode = "Theme",
+                    CustomColor = { 0, 1, 0.17, 1 },
+                },
+            },
+
             BlizzardRM = {
                 Enabled = true,
                 -- Position Settings
@@ -1733,12 +1759,6 @@ local Defaults = {
                     Enabled = true, -- Enable chat bubble font skinning
                     Size = 8,       -- Font size
                 },
-                -- Objective tracker fonts
-                ObjectiveTracker = {
-                    Enabled = true,      -- Enable objective tracker font skinning
-                    QuestTextSize = 12,  -- Font size for quest text
-                    QuestTitleSize = 13, -- Font size for quest titles
-                },
                 ZoneText = {
                     Hide = false,
                     SubZone = {
@@ -2154,9 +2174,15 @@ local Defaults = {
                 barWidth = 220,
                 barHeight = 24,
                 barTexture = "NorskenUI", -- LSM statusbar texture key
-                fontFace = "Expressway",
-                fontSize = 14,
-                fontOutline = "OUTLINE", -- NONE, OUTLINE, THICKOUTLINE, SOFTOUTLINE, SLUG, SLUG,OUTLINE
+                FontFace = "Expressway",
+                FontSize = 14,
+                FontOutline = "OUTLINE", -- NONE, OUTLINE, THICKOUTLINE, SOFTOUTLINE, SLUG, SLUG,OUTLINE
+                FontShadow = {
+                    Enabled = false,
+                    Color = { 0, 0, 0, 1 },
+                    OffsetX = 1,
+                    OffsetY = -1,
+                },
                 iconEnabled = true,
                 UseGlobalFont = true,
                 UseGlobalBar = true,
@@ -2165,10 +2191,16 @@ local Defaults = {
             -- Global display settings for Texts
             TextDisplay = {
                 UseGlobalFont = true,
-                fontFace = "Expressway",
-                fontSize = 24,
-                fontOutline = "SOFTOUTLINE", -- NONE, OUTLINE, THICKOUTLINE, SOFTOUTLINE, SLUG, SLUG,OUTLINE
-                textAlign = "CENTER",        -- LEFT, CENTER, RIGHT
+                FontFace = "Expressway",
+                FontSize = 24,
+                FontOutline = "SOFTOUTLINE", -- NONE, OUTLINE, THICKOUTLINE, SOFTOUTLINE, SLUG, SLUG,OUTLINE
+                FontShadow = {
+                    Enabled = false,
+                    Color = { 0, 0, 0, 1 },
+                    OffsetX = 1,
+                    OffsetY = -1,
+                },
+                textAlign = "CENTER", -- LEFT, CENTER, RIGHT
             },
 
             -- Global group settings (applies to all dungeons)

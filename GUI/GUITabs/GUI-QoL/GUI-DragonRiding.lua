@@ -111,21 +111,24 @@ GUIFrame:RegisterContent("DragonRiding", function(scrollChild, yOffset)
             db.Spacing = val; ApplySettings()
         end
     })
-    row2b:AddWidget(spacingSlider, 0.5)
+    row2b:AddWidget(spacingSlider, 1)
     manager:Register(spacingSlider, "all")
+    card2:AddRow(row2b, Theme.rowHeight)
 
-    local useGlobalBarCheck = GUIFrame:CreateCheckbox(row2b, "Use Global Bar", {
+    local row2c = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast)
+    local useGlobalBarCheck = GUIFrame:CreateCheckbox(row2c, "Use Global Bar", {
         value = db.UseGlobalBar ~= false,
         callback = function(checked)
             db.UseGlobalBar = checked
             ApplySettings()
+            UpdateAllWidgetStates()
         end
     })
-    row2b:AddWidget(useGlobalBarCheck, 0.5)
+    row2c:AddWidget(useGlobalBarCheck, 0.5)
     manager:Register(useGlobalBarCheck, "all")
-    card2:AddRow(row2b, Theme.rowHeight)
 
-    local row2c = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast)
+    manager:SetCondition("GlobalOn", function() return not db.UseGlobalBar end)
+
     local textureDropdown = GUIFrame:CreateDropdown(row2c, "Bar Texture", {
         options = statusbarList,
         value = db.StatusBarTexture,
@@ -134,8 +137,8 @@ GUIFrame:RegisterContent("DragonRiding", function(scrollChild, yOffset)
             db.StatusBarTexture = key; ApplySettings()
         end
     })
-    row2c:AddWidget(textureDropdown, 1)
-    manager:Register(textureDropdown, "all")
+    row2c:AddWidget(textureDropdown, 0.5)
+    manager:Register(textureDropdown, "all", "GlobalOn")
     card2:AddRow(row2c, Theme.rowHeightLast, 0)
 
     yOffset = card2:GetNextOffset()

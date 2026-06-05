@@ -1,26 +1,11 @@
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
 local GUIFrame = NRSKNUI.GUIFrame
-local Theme = NRSKNUI.Theme or {}
-
-local pairs = pairs
-local table_insert = table.insert
-
-NRSKNUI.GUI = NRSKNUI.GUI or {}
-NRSKNUI.GUI.DungeonTimers = NRSKNUI.GUI.DungeonTimers or {}
+local Theme = NRSKNUI.Theme
 
 local SETTINGS_GROWTH_OPTIONS = {
     { key = "DOWN", text = "Down" },
     { key = "UP",   text = "Up" },
-}
-
-local SETTINGS_TEXT_OUTLINE_OPTIONS = {
-    { key = "NONE",                    text = "None" },
-    { key = "OUTLINE",                 text = "Outline" },
-    { key = "THICKOUTLINE",            text = "Thick" },
-    { key = "SOFTOUTLINE",             text = "Soft" },
-    { key = "SLUG",                    text = "Slug" },
-    { key = "SLUG,OUTLINE",            text = "Slug Outline" },
 }
 
 local SETTINGS_TEXT_ALIGN_OPTIONS = {
@@ -29,174 +14,52 @@ local SETTINGS_TEXT_ALIGN_OPTIONS = {
     { key = "RIGHT",  text = "Right" },
 }
 
-local function GetSettingsDB()
-    if not NRSKNUI.db or not NRSKNUI.db.profile then return nil end
-    return NRSKNUI.db.profile.DungeonTimers
-end
-
-local function GetModule()
-    if NorskenUI then
-        return NorskenUI:GetModule("DungeonTimers", true)
-    end
-    return nil
-end
-
-local function ApplySettingsChanges()
-    local mod = GetModule()
-    if mod then
-        if mod.UpdateFrameVisuals then mod:UpdateFrameVisuals() end
-    end
-end
-
-local function HideTextPreviews()
-    local mod = GetModule()
-    if mod and mod.HideSettingsTextPreviews then
-        mod:HideSettingsTextPreviews()
-    end
-end
-
-local function ShowSettingsTextPreviews()
-    if not GUIFrame or not GUIFrame:IsShown() then return end
-    if GUIFrame.selectedSidebarItem ~= "DT_Texts" then return end
-
-    local mod = GetModule()
-    if mod and mod.ShowSettingsTextPreviews then
-        mod:ShowSettingsTextPreviews()
-    end
-end
-
-local function RefreshTextPreviews()
-    local mod = GetModule()
-    if mod and mod.RefreshSettingsTextPreviews then
-        mod:RefreshSettingsTextPreviews()
-    end
-end
-
-NRSKNUI.GUI.DungeonTimers.HideTextPreviews = HideTextPreviews
-GUIFrame.onCloseCallbacks["DT_Texts"] = HideTextPreviews
-
 GUIFrame:RegisterContent("DT_Texts", function(scrollChild, yOffset)
-    local DT_GUI = NRSKNUI.GUI.DungeonTimers
-    if DT_GUI.HideBarPreviews then DT_GUI.HideBarPreviews() end
+    local db = NRSKNUI.db and NRSKNUI.db.profile.DungeonTimers
+    if not db then return GUIFrame:ShowDBError(scrollChild, yOffset) end
 
-    local db = GetSettingsDB()
-    if not db then return yOffset end
-
-    if not db.TextDisplay then db.TextDisplay = {} end
-
-    local isModuleDisabled = db.Enabled == false
+    ---@type DungeonTimers?
+    local DT = NorskenUI and NorskenUI:GetModule("DungeonTimers", true)
     local manager = GUIFrame:CreateWidgetStateManager()
 
-    local LSM = NRSKNUI.LSM
-    local fontList = {}
-    if LSM then
-        for name in pairs(LSM:HashTable("font")) do
-            fontList[name] = name
-        end
-    else
-        fontList["Expressway"] = "Expressway"
+    local function ApplySettings()
+        if DT and DT.UpdateFrameVisuals then DT:UpdateFrameVisuals() end
+    end
+
+    local function RefreshTextPreviews()
+        if DT and DT.RefreshSettingsTextPreviews then DT:RefreshSettingsTextPreviews() end
     end
 
     local function ApplyAndUpdate()
-        ApplySettingsChanges()
+        ApplySettings()
         RefreshTextPreviews()
     end
 
-    ShowSettingsTextPreviews()
+    local function UpdateAllWidgetStates() manager:UpdateAll(db.Enabled) end
+
+    if NRSKNUI.GUI and NRSKNUI.GUI.DungeonTimers and NRSKNUI.GUI.DungeonTimers.HideBarPreviews then
+        NRSKNUI.GUI.DungeonTimers.HideBarPreviews()
+    end
+
+    if GUIFrame.selectedSidebarItem == "DT_Texts" and DT and DT.ShowSettingsTextPreviews then
+        DT:ShowSettingsTextPreviews()
+    end
 
     local displayCard = GUIFrame:CreateCard(scrollChild, "Text Display Settings", yOffset)
     manager:Register(displayCard, "all")
 
-    -- Global font override toggle
-    local textFontWidgets = {}
-    local function UpdateTextFontWidgetStates()
-        local useGlobal = db.TextDisplay.UseGlobalFont ~= false
-        for _, widget in ipairs(textFontWidgets) do
-            if widget.SetEnabled then
-                widget:SetEnabled(not useGlobal)
-            end
-        end
-    end
-
-    local rowOverride = GUIFrame:CreateRow(displayCard.content, Theme.rowHeight)
-    local useGlobalFontCheck = GUIFrame:CreateCheckbox(rowOverride, "Use Global Font", {
-        value = db.TextDisplay.UseGlobalFont ~= false,
-        callback = function(checked)
-            db.TextDisplay.UseGlobalFont = checked
-            UpdateTextFontWidgetStates()
-            ApplyAndUpdate()
-        end
-    })
-    rowOverride:AddWidget(useGlobalFontCheck, 1)
-    displayCard:AddRow(rowOverride, Theme.rowHeight)
-
-    local rowOverrideSep = GUIFrame:CreateRow(displayCard.content, Theme.rowHeightSeparator)
-    rowOverrideSep:AddWidget(GUIFrame:CreateSeparator(rowOverrideSep), 1)
-    displayCard:AddRow(rowOverrideSep, Theme.rowHeightSeparator)
-
-    local row1 = GUIFrame:CreateRow(displayCard.content, Theme.rowHeight)
-    local fontDropdown = GUIFrame:CreateDropdown(row1, "Font", {
-        options = fontList,
-        value = db.TextDisplay.fontFace or "Expressway",
-        callback = function(key)
-            db.TextDisplay.fontFace = key
-            ApplyAndUpdate()
-        end,
-        searchable = true,
-        isFontPreview = true
-    })
-    row1:AddWidget(fontDropdown, 0.5)
-    table_insert(textFontWidgets, fontDropdown)
-
-    local fontSizeSlider = GUIFrame:CreateSlider(row1, "Font Size", {
-        min = 8,
-        max = 32,
-        step = 1,
-        value = db.TextDisplay.fontSize or 14,
-        labelWidth = 60,
-        callback = function(val)
-            db.TextDisplay.fontSize = val
-            ApplyAndUpdate()
-        end
-    })
-    row1:AddWidget(fontSizeSlider, 0.5)
-    displayCard:AddRow(row1, Theme.rowHeight)
-
-    local row2 = GUIFrame:CreateRow(displayCard.content, Theme.rowHeightLast)
-    local outlineDropdown = GUIFrame:CreateDropdown(row2, "Font Outline", {
-        options = SETTINGS_TEXT_OUTLINE_OPTIONS,
-        value = db.TextDisplay.fontOutline or "SOFTOUTLINE",
-        callback = function(key)
-            db.TextDisplay.fontOutline = key
-            ApplyAndUpdate()
-        end
-    })
-    row2:AddWidget(outlineDropdown, 0.5)
-    table_insert(textFontWidgets, outlineDropdown)
-
-    local alignDropdown = GUIFrame:CreateDropdown(row2, "Text Align", {
+    local row1 = GUIFrame:CreateRow(displayCard.content, Theme.rowHeightLast)
+    local alignDropdown = GUIFrame:CreateDropdown(row1, "Text Align", {
         options = SETTINGS_TEXT_ALIGN_OPTIONS,
         value = db.TextDisplay.textAlign or "LEFT",
         callback = function(key)
-            local freshDb = GetSettingsDB()
-            if freshDb and freshDb.TextDisplay then
-                freshDb.TextDisplay.textAlign = key
-            end
+            db.TextDisplay.textAlign = key
             ApplyAndUpdate()
         end
     })
-    row2:AddWidget(alignDropdown, 0.5)
-    displayCard:AddRow(row2, Theme.rowHeightLast, 0)
+    row1:AddWidget(alignDropdown, (1 / 3))
 
-    UpdateTextFontWidgetStates()
-
-    yOffset = displayCard:GetNextOffset()
-
-    local textGroupCard = GUIFrame:CreateCard(scrollChild, "Text Group", yOffset)
-    manager:Register(textGroupCard, "all")
-
-    local textRow1 = GUIFrame:CreateRow(textGroupCard.content, Theme.rowHeightLast)
-    local textGrowthDropdown = GUIFrame:CreateDropdown(textRow1, "Growth Direction", {
+    local textGrowthDropdown = GUIFrame:CreateDropdown(row1, "Growth Direction", {
         options = SETTINGS_GROWTH_OPTIONS,
         value = db.TextGroup.GrowthDirection or "DOWN",
         callback = function(key)
@@ -204,9 +67,9 @@ GUIFrame:RegisterContent("DT_Texts", function(scrollChild, yOffset)
             ApplyAndUpdate()
         end
     })
-    textRow1:AddWidget(textGrowthDropdown, 0.5)
+    row1:AddWidget(textGrowthDropdown, (1 / 3))
 
-    local textSpacingSlider = GUIFrame:CreateSlider(textRow1, "Spacing", {
+    local textSpacingSlider = GUIFrame:CreateSlider(row1, "Spacing", {
         min = 0,
         max = 20,
         step = 1,
@@ -217,29 +80,42 @@ GUIFrame:RegisterContent("DT_Texts", function(scrollChild, yOffset)
             ApplyAndUpdate()
         end
     })
-    textRow1:AddWidget(textSpacingSlider, 0.5)
-    textGroupCard:AddRow(textRow1, Theme.rowHeightLast, 0)
+    row1:AddWidget(textSpacingSlider, (1 / 3))
+    displayCard:AddRow(row1, Theme.rowHeightLast, 0)
 
-    yOffset = textGroupCard:GetNextOffset()
+    yOffset = displayCard:GetNextOffset()
+
+    local fontCard, fontOffset, fontWidgets = GUIFrame:CreateFontSettingsCard(scrollChild, yOffset, {
+        db = db.TextDisplay,
+        includeSoftOutline = true,
+        globalOverride = {},
+        onChangeCallback = ApplyAndUpdate,
+    })
+    manager:Register(fontCard, "all")
+    manager:RegisterGroup(fontWidgets, "all")
+
+    yOffset = fontOffset
 
     local textPosCard, textPosYOffset = GUIFrame:CreatePositionCard(scrollChild, yOffset, {
-        title = "Text Group Position",
         db = db.TextGroup.Position,
-        defaults = {
-            xOffset = 0,
-            yOffset = -100,
-            selfPoint = "CENTER",
-            anchorPoint = "CENTER",
-        },
-        showAnchorFrameType = false,
-        showStrata = false,
-        sliderRange = { -800, 800 },
         onChangeCallback = ApplyAndUpdate,
     })
     manager:Register(textPosCard, "all")
+    if textPosCard.positionWidgets then manager:RegisterGroup(textPosCard.positionWidgets, "all") end
+
     yOffset = textPosYOffset
 
-    manager:UpdateAll(not isModuleDisabled)
+    UpdateAllWidgetStates()
 
     return yOffset
 end)
+
+NRSKNUI.GUI = NRSKNUI.GUI or {}
+NRSKNUI.GUI.DungeonTimers = NRSKNUI.GUI.DungeonTimers or {}
+
+NRSKNUI.GUI.DungeonTimers.HideTextPreviews = function()
+    local DT = NorskenUI and NorskenUI:GetModule("DungeonTimers", true)
+    if DT and DT.HideSettingsTextPreviews then DT:HideSettingsTextPreviews() end
+end
+
+GUIFrame.onCloseCallbacks["DT_Texts"] = NRSKNUI.GUI.DungeonTimers.HideTextPreviews

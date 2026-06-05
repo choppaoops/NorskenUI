@@ -74,9 +74,9 @@ GUIFrame:RegisterContent("FocusCastbar", function(scrollChild, yOffset)
     end
 
     local anchorOptions = {
-        { key = "LEFT", text = "Left" },
+        { key = "LEFT",   text = "Left" },
         { key = "CENTER", text = "Center" },
-        { key = "RIGHT", text = "Right" },
+        { key = "RIGHT",  text = "Right" },
     }
 
     -- Card 1: Enable
@@ -108,17 +108,25 @@ GUIFrame:RegisterContent("FocusCastbar", function(scrollChild, yOffset)
 
     local row2a = GUIFrame:CreateRow(card2.content, Theme.rowHeight)
     local widthSlider = GUIFrame:CreateSlider(row2a, "Width", {
-        min = 100, max = 1000, step = 1,
+        min = 100,
+        max = 1000,
+        step = 1,
         value = db.Width,
-        callback = function(val) db.Width = val; ApplySettings() end
+        callback = function(val)
+            db.Width = val; ApplySettings()
+        end
     })
     row2a:AddWidget(widthSlider, 0.5)
     manager:Register(widthSlider, "all")
 
     local heightSlider = GUIFrame:CreateSlider(row2a, "Height", {
-        min = 5, max = 500, step = 1,
+        min = 5,
+        max = 500,
+        step = 1,
         value = db.Height,
-        callback = function(val) db.Height = val; ApplySettings() end
+        callback = function(val)
+            db.Height = val; ApplySettings()
+        end
     })
     row2a:AddWidget(heightSlider, 0.5)
     manager:Register(heightSlider, "all")
@@ -130,33 +138,42 @@ GUIFrame:RegisterContent("FocusCastbar", function(scrollChild, yOffset)
         callback = function(checked)
             db.UseGlobalBar = checked
             ApplySettings()
+            UpdateAllWidgetStates()
         end
     })
     row2b:AddWidget(useGlobalBarCheck, 0.5)
     manager:Register(useGlobalBarCheck, "all")
 
+    manager:SetCondition("GlobalOn", function() return not db.UseGlobalBar end)
+
     local statusbarDropdown = GUIFrame:CreateDropdown(row2b, "Bar Texture", {
         options = statusbarList,
         value = db.StatusBarTexture,
         searchable = true,
-        callback = function(key) db.StatusBarTexture = key; ApplySettings() end
+        callback = function(key)
+            db.StatusBarTexture = key; ApplySettings()
+        end
     })
     row2b:AddWidget(statusbarDropdown, 0.5)
-    manager:Register(statusbarDropdown, "all")
+    manager:Register(statusbarDropdown, "all", "GlobalOn")
     card2:AddRow(row2b, Theme.rowHeight)
 
     local row2c = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast)
 
     local bgPicker = GUIFrame:CreateColorPicker(row2c, "Background", {
         color = db.BackdropColor,
-        callback = function(r, g, b, a) db.BackdropColor = { r, g, b, a }; ApplySettings() end
+        callback = function(r, g, b, a)
+            db.BackdropColor = { r, g, b, a }; ApplySettings()
+        end
     })
     row2c:AddWidget(bgPicker, 0.5)
     manager:Register(bgPicker, "all")
 
     local borderPicker = GUIFrame:CreateColorPicker(row2c, "Border", {
         color = db.BorderColor,
-        callback = function(r, g, b, a) db.BorderColor = { r, g, b, a }; ApplySettings() end
+        callback = function(r, g, b, a)
+            db.BorderColor = { r, g, b, a }; ApplySettings()
+        end
     })
     row2c:AddWidget(borderPicker, 0.5)
     manager:Register(borderPicker, "all")
@@ -172,14 +189,18 @@ GUIFrame:RegisterContent("FocusCastbar", function(scrollChild, yOffset)
     local row3a = GUIFrame:CreateRow(card3.content, Theme.rowHeight)
     local textPicker = GUIFrame:CreateColorPicker(row3a, "Text", {
         color = db.TextColor,
-        callback = function(r, g, b, a) db.TextColor = { r, g, b, a }; ApplySettings() end
+        callback = function(r, g, b, a)
+            db.TextColor = { r, g, b, a }; ApplySettings()
+        end
     })
     row3a:AddWidget(textPicker, 0.5)
     manager:Register(textPicker, "all")
 
     local castPicker = GUIFrame:CreateColorPicker(row3a, "Cast / Kick Ready", {
         color = db.CastColor,
-        callback = function(r, g, b, a) db.CastColor = { r, g, b, a }; ApplySettings() end
+        callback = function(r, g, b, a)
+            db.CastColor = { r, g, b, a }; ApplySettings()
+        end
     })
     row3a:AddWidget(castPicker, 0.5)
     manager:Register(castPicker, "all")
@@ -201,7 +222,9 @@ GUIFrame:RegisterContent("FocusCastbar", function(scrollChild, yOffset)
 
     local notInterruptPicker = GUIFrame:CreateColorPicker(row3a2, "Uninterruptible", {
         color = db.NotInterruptibleColor,
-        callback = function(r, g, b, a) db.NotInterruptibleColor = { r, g, b, a }; ApplySettings() end
+        callback = function(r, g, b, a)
+            db.NotInterruptibleColor = { r, g, b, a }; ApplySettings()
+        end
     })
     row3a2:AddWidget(notInterruptPicker, 0.5)
     manager:Register(notInterruptPicker, "all")
@@ -215,14 +238,18 @@ GUIFrame:RegisterContent("FocusCastbar", function(scrollChild, yOffset)
     local row3a3 = GUIFrame:CreateRow(card3.content, Theme.rowHeight)
     local kickEnableCheck = GUIFrame:CreateCheckbox(row3a3, "Kick Indicator", {
         value = db.KickIndicator.Enabled,
-        callback = function(checked) db.KickIndicator.Enabled = checked; UpdateKickIndicatorState() end
+        callback = function(checked)
+            db.KickIndicator.Enabled = checked; UpdateKickIndicatorState()
+        end
     })
     row3a3:AddWidget(kickEnableCheck, 0.5)
     manager:Register(kickEnableCheck, "all")
 
     local notReadyPicker = GUIFrame:CreateColorPicker(row3a3, "Not Ready", {
         color = db.KickIndicator.NotReadyColor,
-        callback = function(r, g, b, a) db.KickIndicator.NotReadyColor = { r, g, b, a }; ApplySettings() end
+        callback = function(r, g, b, a)
+            db.KickIndicator.NotReadyColor = { r, g, b, a }; ApplySettings()
+        end
     })
     row3a3:AddWidget(notReadyPicker, 0.26)
     manager:Register(notReadyPicker, "all")
@@ -230,7 +257,9 @@ GUIFrame:RegisterContent("FocusCastbar", function(scrollChild, yOffset)
 
     local tickPicker = GUIFrame:CreateColorPicker(row3a3, "Tick", {
         color = db.KickIndicator.TickColor,
-        callback = function(r, g, b, a) db.KickIndicator.TickColor = { r, g, b, a }; ApplySettings() end
+        callback = function(r, g, b, a)
+            db.KickIndicator.TickColor = { r, g, b, a }; ApplySettings()
+        end
     })
     row3a3:AddWidget(tickPicker, 0.24)
     manager:Register(tickPicker, "all")
@@ -244,7 +273,9 @@ GUIFrame:RegisterContent("FocusCastbar", function(scrollChild, yOffset)
     local row3b = GUIFrame:CreateRow(card3.content, Theme.rowHeight)
     local holdEnableCheck = GUIFrame:CreateCheckbox(row3b, "Hold Timer", {
         value = db.HoldTimer.Enabled,
-        callback = function(checked) db.HoldTimer.Enabled = checked; UpdateHoldTimerState() end
+        callback = function(checked)
+            db.HoldTimer.Enabled = checked; UpdateHoldTimerState()
+        end
     })
     row3b:AddWidget(holdEnableCheck, 0.5)
     manager:Register(holdEnableCheck, "all")
@@ -260,9 +291,13 @@ GUIFrame:RegisterContent("FocusCastbar", function(scrollChild, yOffset)
 
     local row3b2 = GUIFrame:CreateRow(card3.content, Theme.rowHeightLast)
     local holdSlider = GUIFrame:CreateSlider(row3b2, "Duration", {
-        min = 0, max = 2, step = 0.1,
+        min = 0,
+        max = 2,
+        step = 0.1,
         value = db.HoldTimer.Duration,
-        callback = function(val) db.HoldTimer.Duration = val; db.timeToHold = val end
+        callback = function(val)
+            db.HoldTimer.Duration = val; db.timeToHold = val
+        end
     })
     row3b2:AddWidget(holdSlider, 0.5)
     manager:Register(holdSlider, "all")
@@ -308,15 +343,21 @@ GUIFrame:RegisterContent("FocusCastbar", function(scrollChild, yOffset)
     local targetAnchorDropdown = GUIFrame:CreateDropdown(row4a, "Anchor", {
         options = anchorOptions,
         value = db.TargetNames.Anchor,
-        callback = function(key) db.TargetNames.Anchor = key; ApplySettings() end
+        callback = function(key)
+            db.TargetNames.Anchor = key; ApplySettings()
+        end
     })
     row4a:AddWidget(targetAnchorDropdown, 0.5)
     manager:Register(targetAnchorDropdown, "all")
 
     local targetXSlider = GUIFrame:CreateSlider(row4a, "X Offset", {
-        min = -100, max = 100, step = 1,
+        min = -100,
+        max = 100,
+        step = 1,
         value = db.TargetNames.XOffset,
-        callback = function(val) db.TargetNames.XOffset = val; ApplySettings() end
+        callback = function(val)
+            db.TargetNames.XOffset = val; ApplySettings()
+        end
     })
     row4a:AddWidget(targetXSlider, 0.5)
     manager:Register(targetXSlider, "all")
@@ -324,9 +365,13 @@ GUIFrame:RegisterContent("FocusCastbar", function(scrollChild, yOffset)
 
     local row4b = GUIFrame:CreateRow(card4.content, Theme.rowHeightLast)
     local targetYSlider = GUIFrame:CreateSlider(row4b, "Y Offset", {
-        min = -50, max = 100, step = 1,
+        min = -50,
+        max = 100,
+        step = 1,
         value = db.TargetNames.YOffset,
-        callback = function(val) db.TargetNames.YOffset = val; ApplySettings() end
+        callback = function(val)
+            db.TargetNames.YOffset = val; ApplySettings()
+        end
     })
     row4b:AddWidget(targetYSlider, 1)
     manager:Register(targetYSlider, "all")
@@ -343,15 +388,21 @@ GUIFrame:RegisterContent("FocusCastbar", function(scrollChild, yOffset)
     local markerAnchorDropdown = GUIFrame:CreateDropdown(row5a, "Anchor", {
         options = anchorOptions,
         value = db.TargetMarker.Anchor,
-        callback = function(key) db.TargetMarker.Anchor = key; ApplySettings() end
+        callback = function(key)
+            db.TargetMarker.Anchor = key; ApplySettings()
+        end
     })
     row5a:AddWidget(markerAnchorDropdown, 0.5)
     manager:Register(markerAnchorDropdown, "all")
 
     local markerSizeSlider = GUIFrame:CreateSlider(row5a, "Size", {
-        min = 1, max = 100, step = 1,
+        min = 1,
+        max = 100,
+        step = 1,
         value = db.TargetMarker.Size,
-        callback = function(val) db.TargetMarker.Size = val; ApplySettings() end
+        callback = function(val)
+            db.TargetMarker.Size = val; ApplySettings()
+        end
     })
     row5a:AddWidget(markerSizeSlider, 0.5)
     manager:Register(markerSizeSlider, "all")
@@ -359,17 +410,25 @@ GUIFrame:RegisterContent("FocusCastbar", function(scrollChild, yOffset)
 
     local row5b = GUIFrame:CreateRow(card5.content, Theme.rowHeightLast)
     local markerXSlider = GUIFrame:CreateSlider(row5b, "X Offset", {
-        min = -100, max = 100, step = 1,
+        min = -100,
+        max = 100,
+        step = 1,
         value = db.TargetMarker.XOffset,
-        callback = function(val) db.TargetMarker.XOffset = val; ApplySettings() end
+        callback = function(val)
+            db.TargetMarker.XOffset = val; ApplySettings()
+        end
     })
     row5b:AddWidget(markerXSlider, 0.5)
     manager:Register(markerXSlider, "all")
 
     local markerYSlider = GUIFrame:CreateSlider(row5b, "Y Offset", {
-        min = -50, max = 100, step = 1,
+        min = -50,
+        max = 100,
+        step = 1,
         value = db.TargetMarker.YOffset,
-        callback = function(val) db.TargetMarker.YOffset = val; ApplySettings() end
+        callback = function(val)
+            db.TargetMarker.YOffset = val; ApplySettings()
+        end
     })
     row5b:AddWidget(markerYSlider, 0.5)
     manager:Register(markerYSlider, "all")
@@ -382,7 +441,7 @@ GUIFrame:RegisterContent("FocusCastbar", function(scrollChild, yOffset)
         db = db,
         includeSoftOutline = true,
         fontSizes = {
-            { label = "Spell Name", dbKey = "FontSize" },
+            { label = "Spell Name",  dbKey = "FontSize" },
             { label = "Target Name", dbKey = "TargetNames.FontSize" },
         },
         onChangeCallback = ApplySettings,

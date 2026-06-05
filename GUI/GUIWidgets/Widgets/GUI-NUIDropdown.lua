@@ -151,11 +151,6 @@ function NUIDropdownMixin:UpdateColors()
         arrow:SetVertexColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
     end
 
-    self._borderColorFrom.r, self._borderColorFrom.g, self._borderColorFrom.b = Theme.border[1], Theme.border[2],
-        Theme.border[3]
-    self._borderColorTo.r, self._borderColorTo.g, self._borderColorTo.b = Theme.border[1], Theme.border[2],
-        Theme.border[3]
-
     if self._scrollbar then
         self._scrollbar:SetBackdropColor(Theme.bgDark[1], Theme.bgDark[2], Theme.bgDark[3], 1)
         self._scrollbar:SetBackdropBorderColor(Theme.border[1], Theme.border[2], Theme.border[3], 1)
@@ -468,44 +463,13 @@ function GUIFrame:CreateDropdown(parent, labelText, config)
 
     arrowAnimGroup:SetScript("OnFinished", function() arrow:SetRotation(row._isOpen and 0 or -math.pi / 2) end)
 
-    local borderColorFrom = { r = Theme.border[1], g = Theme.border[2], b = Theme.border[3] }
-    local borderColorTo = { r = Theme.border[1], g = Theme.border[2], b = Theme.border[3] }
-
-    local hoverAnimGroup = dropdownButton:CreateAnimationGroup()
-    hoverAnimGroup:CreateAnimation("Animation"):SetDuration(Theme.animDuration)
-
-    hoverAnimGroup:SetScript("OnUpdate", function(anim)
-        local progress = anim:GetProgress() or 0
-        local r = borderColorFrom.r + (borderColorTo.r - borderColorFrom.r) * progress
-        local g = borderColorFrom.g + (borderColorTo.g - borderColorFrom.g) * progress
-        local b = borderColorFrom.b + (borderColorTo.b - borderColorFrom.b) * progress
-        dropdownButton:SetBackdropBorderColor(r, g, b, 1)
-    end)
-
-    hoverAnimGroup:SetScript("OnFinished", function()
-        dropdownButton:SetBackdropBorderColor(borderColorTo.r, borderColorTo.g, borderColorTo.b, 1)
-    end)
-
-    local function SetBorderHover(hovered)
-        hoverAnimGroup:Stop()
-
-        local currentR, currentG, currentB = dropdownButton:GetBackdropBorderColor()
-        borderColorFrom.r = currentR
-        borderColorFrom.g = currentG
-        borderColorFrom.b = currentB
-
-        if hovered then
-            borderColorTo.r = Theme.accent[1]
-            borderColorTo.g = Theme.accent[2]
-            borderColorTo.b = Theme.accent[3]
-        else
-            borderColorTo.r = Theme.border[1]
-            borderColorTo.g = Theme.border[2]
-            borderColorTo.b = Theme.border[3]
-        end
-
-        hoverAnimGroup:Play()
-    end
+    local SetBorderHover = NRSKNUI.Animations:CreateHoverColorAnimator(
+        dropdownButton,
+        function(r, g, b, a) dropdownButton:SetBackdropBorderColor(r, g, b, a) end,
+        Theme.border,
+        Theme.accent,
+        Theme.animDuration
+    )
 
     local function CloseDropdown(instant)
         if scrollHold then return end
@@ -922,8 +886,6 @@ function GUIFrame:CreateDropdown(parent, labelText, config)
     row._updateScroll = UpdateScroll
     row._dropdownList = dropdownList
     row._dropdownButton = dropdownButton
-    row._borderColorFrom = borderColorFrom
-    row._borderColorTo = borderColorTo
 
     row._scrollbar = scrollbar
     row._thumb = thumb

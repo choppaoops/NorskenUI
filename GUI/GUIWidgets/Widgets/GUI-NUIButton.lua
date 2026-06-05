@@ -98,36 +98,13 @@ function GUIFrame:CreateButton(parent, buttonText, config)
     button:SetBackdropColor(bgColor[1], bgColor[2], bgColor[3], 1)
     button:SetBackdropBorderColor(Theme.border[1], Theme.border[2], Theme.border[3], 1)
 
-    local hoverAnimGroup = button:CreateAnimationGroup()
-    hoverAnimGroup:CreateAnimation("Animation"):SetDuration(Theme.animDuration)
-
-    local borderColorFrom = {}
-    local borderColorTo = {}
-
-    hoverAnimGroup:SetScript("OnUpdate", function(anim)
-        local progress = anim:GetProgress() or 0
-        local r = borderColorFrom.r + (borderColorTo.r - borderColorFrom.r) * progress
-        local g = borderColorFrom.g + (borderColorTo.g - borderColorFrom.g) * progress
-        local b = borderColorFrom.b + (borderColorTo.b - borderColorFrom.b) * progress
-        button:SetBackdropBorderColor(r, g, b, 1)
-    end)
-
-    hoverAnimGroup:SetScript("OnFinished", function()
-        button:SetBackdropBorderColor(borderColorTo.r, borderColorTo.g, borderColorTo.b, 1)
-    end)
-
-    local function AnimateBorderColor(toAccent)
-        hoverAnimGroup:Stop()
-        local currentR, currentG, currentB = button:GetBackdropBorderColor()
-        borderColorFrom.r, borderColorFrom.g, borderColorFrom.b = currentR, currentG, currentB
-
-        if toAccent then
-            borderColorTo.r, borderColorTo.g, borderColorTo.b = Theme.accent[1], Theme.accent[2], Theme.accent[3]
-        else
-            borderColorTo.r, borderColorTo.g, borderColorTo.b = Theme.border[1], Theme.border[2], Theme.border[3]
-        end
-        hoverAnimGroup:Play()
-    end
+    local animateBorder = NRSKNUI.Animations:CreateHoverColorAnimator(
+        button,
+        function(r, g, b, a) button:SetBackdropBorderColor(r, g, b, a) end,
+        Theme.border,
+        Theme.accent,
+        Theme.animDuration
+    )
 
     local contentWidth = 0
     local iconWidget, textWidget
@@ -159,7 +136,7 @@ function GUIFrame:CreateButton(parent, buttonText, config)
     end
 
     button:SetScript("OnEnter", function(btn)
-        AnimateBorderColor(true)
+        animateBorder(true)
         if btn._tooltip then
             GameTooltip:SetOwner(btn, "ANCHOR_TOP", 0, 4)
             GameTooltip:SetText(btn._tooltip, Theme.accent[1], Theme.accent[2], Theme.accent[3], 1, false)
@@ -168,7 +145,7 @@ function GUIFrame:CreateButton(parent, buttonText, config)
     end)
 
     button:SetScript("OnLeave", function(btn)
-        AnimateBorderColor(false)
+        animateBorder(false)
         btn:SetBackdropColor(btn._bgColor[1], btn._bgColor[2], btn._bgColor[3], 1)
         GameTooltip:Hide()
     end)

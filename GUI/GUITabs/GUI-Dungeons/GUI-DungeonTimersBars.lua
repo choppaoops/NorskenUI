@@ -1,150 +1,57 @@
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
 local GUIFrame = NRSKNUI.GUIFrame
-local Theme = NRSKNUI.Theme or {}
-
-local table_insert = table.insert
-local ipairs = ipairs
-local pairs = pairs
-
-NRSKNUI.GUI = NRSKNUI.GUI or {}
-NRSKNUI.GUI.DungeonTimers = NRSKNUI.GUI.DungeonTimers or {}
+local Theme = NRSKNUI.Theme
+local LSM = NRSKNUI.LSM
 
 local SETTINGS_GROWTH_OPTIONS = {
     { key = "DOWN", text = "Down" },
     { key = "UP",   text = "Up" },
 }
 
-local SETTINGS_TEXT_OUTLINE_OPTIONS = {
-    { key = "NONE",                    text = "None" },
-    { key = "OUTLINE",                 text = "Outline" },
-    { key = "THICKOUTLINE",            text = "Thick" },
-    { key = "SOFTOUTLINE",             text = "Soft" },
-    { key = "SLUG",                    text = "Slug" },
-    { key = "SLUG,OUTLINE",            text = "Slug Outline" },
-}
-
-local function GetSettingsDB()
-    if not NRSKNUI.db or not NRSKNUI.db.profile then return nil end
-    return NRSKNUI.db.profile.DungeonTimers
-end
-
-local function GetModule()
-    if NorskenUI then
-        return NorskenUI:GetModule("DungeonTimers", true)
-    end
-    return nil
-end
-
-local function ApplySettingsChanges()
-    local mod = GetModule()
-    if mod then
-        if mod.UpdateFrameVisuals then mod:UpdateFrameVisuals() end
-    end
-end
-
-local function HideBarPreviews()
-    local mod = GetModule()
-    if mod and mod.HideSettingsBarPreviews then
-        mod:HideSettingsBarPreviews()
-    end
-end
-
-local function ShowSettingsBarPreviews()
-    if not GUIFrame or not GUIFrame:IsShown() then return end
-    if GUIFrame.selectedSidebarItem ~= "DT_Bars" then return end
-
-    local mod = GetModule()
-    if mod and mod.ShowSettingsBarPreviews then
-        mod:ShowSettingsBarPreviews()
-    end
-end
-
-local function RefreshBarPreviews()
-    local mod = GetModule()
-    if mod and mod.RefreshSettingsBarPreviews then
-        mod:RefreshSettingsBarPreviews()
-    end
-end
-
-NRSKNUI.GUI.DungeonTimers.HideBarPreviews = HideBarPreviews
-GUIFrame.onCloseCallbacks["DT_Bars"] = HideBarPreviews
-
 GUIFrame:RegisterContent("DT_Bars", function(scrollChild, yOffset)
-    local DT_GUI = NRSKNUI.GUI.DungeonTimers
-    if DT_GUI.HideTextPreviews then DT_GUI.HideTextPreviews() end
+    local db = NRSKNUI.db and NRSKNUI.db.profile.DungeonTimers
+    if not db then return GUIFrame:ShowDBError(scrollChild, yOffset) end
 
-    local db = GetSettingsDB()
-    if not db then return yOffset end
-
-    local isModuleDisabled = db.Enabled == false
+    ---@type DungeonTimers?
+    local DT = NorskenUI and NorskenUI:GetModule("DungeonTimers", true)
     local manager = GUIFrame:CreateWidgetStateManager()
 
-    local LSM = NRSKNUI.LSM
+    local function ApplySettings()
+        if DT and DT.UpdateFrameVisuals then DT:UpdateFrameVisuals() end
+    end
+
+    local function RefreshBarPreviews()
+        if DT and DT.RefreshSettingsBarPreviews then DT:RefreshSettingsBarPreviews() end
+    end
+
+    local function ApplyAndUpdate()
+        ApplySettings()
+        RefreshBarPreviews()
+    end
+
+    local function UpdateAllWidgetStates() manager:UpdateAll(db.Enabled) end
+
+    if NRSKNUI.GUI and NRSKNUI.GUI.DungeonTimers and NRSKNUI.GUI.DungeonTimers.HideTextPreviews then
+        NRSKNUI.GUI.DungeonTimers.HideTextPreviews()
+    end
+
+    if GUIFrame.selectedSidebarItem == "DT_Bars" and DT and DT.ShowSettingsBarPreviews then
+        DT:ShowSettingsBarPreviews()
+    end
+
     local TEXTURE_OPTIONS = {}
     if LSM then
         local textures = LSM:List("statusbar")
         for _, name in ipairs(textures) do
-            table_insert(TEXTURE_OPTIONS, { key = name, text = name })
+            table.insert(TEXTURE_OPTIONS, { key = name, text = name })
         end
     else
         TEXTURE_OPTIONS = { { key = "NorskenUI", text = "NorskenUI" } }
     end
 
-    local fontList = {}
-    if LSM then
-        for name in pairs(LSM:HashTable("font")) do
-            fontList[name] = name
-        end
-    else
-        fontList["Expressway"] = "Expressway"
-    end
-
-    local function ApplyAndUpdate()
-        ApplySettingsChanges()
-        RefreshBarPreviews()
-    end
-
-    ShowSettingsBarPreviews()
-
     local displayCard = GUIFrame:CreateCard(scrollChild, "Bar Display Settings", yOffset)
     manager:Register(displayCard, "all")
-
-    -- Global font/bar override toggles
-    local barFontWidgets = {}
-    local function UpdateBarFontWidgetStates()
-        local useGlobal = db.BarDisplay.UseGlobalFont ~= false
-        for _, widget in ipairs(barFontWidgets) do
-            if widget.SetEnabled then
-                widget:SetEnabled(not useGlobal)
-            end
-        end
-    end
-
-    local rowOverride = GUIFrame:CreateRow(displayCard.content, Theme.rowHeight)
-    local useGlobalFontCheck = GUIFrame:CreateCheckbox(rowOverride, "Use Global Font", {
-        value = db.BarDisplay.UseGlobalFont ~= false,
-        callback = function(checked)
-            db.BarDisplay.UseGlobalFont = checked
-            UpdateBarFontWidgetStates()
-            ApplyAndUpdate()
-        end
-    })
-    rowOverride:AddWidget(useGlobalFontCheck, 0.5)
-
-    local useGlobalBarCheck = GUIFrame:CreateCheckbox(rowOverride, "Use Global Bar Texture", {
-        value = db.BarDisplay.UseGlobalBar ~= false,
-        callback = function(checked)
-            db.BarDisplay.UseGlobalBar = checked
-            ApplyAndUpdate()
-        end
-    })
-    rowOverride:AddWidget(useGlobalBarCheck, 0.5)
-    displayCard:AddRow(rowOverride, Theme.rowHeight)
-
-    local rowOverrideSep = GUIFrame:CreateRow(displayCard.content, Theme.rowHeightSeparator)
-    rowOverrideSep:AddWidget(GUIFrame:CreateSeparator(rowOverrideSep), 1)
-    displayCard:AddRow(rowOverrideSep, Theme.rowHeightSeparator)
 
     local row1 = GUIFrame:CreateRow(displayCard.content, Theme.rowHeight)
     local widthSlider = GUIFrame:CreateSlider(row1, "Bar Width", {
@@ -159,6 +66,7 @@ GUIFrame:RegisterContent("DT_Bars", function(scrollChild, yOffset)
         end
     })
     row1:AddWidget(widthSlider, 0.5)
+    manager:Register(widthSlider, "all")
 
     local heightSlider = GUIFrame:CreateSlider(row1, "Bar Height", {
         min = 12,
@@ -172,79 +80,10 @@ GUIFrame:RegisterContent("DT_Bars", function(scrollChild, yOffset)
         end
     })
     row1:AddWidget(heightSlider, 0.5)
+    manager:Register(heightSlider, "all")
     displayCard:AddRow(row1, Theme.rowHeight)
 
-    local row2 = GUIFrame:CreateRow(displayCard.content, Theme.rowHeight)
-    local fontDropdown = GUIFrame:CreateDropdown(row2, "Font", {
-        options = fontList,
-        value = db.BarDisplay.fontFace or "Expressway",
-        callback = function(key)
-            db.BarDisplay.fontFace = key
-            ApplyAndUpdate()
-        end,
-        searchable = true,
-        isFontPreview = true
-    })
-    row2:AddWidget(fontDropdown, 0.5)
-    table_insert(barFontWidgets, fontDropdown)
-
-    local fontSizeSlider = GUIFrame:CreateSlider(row2, "Font Size", {
-        min = 8,
-        max = 24,
-        step = 1,
-        value = db.BarDisplay.fontSize or 12,
-        labelWidth = 60,
-        callback = function(val)
-            db.BarDisplay.fontSize = val
-            ApplyAndUpdate()
-        end
-    })
-    row2:AddWidget(fontSizeSlider, 0.5)
-    displayCard:AddRow(row2, Theme.rowHeight)
-
-    local row3 = GUIFrame:CreateRow(displayCard.content, Theme.rowHeight)
-    local outlineDropdown = GUIFrame:CreateDropdown(row3, "Font Outline", {
-        options = SETTINGS_TEXT_OUTLINE_OPTIONS,
-        value = db.BarDisplay.fontOutline or "OUTLINE",
-        callback = function(key)
-            db.BarDisplay.fontOutline = key
-            ApplyAndUpdate()
-        end
-    })
-    row3:AddWidget(outlineDropdown, 0.5)
-    table_insert(barFontWidgets, outlineDropdown)
-
-    local textureDropdown = GUIFrame:CreateDropdown(row3, "Bar Texture", {
-        options = TEXTURE_OPTIONS,
-        value = db.BarDisplay.barTexture or "NorskenUI",
-        callback = function(key)
-            db.BarDisplay.barTexture = key
-            ApplyAndUpdate()
-        end,
-        searchable = true
-    })
-    row3:AddWidget(textureDropdown, 0.5)
-    displayCard:AddRow(row3, Theme.rowHeight)
-
-    local row4 = GUIFrame:CreateRow(displayCard.content, Theme.rowHeightLast)
-    local iconCheck = GUIFrame:CreateCheckbox(row4, "Show Icon", {
-        value = db.BarDisplay.iconEnabled ~= false,
-        callback = function(checked)
-            db.BarDisplay.iconEnabled = checked
-            ApplyAndUpdate()
-        end
-    })
-    row4:AddWidget(iconCheck, 1)
-    displayCard:AddRow(row4, Theme.rowHeightLast, 0)
-
-    UpdateBarFontWidgetStates()
-
-    yOffset = displayCard:GetNextOffset()
-
-    local barGroupCard = GUIFrame:CreateCard(scrollChild, "Bar Group", yOffset)
-    manager:Register(barGroupCard, "all")
-
-    local barRow1 = GUIFrame:CreateRow(barGroupCard.content, Theme.rowHeightLast)
+    local barRow1 = GUIFrame:CreateRow(displayCard.content, Theme.rowHeight)
     local barGrowthDropdown = GUIFrame:CreateDropdown(barRow1, "Growth Direction", {
         options = SETTINGS_GROWTH_OPTIONS,
         value = db.BarGroup.GrowthDirection or "DOWN",
@@ -254,6 +93,7 @@ GUIFrame:RegisterContent("DT_Bars", function(scrollChild, yOffset)
         end
     })
     barRow1:AddWidget(barGrowthDropdown, 0.5)
+    manager:Register(barGrowthDropdown, "all")
 
     local barSpacingSlider = GUIFrame:CreateSlider(barRow1, "Spacing", {
         min = 0,
@@ -267,28 +107,89 @@ GUIFrame:RegisterContent("DT_Bars", function(scrollChild, yOffset)
         end
     })
     barRow1:AddWidget(barSpacingSlider, 0.5)
-    barGroupCard:AddRow(barRow1, Theme.rowHeightLast, 0)
+    manager:Register(barSpacingSlider, "all")
+    displayCard:AddRow(barRow1, Theme.rowHeight)
 
-    yOffset = barGroupCard:GetNextOffset()
+    local sep1 = GUIFrame:CreateSeparator(displayCard.content)
+    displayCard:AddRow(sep1, Theme.rowHeightSeparator)
+
+    local row2 = GUIFrame:CreateRow(displayCard.content, Theme.rowHeight)
+    local useGlobalBarCheck = GUIFrame:CreateCheckbox(row2, "Use Global Bar Texture", {
+        value = db.BarDisplay.UseGlobalBar ~= false,
+        callback = function(checked)
+            db.BarDisplay.UseGlobalBar = checked
+            ApplyAndUpdate()
+            UpdateAllWidgetStates()
+        end
+    })
+    row2:AddWidget(useGlobalBarCheck, 0.5)
+    manager:Register(useGlobalBarCheck, "all")
+
+    manager:SetCondition("GlobalOn", function() return not db.BarDisplay.UseGlobalBar end)
+
+    local textureDropdown = GUIFrame:CreateDropdown(row2, "Bar Texture", {
+        options = TEXTURE_OPTIONS,
+        value = db.BarDisplay.barTexture or "NorskenUI",
+        callback = function(key)
+            db.BarDisplay.barTexture = key
+            ApplyAndUpdate()
+        end,
+        searchable = true
+    })
+    row2:AddWidget(textureDropdown, 0.5)
+    manager:Register(textureDropdown, "all", "GlobalOn")
+    displayCard:AddRow(row2, Theme.rowHeight)
+
+    local sep2 = GUIFrame:CreateSeparator(displayCard.content)
+    displayCard:AddRow(sep2, Theme.rowHeightSeparator)
+
+    local row3 = GUIFrame:CreateRow(displayCard.content, Theme.rowHeightLast)
+    local iconCheck = GUIFrame:CreateCheckbox(row3, "Show Icon", {
+        value = db.BarDisplay.iconEnabled ~= false,
+        callback = function(checked)
+            db.BarDisplay.iconEnabled = checked
+            ApplyAndUpdate()
+        end
+    })
+    row3:AddWidget(iconCheck, 1)
+    manager:Register(iconCheck, "all")
+    displayCard:AddRow(row3, Theme.rowHeightLast, 0)
+
+    yOffset = displayCard:GetNextOffset()
+
+    local fontCard, fontOffset, fontWidgets = GUIFrame:CreateFontSettingsCard(scrollChild, yOffset, {
+        title = "Bar Font Settings",
+        db = db.BarDisplay,
+        includeSoftOutline = true,
+        globalOverride = {},
+        onChangeCallback = ApplyAndUpdate,
+    })
+    manager:Register(fontCard, "all")
+    manager:RegisterGroup(fontWidgets, "all")
+
+    yOffset = fontOffset
 
     local barPosCard, barPosYOffset = GUIFrame:CreatePositionCard(scrollChild, yOffset, {
         title = "Bar Group Position",
         db = db.BarGroup.Position,
-        defaults = {
-            xOffset = 0,
-            yOffset = 100,
-            selfPoint = "CENTER",
-            anchorPoint = "CENTER",
-        },
-        showAnchorFrameType = false,
-        showStrata = false,
-        sliderRange = { -800, 800 },
         onChangeCallback = ApplyAndUpdate,
     })
     manager:Register(barPosCard, "all")
+    if barPosCard.positionWidgets then manager:RegisterGroup(barPosCard.positionWidgets, "all") end
+
     yOffset = barPosYOffset
 
-    manager:UpdateAll(not isModuleDisabled)
+    UpdateAllWidgetStates()
 
     return yOffset
 end)
+
+NRSKNUI.GUI = NRSKNUI.GUI or {}
+NRSKNUI.GUI.DungeonTimers = NRSKNUI.GUI.DungeonTimers or {}
+
+NRSKNUI.GUI.DungeonTimers.HideBarPreviews = function()
+    local DT = NorskenUI and NorskenUI:GetModule("DungeonTimers", true)
+    if DT and DT.HideSettingsBarPreviews then DT:HideSettingsBarPreviews() end
+end
+
+GUIFrame.onCloseCallbacks["DT_Bars"] = NRSKNUI.GUI.DungeonTimers.HideBarPreviews

@@ -126,14 +126,6 @@ function BM:StyleChatBubbles()
     self:ApplyFont(font, bubblesDB.Size)
 end
 
-function BM:StyleObjectiveTracker()
-    local trackerDB = self.db.ObjectiveTracker
-    if not trackerDB or not trackerDB.Enabled then return end
-
-    self:ApplyFont(_G.ObjectiveTrackerLineFont, trackerDB.QuestTextSize)
-    self:ApplyFont(_G.ObjectiveTrackerHeaderFont, trackerDB.QuestTitleSize)
-end
-
 function BM:ResetUIErrorsFrame()
     local frame = _G.UIErrorsFrame
     if not frame then return end
@@ -174,7 +166,6 @@ function BM:ApplySettings()
     self:StyleUIErrorsFrame()
     self:StyleActionStatusText()
     self:StyleChatBubbles()
-    self:StyleObjectiveTracker()
     self:ZoneTextStyling()
 end
 

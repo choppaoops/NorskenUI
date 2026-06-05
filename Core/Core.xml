@@ -6,6 +6,7 @@
     <Script file="Enums.lua" />
     <Script file="Widgets.lua" />
     <Script file="Curves.lua" />
+    <Script file="Animations.lua" />
     <Script file="Defaults.lua"/>
     <Script file="Globals.lua" />
     <Script file="Secret.lua" />

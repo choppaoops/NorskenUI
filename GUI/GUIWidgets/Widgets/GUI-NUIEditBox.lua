@@ -71,54 +71,18 @@ function GUIFrame:CreateEditBox(parent, labelText, config)
     container:SetHeight(24)
     container:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -14)
     container:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, -14)
-    container:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8X8",
-        edgeFile = "Interface\\Buttons\\WHITE8X8",
-        edgeSize = 1,
-    })
+    container:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1, })
     container:SetBackdropColor(Theme.bgDark[1], Theme.bgDark[2], Theme.bgDark[3], 1)
     container:SetBackdropBorderColor(Theme.border[1], Theme.border[2], Theme.border[3], 1)
     row.container = container
 
-    local editBoxAnimGroup = container:CreateAnimationGroup()
-    local editBoxAnim = editBoxAnimGroup:CreateAnimation("Animation")
-    editBoxAnim:SetDuration(Theme.animDuration)
-
-    local editBoxColorFrom = {}
-    local editBoxColorTo = {}
-    local editBoxR, editBoxG, editBoxB = Theme.border[1], Theme.border[2], Theme.border[3]
-
-    local function AnimateEditBoxBorder(toAccent)
-        editBoxAnimGroup:Stop()
-        editBoxColorFrom.r = editBoxR
-        editBoxColorFrom.g = editBoxG
-        editBoxColorFrom.b = editBoxB
-
-        if toAccent then
-            editBoxColorTo.r = Theme.accent[1]
-            editBoxColorTo.g = Theme.accent[2]
-            editBoxColorTo.b = Theme.accent[3]
-        else
-            editBoxColorTo.r = Theme.border[1]
-            editBoxColorTo.g = Theme.border[2]
-            editBoxColorTo.b = Theme.border[3]
-        end
-        editBoxAnimGroup:Play()
-    end
-
-    editBoxAnimGroup:SetScript("OnUpdate", function(anim)
-        local progress = anim:GetProgress() or 0
-        local r = editBoxColorFrom.r + (editBoxColorTo.r - editBoxColorFrom.r) * progress
-        local g = editBoxColorFrom.g + (editBoxColorTo.g - editBoxColorFrom.g) * progress
-        local b = editBoxColorFrom.b + (editBoxColorTo.b - editBoxColorFrom.b) * progress
-        container:SetBackdropBorderColor(r, g, b, 1)
-        editBoxR, editBoxG, editBoxB = r, g, b
-    end)
-
-    editBoxAnimGroup:SetScript("OnFinished", function()
-        container:SetBackdropBorderColor(editBoxColorTo.r, editBoxColorTo.g, editBoxColorTo.b, 1)
-        editBoxR, editBoxG, editBoxB = editBoxColorTo.r, editBoxColorTo.g, editBoxColorTo.b
-    end)
+    local animateBorder = NRSKNUI.Animations:CreateHoverColorAnimator(
+        container,
+        function(r, g, b, a) container:SetBackdropBorderColor(r, g, b, a) end,
+        Theme.border,
+        Theme.accent,
+        Theme.animDuration
+    )
 
     local editBox = CreateFrame("EditBox", nil, container)
     editBox:SetPoint("TOPLEFT", container, "TOPLEFT", 6, -4)
@@ -147,14 +111,10 @@ function GUIFrame:CreateEditBox(parent, labelText, config)
     end)
 
     editBox:SetScript("OnEnter", function()
-        if not editBox:HasFocus() then
-            AnimateEditBoxBorder(true)
-        end
+        if not editBox:HasFocus() then animateBorder(true) end
     end)
     editBox:SetScript("OnLeave", function()
-        if not editBox:HasFocus() then
-            AnimateEditBoxBorder(false)
-        end
+        if not editBox:HasFocus() then animateBorder(false) end
     end)
 
     Mixin(row, NUIEditBoxMixin)

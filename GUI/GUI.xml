@@ -93,6 +93,7 @@
     <Script file="GUITabs\GUISkinning\GUI-UIWidgetsTab.lua" />
     <Script file="GUITabs\GUISkinning\GUI-BnetFrame.lua" />
     <Script file="GUITabs\GUISkinning\GUI-Chatv2.lua" />
+    <Script file="GUITabs\GUISkinning\GUI-BlizzElements.lua" />
 
     <!-- GUI Aura Tracking Tabs -->
     <Script file="GUITabs\GUI-AuraTracking\GUI-Buffs.lua" />

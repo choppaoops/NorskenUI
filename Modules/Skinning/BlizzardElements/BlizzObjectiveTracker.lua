@@ -1,0 +1,447 @@
+---@class NRSKNUI
+local NRSKNUI = select(2, ...)
+local Theme = NRSKNUI.Theme
+
+if not NorskenUI then
+    error("BlizzObjectiveTracker: Addon object not initialized. Check file load order!")
+    return
+end
+
+---@class BlizzObjectiveTracker: AceModule, AceEvent-3.0
+local BOT = NorskenUI:NewModule("BlizzObjectiveTracker", "AceEvent-3.0")
+
+local hooksecurefunc = hooksecurefunc
+local pairs = pairs
+local select = select
+local type = type
+local CreateFrame = CreateFrame
+local C_ChallengeMode = C_ChallengeMode
+local CHALLENGE_MODE_EXTRA_AFFIX_INFO = CHALLENGE_MODE_EXTRA_AFFIX_INFO
+
+BOT.coloredHeaders = {}
+BOT.coloredProgressBars = {}
+
+local function GetAccentColor(objDb)
+    local mode = objDb.ColorMode or "Theme"
+    if mode == "Class" then
+        return NRSKNUI:GetPlayerClassColor()
+    elseif mode == "Custom" then
+        return objDb.CustomColor or { 0, 1, 0.17, 1 }
+    else
+        return { Theme.accent[1], Theme.accent[2], Theme.accent[3], 1 }
+    end
+end
+
+function BOT:UpdateDB()
+    self.db = NRSKNUI.db.profile.Skinning.BlizzardElements
+end
+
+function BOT:OnInitialize()
+    self:UpdateDB()
+    self:SetEnabledState(false)
+end
+
+function BOT:OnEnable()
+    if NRSKNUI:ShouldNotLoadModule() then return end
+    if not self.db.Enabled then return end
+
+    self:SkinObjectiveTracker()
+end
+
+local function ReskinQuestIcon(button)
+    if not button then return end
+    if not button.SetNormalTexture then return end
+    if button.styled then return end
+
+    button:SetNormalTexture(0)
+    button:SetPushedTexture(0)
+
+    local highlight = button:GetHighlightTexture()
+    if highlight then highlight:SetColorTexture(1, 1, 1, 0.25) end
+
+    local icon = button.icon or button.Icon
+    if icon then
+        icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        NRSKNUI:AddBorders(button, { 0, 0, 0, 1 })
+    end
+
+    button.styled = true
+end
+
+local function ReskinQuestIcons(_, block)
+    ReskinQuestIcon(block.ItemButton)
+    ReskinQuestIcon(block.rightEdgeFrame)
+end
+
+local function ReskinHeader(header, color)
+    if not header then return end
+
+    local r, g, b = color[1], color[2], color[3]
+
+    if header.styled then
+        if header.Text then header.Text:SetTextColor(r, g, b) end
+        if header.bg then header.bg:SetVertexColor(r, g, b, 0.8) end
+        return
+    end
+
+    header.Text:SetTextColor(r, g, b)
+    header.Background:SetTexture(nil)
+
+    local bg = header:CreateTexture(nil, "ARTWORK")
+    bg:SetAtlas("UI-Journeys-Paragon-Level-divider")
+    bg:SetVertexColor(r, g, b, 0.8)
+    bg:SetPoint("CENTER", 0, -12)
+    bg:SetSize(31, 320)
+    bg:SetRotation(math.pi / 2)
+    header.bg = bg
+
+    BOT.coloredHeaders[header] = true
+    header.styled = true
+end
+
+local function ReskinProgressBar(bar, color)
+    if not bar then return end
+
+    if bar.styled then
+        bar:SetStatusBarColor(color[1], color[2], color[3])
+        return
+    end
+
+    for i = 1, bar:GetNumRegions() do
+        local region = select(i, bar:GetRegions())
+        if region and region:IsObjectType("Texture") then
+            local texture = region:GetTexture()
+            if texture and type(texture) == "string" and not texture:find("UI-QuestHUD-Bar-Fill") then
+                region:SetTexture(nil)
+            end
+        end
+    end
+
+    bar:SetStatusBarTexture(NRSKNUI.Media.statusbar or "Interface\\Buttons\\WHITE8x8")
+    bar:SetStatusBarColor(color[1], color[2], color[3])
+
+    local bg = CreateFrame("Frame", nil, bar, "BackdropTemplate")
+    bg:SetPoint("TOPLEFT", bar, -1, 1)
+    bg:SetPoint("BOTTOMRIGHT", bar, 1, -1)
+    bg:SetFrameLevel(bar:GetFrameLevel() - 1)
+    bg:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
+    bg:SetBackdropColor(0, 0, 0, 0.5)
+    NRSKNUI:AddBorders(bg, { 0, 0, 0, 1 })
+    bar.bg = bg
+
+    BOT.coloredProgressBars[bar] = true
+    bar.styled = true
+end
+
+local function ProgressBarHook(tracker, key)
+    local progressBar = tracker.usedProgressBars and tracker.usedProgressBars[key]
+    local bar = progressBar and progressBar.Bar
+    if bar then
+        local color = GetAccentColor(BOT.db.ObjectiveTracker)
+        ReskinProgressBar(bar, color)
+
+        local icon = bar.Icon
+        if icon and not icon.styled then
+            icon:SetMask("")
+            icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            icon:ClearAllPoints()
+            icon:SetPoint("TOPLEFT", bar, "TOPRIGHT", 5, 0)
+            icon:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 25, 0)
+
+            local iconBorder = CreateFrame("Frame", nil, bar)
+            iconBorder:SetPoint("TOPLEFT", icon, -1, 1)
+            iconBorder:SetPoint("BOTTOMRIGHT", icon, 1, -1)
+            NRSKNUI:AddBorders(iconBorder, { 0, 0, 0, 1 })
+            icon.border = iconBorder
+            icon.styled = true
+        end
+
+        if icon and icon.border then
+            icon.border:SetShown(icon:IsShown() and icon:GetTexture() ~= nil)
+        end
+    end
+end
+
+local function TimerBarHook(tracker, key)
+    local timerBar = tracker.usedTimerBars and tracker.usedTimerBars[key]
+    local bar = timerBar and timerBar.Bar
+    if bar then
+        local color = GetAccentColor(BOT.db.ObjectiveTracker)
+        ReskinProgressBar(bar, color)
+    end
+end
+
+local BSKIN = NRSKNUI.BlizzSkin
+
+function BOT:SkinObjectiveTracker()
+    if self.skinned then return end
+    if not ObjectiveTrackerFrame then return end
+
+    local objDb = self.db.ObjectiveTracker
+    if not objDb or not objDb.Enabled then return end
+
+    local color = GetAccentColor(objDb)
+
+    local mainHeader = ObjectiveTrackerFrame.Header
+    if mainHeader then
+        if objDb.SkinHeaders then
+            for i = 1, mainHeader:GetNumRegions() do
+                local region = select(i, mainHeader:GetRegions())
+                if region and region:IsObjectType("Texture") then
+                    region:SetTexture(nil)
+                end
+            end
+        end
+
+        if objDb.SkinMinimizeButton then
+            local mainMinimize = mainHeader.MinimizeButton
+            if mainMinimize then
+                BSKIN:ReskinCollapse(mainMinimize)
+                if mainHeader.SetCollapsed then
+                    hooksecurefunc(mainHeader, "SetCollapsed", function(_, collapsed)
+                        if mainMinimize.DoCollapse then
+                            mainMinimize:DoCollapse(collapsed)
+                        end
+                    end)
+                end
+            end
+        end
+    end
+
+    local trackers = {
+        ScenarioObjectiveTracker,
+        UIWidgetObjectiveTracker,
+        CampaignQuestObjectiveTracker,
+        QuestObjectiveTracker,
+        AdventureObjectiveTracker,
+        AchievementObjectiveTracker,
+        MonthlyActivitiesObjectiveTracker,
+        ProfessionsRecipeTracker,
+        BonusObjectiveTracker,
+        WorldQuestObjectiveTracker,
+    }
+
+    for _, tracker in pairs(trackers) do
+        if tracker then
+            if objDb.SkinHeaders and tracker.Header then
+                ReskinHeader(tracker.Header, color)
+            end
+            if objDb.SkinQuestIcons then
+                hooksecurefunc(tracker, "AddBlock", ReskinQuestIcons)
+            end
+            if objDb.SkinProgressBars then
+                hooksecurefunc(tracker, "GetProgressBar", ProgressBarHook)
+                hooksecurefunc(tracker, "GetTimerBar", TimerBarHook)
+            end
+        end
+    end
+
+    if objDb.SkinProgressBars then
+        self:SkinScenarioTracker()
+    end
+
+    self.skinned = true
+end
+
+function BOT:SkinScenarioTracker()
+    if not ScenarioObjectiveTracker then return end
+
+    local stageBlock = ScenarioObjectiveTracker.StageBlock
+    if stageBlock then
+        hooksecurefunc(stageBlock, "UpdateStageBlock", function(block)
+            if block.NormalBG then
+                block.NormalBG:SetTexture("")
+            end
+            if not block.bg and block.GlowTexture then
+                local bg = CreateFrame("Frame", nil, block, "BackdropTemplate")
+                bg:SetPoint("TOPLEFT", block.GlowTexture, 0, -2)
+                bg:SetPoint("BOTTOMRIGHT", block.GlowTexture, 4, 2)
+                bg:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
+                bg:SetBackdropColor(0, 0, 0, 0.5)
+                bg:SetFrameLevel(block:GetFrameLevel() - 1)
+                NRSKNUI:AddBorders(bg, { 0, 0, 0, 1 })
+                block.bg = bg
+            end
+        end)
+
+        hooksecurefunc(stageBlock, "UpdateWidgetRegistration", function(stageBlockSelf)
+            local widgetContainer = stageBlockSelf.WidgetContainer
+            if widgetContainer and widgetContainer.widgetFrames then
+                for _, widgetFrame in pairs(widgetContainer.widgetFrames) do
+                    if widgetFrame.Frame then
+                        widgetFrame.Frame:SetAlpha(0)
+                    end
+
+                    local bar = widgetFrame.TimerBar
+                    if bar and not bar.bg then
+                        local bg = CreateFrame("Frame", nil, bar, "BackdropTemplate")
+                        bg:SetAllPoints(bar)
+                        bg:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
+                        bg:SetBackdropColor(0, 0, 0, 0.25)
+                        bg:SetFrameLevel(bar:GetFrameLevel() - 1)
+                        bar.bg = bg
+                    end
+
+                    if widgetFrame.CurrencyContainer and widgetFrame.currencyPool then
+                        for currencyFrame in widgetFrame.currencyPool:EnumerateActive() do
+                            if currencyFrame.Icon and not currencyFrame.styled then
+                                currencyFrame.Icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+                                NRSKNUI:AddBorders(currencyFrame, { 0, 0, 0, 1 })
+                                currencyFrame.styled = true
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end
+
+    local challengeBlock = ScenarioObjectiveTracker.ChallengeModeBlock
+    if challengeBlock then
+        hooksecurefunc(challengeBlock, "SetUpAffixes", function(challengeBlockSelf)
+            if not challengeBlockSelf.affixPool then return end
+            for frame in challengeBlockSelf.affixPool:EnumerateActive() do
+                if frame.Border then
+                    frame.Border:SetTexture(nil)
+                end
+                if frame.Portrait and not frame.styled then
+                    frame.Portrait:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+                    NRSKNUI:AddBorders(frame, { 0, 0, 0, 1 })
+                    frame.styled = true
+                end
+
+                if frame.Portrait then
+                    if frame.info then
+                        local info = CHALLENGE_MODE_EXTRA_AFFIX_INFO[frame.info.key]
+                        if info then
+                            frame.Portrait:SetTexture(info.texture)
+                        end
+                    elseif frame.affixID then
+                        local _, _, filedataid = C_ChallengeMode.GetAffixInfo(frame.affixID)
+                        frame.Portrait:SetTexture(filedataid)
+                    end
+                end
+            end
+        end)
+
+        hooksecurefunc(challengeBlock, "Activate", function(block)
+            if block.styled then return end
+
+            if block.TimerBG then block.TimerBG:Hide() end
+            if block.TimerBGBack then block.TimerBGBack:Hide() end
+
+            if block.TimerBGBack then
+                local timerbg = CreateFrame("Frame", nil, block, "BackdropTemplate")
+                timerbg:SetPoint("TOPLEFT", block.TimerBGBack, 6, -2)
+                timerbg:SetPoint("BOTTOMRIGHT", block.TimerBGBack, -6, -5)
+                timerbg:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
+                timerbg:SetBackdropColor(0, 0, 0, 0.3)
+                timerbg:SetFrameLevel(block:GetFrameLevel() - 1)
+                block.timerbg = timerbg
+            end
+
+            if block.StatusBar then
+                block.StatusBar:SetStatusBarTexture(NRSKNUI.Media.statusbar or "Interface\\Buttons\\WHITE8x8")
+                block.StatusBar:SetStatusBarColor(Theme.accent[1], Theme.accent[2], Theme.accent[3])
+                block.StatusBar:SetHeight(10)
+            end
+
+            local region3 = select(3, block:GetRegions())
+            if region3 then region3:Hide() end
+
+            local bg = CreateFrame("Frame", nil, block, "BackdropTemplate")
+            bg:SetPoint("TOPLEFT", block, 4, -2)
+            bg:SetPoint("BOTTOMRIGHT", block, -4, 0)
+            bg:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
+            bg:SetBackdropColor(0, 0, 0, 0.5)
+            bg:SetFrameLevel(block:GetFrameLevel() - 1)
+            NRSKNUI:AddBorders(bg, { 0, 0, 0, 1 })
+            block.bg = bg
+
+            block.styled = true
+        end)
+    end
+
+    hooksecurefunc(ScenarioObjectiveTracker, "UpdateSpellCooldowns", function(scenarioSelf)
+        if not scenarioSelf.spellFramePool then return end
+        for spellFrame in scenarioSelf.spellFramePool:EnumerateActive() do
+            local spellButton = spellFrame.SpellButton
+            if spellButton and not spellButton.styled then
+                if spellButton.Icon then
+                    spellButton.Icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+                    NRSKNUI:AddBorders(spellButton, { 0, 0, 0, 1 })
+                end
+                spellButton:SetNormalTexture(0)
+                spellButton:SetPushedTexture(0)
+
+                local hl = spellButton:GetHighlightTexture()
+                if hl then
+                    hl:SetColorTexture(1, 1, 1, 0.25)
+                end
+
+                spellButton.styled = true
+            end
+        end
+    end)
+end
+
+function BOT:StyleFonts()
+    local fontDB = self.db.ObjectiveTracker
+    if not fontDB or not fontDB.Enabled or not fontDB.FontStyling then return end
+
+    local fontName = NRSKNUI:GetEffectiveFont(self.db)
+    local fontPath = NRSKNUI:GetFontPath(fontName)
+    local outline = NRSKNUI:GetFontOutline(self.db.FontOutline) or ""
+
+    local function ApplyFont(fontObject, size)
+        if not fontObject then return end
+        fontObject:SetFont(fontPath, size, outline)
+
+        local shadowDb = self.db.FontShadow
+        if shadowDb and shadowDb.Enabled then
+            local c = shadowDb.Color or { 0, 0, 0, 1 }
+            fontObject:SetShadowColor(c[1] or 0, c[2] or 0, c[3] or 0, c[4] or 1)
+            fontObject:SetShadowOffset(shadowDb.OffsetX or 1, shadowDb.OffsetY or -1)
+        else
+            fontObject:SetShadowColor(0, 0, 0, 0)
+            fontObject:SetShadowOffset(0, 0)
+        end
+    end
+
+    ApplyFont(_G.ObjectiveTrackerLineFont, fontDB.QuestTextSize)
+    ApplyFont(_G.ObjectiveTrackerHeaderFont, fontDB.QuestTitleSize)
+end
+
+function BOT:UpdateColors()
+    local objDb = self.db.ObjectiveTracker
+    if not objDb then return end
+
+    local color = GetAccentColor(objDb)
+
+    for header in pairs(self.coloredHeaders) do
+        if header.Text then header.Text:SetTextColor(color[1], color[2], color[3]) end
+        if header.bg then header.bg:SetVertexColor(color[1], color[2], color[3], 0.8) end
+    end
+
+    for bar in pairs(self.coloredProgressBars) do
+        bar:SetStatusBarColor(color[1], color[2], color[3])
+    end
+
+    local challengeBlock = ScenarioObjectiveTracker and ScenarioObjectiveTracker.ChallengeModeBlock
+    if challengeBlock and challengeBlock.StatusBar then
+        challengeBlock.StatusBar:SetStatusBarColor(color[1], color[2], color[3])
+    end
+end
+
+function BOT:ApplySettings()
+    if NRSKNUI:ShouldNotLoadModule() then return end
+    if not self.db.Enabled then return end
+
+    self:SkinObjectiveTracker()
+    self:UpdateColors()
+    self:StyleFonts()
+end
+
+function BOT:OnDisable()
+    -- Skinning changes are permanent once applied
+end

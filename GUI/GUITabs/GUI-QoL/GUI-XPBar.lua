@@ -20,8 +20,10 @@ GUIFrame:RegisterContent("XPBar", function(scrollChild, yOffset)
 
     local function UpdateAllWidgetStates()
         local customEnabled = db.ColorMode == "custom"
+        local customRestedEnabled = db.ColorModeRested == "custom"
         manager:UpdateAll(db.Enabled)
         manager:UpdateGroup("custom", customEnabled and db.Enabled)
+        manager:UpdateGroup("customRested", customRestedEnabled and db.Enabled)
     end
 
     -- Card 1: Enable
@@ -83,20 +85,21 @@ GUIFrame:RegisterContent("XPBar", function(scrollChild, yOffset)
         callback = function(checked)
             db.UseGlobalBar = checked
             ApplySettings()
+            UpdateAllWidgetStates()
         end
     })
-    row2b:AddWidget(useGlobalBarCheck, 1)
+    row2b:AddWidget(useGlobalBarCheck, 0.5)
     manager:Register(useGlobalBarCheck, "all")
-    card2:AddRow(row2b, Theme.rowHeight)
 
-    local row2c = GUIFrame:CreateRow(card2.content, Theme.rowHeightLast)
+    manager:SetCondition("GlobalOn", function() return not db.UseGlobalBar end)
+
     local statusbarList = {}
     if LSM then
         for name in pairs(LSM:HashTable("statusbar")) do statusbarList[name] = name end
     else
         statusbarList["Blizzard"] = "Blizzard"
     end
-    local statusbarDropdown = GUIFrame:CreateDropdown(row2c, "Bar Texture", {
+    local statusbarDropdown = GUIFrame:CreateDropdown(row2b, "Bar Texture", {
         options = statusbarList,
         value = db.StatusBarTexture,
         callback = function(key)
@@ -105,9 +108,9 @@ GUIFrame:RegisterContent("XPBar", function(scrollChild, yOffset)
         end,
         searchable = true
     })
-    row2c:AddWidget(statusbarDropdown, 1)
-    manager:Register(statusbarDropdown, "all")
-    card2:AddRow(row2c, Theme.rowHeightLast, 0)
+    row2b:AddWidget(statusbarDropdown, 0.5)
+    manager:Register(statusbarDropdown, "all", "GlobalOn")
+    card2:AddRow(row2b, Theme.rowHeightLast, 0)
 
     yOffset = card2:GetNextOffset()
 
@@ -140,15 +143,27 @@ GUIFrame:RegisterContent("XPBar", function(scrollChild, yOffset)
     card3:AddRow(row3a, Theme.rowHeight)
 
     local row3ab = GUIFrame:CreateRow(card3.content, Theme.rowHeight)
-    local restedColor = GUIFrame:CreateColorPicker(row3ab, "Rested XP Color", {
+    local colorModeRestedDropdown = GUIFrame:CreateDropdown(row3ab, "Rested XP Color Mode", {
+        options = NRSKNUI.ColorModeOptions,
+        value = db.ColorModeRested,
+        callback = function(key)
+            db.ColorModeRested = key
+            ApplySettings()
+            UpdateAllWidgetStates()
+        end
+    })
+    row3ab:AddWidget(colorModeRestedDropdown, 0.5)
+    manager:Register(colorModeRestedDropdown, "all")
+
+    local restedColor = GUIFrame:CreateColorPicker(row3ab, "Custom Rested XP Color", {
         color = db.RestedColor,
         callback = function(r, g, b, a)
             db.RestedColor = { r, g, b, a }
             ApplySettings()
         end
     })
-    row3ab:AddWidget(restedColor, 1)
-    manager:Register(restedColor, "all")
+    row3ab:AddWidget(restedColor, 0.5)
+    manager:Register(restedColor, "customRested")
     card3:AddRow(row3ab, Theme.rowHeight)
 
     local sep3 = GUIFrame:CreateSeparator(card3.content)

@@ -10,7 +10,6 @@ local C_Timer = C_Timer
 local math_floor, math_max, math_min = math.floor, math.max, math.min
 local GetTime = GetTime
 local type = type
-local tostring = tostring
 
 local STEPPER_TEXTURE = "Interface\\AddOns\\NorskenUI\\Media\\GUITextures\\collapse.tga"
 
@@ -161,8 +160,8 @@ function GUIFrame:CreateSlider(parent, labelText, config)
         hoverAnimGroup:Play()
     end
 
-    hoverAnimGroup:SetScript("OnUpdate", function(self)
-        local progress = self:GetProgress() or 0
+    hoverAnimGroup:SetScript("OnUpdate", function(animGroup)
+        local progress = animGroup:GetProgress() or 0
         local r = borderColorFrom.r + (borderColorTo.r - borderColorFrom.r) * progress
         local g = borderColorFrom.g + (borderColorTo.g - borderColorFrom.g) * progress
         local b = borderColorFrom.b + (borderColorTo.b - borderColorFrom.b) * progress
@@ -198,53 +197,16 @@ function GUIFrame:CreateSlider(parent, labelText, config)
         slider:SetValue(newVal)
     end)
 
-    local leftAnimGroup = leftStepper:CreateAnimationGroup()
-    local leftAnim = leftAnimGroup:CreateAnimation("Animation")
-    leftAnim:SetDuration(Theme.animDuration)
+    local animateLeftStepper = NRSKNUI.Animations:CreateHoverColorAnimator(
+        leftStepper,
+        function(r, g, b, a) leftIcon:SetVertexColor(r, g, b, a) end,
+        Theme.textSecondary,
+        Theme.accent,
+        Theme.animDuration
+    )
 
-    local leftColorFrom = {}
-    local leftColorTo = {}
-    local leftR, leftG, leftB = Theme.textSecondary[1], Theme.textSecondary[2], Theme.textSecondary[3]
-
-    local function AnimateLeftStepperColor(toAccent)
-        leftAnimGroup:Stop()
-        leftColorFrom.r = leftR
-        leftColorFrom.g = leftG
-        leftColorFrom.b = leftB
-
-        if toAccent then
-            leftColorTo.r = Theme.accent[1]
-            leftColorTo.g = Theme.accent[2]
-            leftColorTo.b = Theme.accent[3]
-        else
-            leftColorTo.r = Theme.textSecondary[1]
-            leftColorTo.g = Theme.textSecondary[2]
-            leftColorTo.b = Theme.textSecondary[3]
-        end
-        leftAnimGroup:Play()
-    end
-
-    leftAnimGroup:SetScript("OnUpdate", function(self)
-        local progress = self:GetProgress() or 0
-        local r = leftColorFrom.r + (leftColorTo.r - leftColorFrom.r) * progress
-        local g = leftColorFrom.g + (leftColorTo.g - leftColorFrom.g) * progress
-        local b = leftColorFrom.b + (leftColorTo.b - leftColorFrom.b) * progress
-        leftIcon:SetVertexColor(r, g, b, 1)
-        leftR, leftG, leftB = r, g, b
-    end)
-
-    leftAnimGroup:SetScript("OnFinished", function()
-        leftIcon:SetVertexColor(leftColorTo.r, leftColorTo.g, leftColorTo.b, 1)
-        leftR, leftG, leftB = leftColorTo.r, leftColorTo.g, leftColorTo.b
-    end)
-
-    leftStepper:SetScript("OnEnter", function()
-        AnimateLeftStepperColor(true)
-    end)
-
-    leftStepper:SetScript("OnLeave", function()
-        AnimateLeftStepperColor(false)
-    end)
+    leftStepper:SetScript("OnEnter", function() animateLeftStepper(true) end)
+    leftStepper:SetScript("OnLeave", function() animateLeftStepper(false) end)
 
     local rightStepper = CreateFrame("Button", nil, row)
     rightStepper:SetSize(stepperSize, stepperSize)
@@ -266,53 +228,16 @@ function GUIFrame:CreateSlider(parent, labelText, config)
         slider:SetValue(newVal)
     end)
 
-    local rightAnimGroup = rightStepper:CreateAnimationGroup()
-    local rightAnim = rightAnimGroup:CreateAnimation("Animation")
-    rightAnim:SetDuration(Theme.animDuration)
+    local animateRightStepper = NRSKNUI.Animations:CreateHoverColorAnimator(
+        rightStepper,
+        function(r, g, b, a) rightIcon:SetVertexColor(r, g, b, a) end,
+        Theme.textSecondary,
+        Theme.accent,
+        Theme.animDuration
+    )
 
-    local rightColorFrom = {}
-    local rightColorTo = {}
-    local rightR, rightG, rightB = Theme.textSecondary[1], Theme.textSecondary[2], Theme.textSecondary[3]
-
-    local function AnimateRightStepperColor(toAccent)
-        rightAnimGroup:Stop()
-        rightColorFrom.r = rightR
-        rightColorFrom.g = rightG
-        rightColorFrom.b = rightB
-
-        if toAccent then
-            rightColorTo.r = Theme.accent[1]
-            rightColorTo.g = Theme.accent[2]
-            rightColorTo.b = Theme.accent[3]
-        else
-            rightColorTo.r = Theme.textSecondary[1]
-            rightColorTo.g = Theme.textSecondary[2]
-            rightColorTo.b = Theme.textSecondary[3]
-        end
-        rightAnimGroup:Play()
-    end
-
-    rightAnimGroup:SetScript("OnUpdate", function(self)
-        local progress = self:GetProgress() or 0
-        local r = rightColorFrom.r + (rightColorTo.r - rightColorFrom.r) * progress
-        local g = rightColorFrom.g + (rightColorTo.g - rightColorFrom.g) * progress
-        local b = rightColorFrom.b + (rightColorTo.b - rightColorFrom.b) * progress
-        rightIcon:SetVertexColor(r, g, b, 1)
-        rightR, rightG, rightB = r, g, b
-    end)
-
-    rightAnimGroup:SetScript("OnFinished", function()
-        rightIcon:SetVertexColor(rightColorTo.r, rightColorTo.g, rightColorTo.b, 1)
-        rightR, rightG, rightB = rightColorTo.r, rightColorTo.g, rightColorTo.b
-    end)
-
-    rightStepper:SetScript("OnEnter", function()
-        AnimateRightStepperColor(true)
-    end)
-
-    rightStepper:SetScript("OnLeave", function()
-        AnimateRightStepperColor(false)
-    end)
+    rightStepper:SetScript("OnEnter", function() animateRightStepper(true) end)
+    rightStepper:SetScript("OnLeave", function() animateRightStepper(false) end)
 
     row.leftStepper = leftStepper
     row.rightStepper = rightStepper
@@ -327,45 +252,13 @@ function GUIFrame:CreateSlider(parent, labelText, config)
     valueContainer:SetBackdropColor(Theme.bgDark[1], Theme.bgDark[2], Theme.bgDark[3], 1)
     valueContainer:SetBackdropBorderColor(Theme.border[1], Theme.border[2], Theme.border[3], 1)
 
-    local editBoxAnimGroup = valueContainer:CreateAnimationGroup()
-    local editBoxAnim = editBoxAnimGroup:CreateAnimation("Animation")
-    editBoxAnim:SetDuration(Theme.animDuration)
-
-    local editBoxColorFrom = {}
-    local editBoxColorTo = {}
-    local editBoxR, editBoxG, editBoxB = Theme.border[1], Theme.border[2], Theme.border[3]
-
-    local function AnimateEditBoxBorder(toAccent)
-        editBoxAnimGroup:Stop()
-        editBoxColorFrom.r = editBoxR
-        editBoxColorFrom.g = editBoxG
-        editBoxColorFrom.b = editBoxB
-
-        if toAccent then
-            editBoxColorTo.r = Theme.accent[1]
-            editBoxColorTo.g = Theme.accent[2]
-            editBoxColorTo.b = Theme.accent[3]
-        else
-            editBoxColorTo.r = Theme.border[1]
-            editBoxColorTo.g = Theme.border[2]
-            editBoxColorTo.b = Theme.border[3]
-        end
-        editBoxAnimGroup:Play()
-    end
-
-    editBoxAnimGroup:SetScript("OnUpdate", function(self)
-        local progress = self:GetProgress() or 0
-        local r = editBoxColorFrom.r + (editBoxColorTo.r - editBoxColorFrom.r) * progress
-        local g = editBoxColorFrom.g + (editBoxColorTo.g - editBoxColorFrom.g) * progress
-        local b = editBoxColorFrom.b + (editBoxColorTo.b - editBoxColorFrom.b) * progress
-        valueContainer:SetBackdropBorderColor(r, g, b, 1)
-        editBoxR, editBoxG, editBoxB = r, g, b
-    end)
-
-    editBoxAnimGroup:SetScript("OnFinished", function()
-        valueContainer:SetBackdropBorderColor(editBoxColorTo.r, editBoxColorTo.g, editBoxColorTo.b, 1)
-        editBoxR, editBoxG, editBoxB = editBoxColorTo.r, editBoxColorTo.g, editBoxColorTo.b
-    end)
+    local animateEditBoxBorder = NRSKNUI.Animations:CreateHoverColorAnimator(
+        valueContainer,
+        function(r, g, b, a) valueContainer:SetBackdropBorderColor(r, g, b, a) end,
+        Theme.border,
+        Theme.accent,
+        Theme.animDuration
+    )
 
     local valueEdit = CreateFrame("EditBox", nil, valueContainer)
     valueEdit:SetPoint("TOPLEFT", 0, 0)
@@ -395,7 +288,7 @@ function GUIFrame:CreateSlider(parent, labelText, config)
 
     local throttleDelay = 0.1
     local lastUpdate = 0
-    slider:SetScript("OnValueChanged", function(self, val)
+    slider:SetScript("OnValueChanged", function(_, val)
         UpdateFill()
         UpdateThumbPosition()
         local currentTime = GetTime()
@@ -404,6 +297,9 @@ function GUIFrame:CreateSlider(parent, labelText, config)
         end
         lastUpdate = currentTime
         if callback then callback(val) end
+        if NRSKNUI.EditMode and NRSKNUI.EditMode.isActive then
+            NRSKNUI.EditMode:UpdateNudgeFrameInfo()
+        end
     end)
 
     slider:SetScript("OnSizeChanged", function()
@@ -411,58 +307,62 @@ function GUIFrame:CreateSlider(parent, labelText, config)
         UpdateThumbPosition()
     end)
 
-    valueEdit:SetScript("OnEscapePressed", function(self)
-        self:ClearFocus()
+    valueEdit:SetScript("OnEscapePressed", function(editBox)
+        editBox:ClearFocus()
         UpdateFill()
     end)
 
-    valueEdit:SetScript("OnEnterPressed", function(self)
-        self:ClearFocus()
-        local num = tonumber(self:GetText())
+    valueEdit:SetScript("OnEnterPressed", function(editBox)
+        editBox:ClearFocus()
+        local num = tonumber(editBox:GetText())
         if num then
             local minVal, maxVal = slider:GetMinMaxValues()
-            num = math_max(minVal, math_min(maxVal, num))
+            local clamped = math_max(minVal, math_min(maxVal, num))
+            if clamped ~= num then
+                NRSKNUI.Animations:Wobble(valueContainer)
+            end
             isUpdating = true
-            slider:SetValue(num)
+            slider:SetValue(clamped)
             isUpdating = false
         else
+            NRSKNUI.Animations:Wobble(valueContainer)
             UpdateFill()
         end
     end)
 
-    valueEdit:SetScript("OnEditFocusGained", function(self)
-        editBoxAnimGroup:Stop()
+    valueEdit:SetScript("OnEditFocusGained", function(editBox)
         valueContainer:SetBackdropBorderColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
-        editBoxR, editBoxG, editBoxB = Theme.accent[1], Theme.accent[2], Theme.accent[3]
-        self:HighlightText()
+        editBox:HighlightText()
     end)
 
-    valueEdit:SetScript("OnEditFocusLost", function(self)
-        editBoxAnimGroup:Stop()
+    valueEdit:SetScript("OnEditFocusLost", function(editBox)
         valueContainer:SetBackdropBorderColor(Theme.border[1], Theme.border[2], Theme.border[3], 1)
-        editBoxR, editBoxG, editBoxB = Theme.border[1], Theme.border[2], Theme.border[3]
-        self:HighlightText(0, 0)
-        local num = tonumber(self:GetText())
+        editBox:HighlightText(0, 0)
+        local num = tonumber(editBox:GetText())
         if num then
             local minVal, maxVal = slider:GetMinMaxValues()
-            num = math_max(minVal, math_min(maxVal, num))
+            local clamped = math_max(minVal, math_min(maxVal, num))
+            if clamped ~= num then
+                NRSKNUI.Animations:Wobble(valueContainer)
+            end
             isUpdating = true
-            slider:SetValue(num)
+            slider:SetValue(clamped)
             isUpdating = false
         else
+            NRSKNUI.Animations:Wobble(valueContainer)
             UpdateFill()
         end
     end)
 
     valueEdit:SetScript("OnEnter", function()
         if not valueEdit:HasFocus() then
-            AnimateEditBoxBorder(true)
+            animateEditBoxBorder(true)
         end
     end)
 
     valueEdit:SetScript("OnLeave", function()
         if not valueEdit:HasFocus() then
-            AnimateEditBoxBorder(false)
+            animateEditBoxBorder(false)
         end
     end)
 
@@ -477,10 +377,10 @@ function GUIFrame:CreateSlider(parent, labelText, config)
         end
     end)
 
-    slider:SetScript("OnMouseUp", function(self, button)
+    slider:SetScript("OnMouseUp", function(sliderFrame, button)
         if button == "LeftButton" then
             curDrag = false
-            if self:IsMouseOver() then
+            if sliderFrame:IsMouseOver() then
                 AnimateThumbColor(true, false)
             else
                 AnimateThumbColor(false, false)
@@ -539,8 +439,8 @@ function GUIFrame:CreateSlider(parent, labelText, config)
         local function SetupTooltip(frame)
             local oldEnter = frame:GetScript("OnEnter")
             local oldLeave = frame:GetScript("OnLeave")
-            frame:SetScript("OnEnter", function(self, ...)
-                if oldEnter then oldEnter(self, ...) end
+            frame:SetScript("OnEnter", function(f, ...)
+                if oldEnter then oldEnter(f, ...) end
                 GameTooltip:SetOwner(row, "ANCHOR_CURSOR_RIGHT", 30, 0)
                 GameTooltip:SetText(labelText or "", Theme.accent[1], Theme.accent[2], Theme.accent[3], 1, false)
                 GameTooltip:AddLine(tooltipText, Theme.textSecondary[1], Theme.textSecondary[2], Theme.textSecondary[3],
@@ -552,8 +452,8 @@ function GUIFrame:CreateSlider(parent, labelText, config)
                 end
                 GameTooltip:Show()
             end)
-            frame:SetScript("OnLeave", function(self, ...)
-                if oldLeave then oldLeave(self, ...) end
+            frame:SetScript("OnLeave", function(f, ...)
+                if oldLeave then oldLeave(f, ...) end
                 GameTooltip:Hide()
             end)
         end

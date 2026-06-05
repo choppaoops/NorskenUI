@@ -14,4 +14,6 @@
     <Script file="Battlenet.lua" />
     <Script file="BlizzardRaidmanager.lua" />
     <Script file="UIWidgets.lua" />
+
+    <Include file="BlizzardElements\BlizzardElements.xml" />
 </Ui>

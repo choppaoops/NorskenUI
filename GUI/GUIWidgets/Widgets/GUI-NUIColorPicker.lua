@@ -107,47 +107,16 @@ function GUIFrame:CreateColorPicker(parent, labelText, config)
 
     Mixin(row, NUIColorPickerMixin)
 
-    local hoverAnimGroup = swatch:CreateAnimationGroup()
-    local hoverAnim = hoverAnimGroup:CreateAnimation("Animation")
-    hoverAnim:SetDuration(Theme.animDuration)
+    local animateBorder = NRSKNUI.Animations:CreateHoverColorAnimator(
+        swatch,
+        function(r, g, b, a) swatch:SetBackdropBorderColor(r, g, b, a) end,
+        Theme.border,
+        Theme.accent,
+        Theme.animDuration
+    )
 
-    local borderColorFrom = {}
-    local borderColorTo = {}
-
-    hoverAnimGroup:SetScript("OnUpdate", function(anim)
-        local progress = anim:GetProgress() or 0
-        local r = borderColorFrom.r + (borderColorTo.r - borderColorFrom.r) * progress
-        local g = borderColorFrom.g + (borderColorTo.g - borderColorFrom.g) * progress
-        local b = borderColorFrom.b + (borderColorTo.b - borderColorFrom.b) * progress
-        swatch:SetBackdropBorderColor(r, g, b, 1)
-    end)
-
-    hoverAnimGroup:SetScript("OnFinished", function()
-        swatch:SetBackdropBorderColor(borderColorTo.r, borderColorTo.g, borderColorTo.b, 1)
-    end)
-
-    local function AnimateBorderColor(toAccent)
-        hoverAnimGroup:Stop()
-
-        local currentR, currentG, currentB = swatch:GetBackdropBorderColor()
-        borderColorFrom.r = currentR
-        borderColorFrom.g = currentG
-        borderColorFrom.b = currentB
-
-        if toAccent then
-            borderColorTo.r = Theme.accent[1]
-            borderColorTo.g = Theme.accent[2]
-            borderColorTo.b = Theme.accent[3]
-        else
-            borderColorTo.r = Theme.border[1]
-            borderColorTo.g = Theme.border[2]
-            borderColorTo.b = Theme.border[3]
-        end
-        hoverAnimGroup:Play()
-    end
-
-    swatch:SetScript("OnEnter", function() AnimateBorderColor(true) end)
-    swatch:SetScript("OnLeave", function() AnimateBorderColor(false) end)
+    swatch:SetScript("OnEnter", function() animateBorder(true) end)
+    swatch:SetScript("OnLeave", function() animateBorder(false) end)
     swatch:SetScript("OnClick", function()
         local prevR, prevG, prevB, prevA = swatch.r, swatch.g, swatch.b, swatch.a
         local info = {

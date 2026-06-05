@@ -17,7 +17,6 @@ local SIDEBAR_ITEMS = {
     { key = "ActionStatusText", name = "Action Status Text", order = 2 },
     { key = "ZoneText",         name = "Zone Texts",         order = 3 },
     { key = "ChatBubbles",      name = "Chat Bubbles",       order = 4 },
-    { key = "ObjectiveTracker", name = "Objective Tracker",  order = 5 },
 }
 
 GUIFrame:RegisterPanel("messages", function(container)
@@ -567,62 +566,6 @@ GUIFrame:RegisterPanel("messages", function(container)
         card2:AddRow(textRow, bubbleHeight, 0)
 
         yOffset = card2:GetNextOffset()
-        UpdateAllWidgetStates()
-    elseif selectedItem == "ObjectiveTracker" then
-        local objDb = db.ObjectiveTracker
-        manager:SetCondition("objEnabled", function() return objDb.Enabled end)
-
-        -- Card 1
-        local card1 = GUIFrame:CreateCard(contentChild, "Objective Tracker", yOffset)
-        miniSidebar.contentArea.RegisterCard(card1)
-
-        local row1 = GUIFrame:CreateRow(card1.content, Theme.rowHeight)
-        local enableCheck = GUIFrame:CreateCheckbox(row1, "Enable Objective Tracker Styling", {
-            value = objDb.Enabled,
-            callback = function(checked)
-                objDb.Enabled = checked
-                ApplySettings()
-                UpdateAllWidgetStates()
-            end
-        })
-        row1:AddWidget(enableCheck, 1)
-        card1:AddRow(row1, Theme.rowHeight)
-
-        local sep1 = GUIFrame:CreateSeparator(card1.content)
-        card1:AddRow(sep1, Theme.rowHeightSeparator)
-        manager:Register(sep1, "all", "objEnabled")
-
-        local row2 = GUIFrame:CreateRow(card1.content, Theme.rowHeightLast)
-        local titleSlider = GUIFrame:CreateSlider(row2, "Quest Title Size", {
-            min = 8,
-            max = 20,
-            step = 1,
-            value = objDb.QuestTitleSize,
-            labelWidth = 90,
-            callback = function(val)
-                objDb.QuestTitleSize = val
-                ApplySettings()
-            end
-        })
-        row2:AddWidget(titleSlider, 0.5)
-        manager:Register(titleSlider, "all", "objEnabled")
-
-        local textSlider = GUIFrame:CreateSlider(row2, "Quest Text Size", {
-            min = 8,
-            max = 20,
-            step = 1,
-            value = objDb.QuestTextSize,
-            labelWidth = 90,
-            callback = function(val)
-                objDb.QuestTextSize = val
-                ApplySettings()
-            end
-        })
-        row2:AddWidget(textSlider, 0.5)
-        manager:Register(textSlider, "all", "objEnabled")
-        card1:AddRow(row2, Theme.rowHeightLast, 0)
-
-        yOffset = card1:GetNextOffset()
         UpdateAllWidgetStates()
     end
 

@@ -444,6 +444,14 @@ function GUIFrame:CreateHeader(parent)
     })
 
     CreateHeaderButton({
+        size = 18,
+        xOffset = -56,
+        texture = "Interface\\AddOns\\NorskenUI\\Media\\GUITextures\\HomeButtonv2.png",
+        onClick = function() GUIFrame:OpenPage("HomePage") end,
+        toolTip = "Open Home Page"
+    })
+
+    CreateHeaderButton({
         size = 22,
         xOffset = -104,
         texture = "Interface\\AddOns\\NorskenUI\\Media\\GUITextures\\globe-earth.png",
@@ -452,11 +460,15 @@ function GUIFrame:CreateHeader(parent)
     })
 
     CreateHeaderButton({
-        size = 18,
-        xOffset = -56,
-        texture = "Interface\\AddOns\\NorskenUI\\Media\\GUITextures\\HomeButtonv2.png",
-        onClick = function() GUIFrame:OpenPage("HomePage") end,
-        toolTip = "Open Home Page"
+        size = 22,
+        xOffset = -128,
+        texture = "Interface\\AddOns\\NorskenUI\\Media\\GUITextures\\anchor.png",
+        onClick = function()
+            if NRSKNUI.EditMode then
+                NRSKNUI.EditMode:Toggle()
+            end
+        end,
+        toolTip = "Open Anchors"
     })
 
     -- Shortcut Menu Button

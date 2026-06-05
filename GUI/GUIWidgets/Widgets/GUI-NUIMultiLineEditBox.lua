@@ -89,45 +89,13 @@ function GUIFrame:CreateMultiLineEditBox(parent, labelText, config)
     container:SetBackdropBorderColor(Theme.border[1], Theme.border[2], Theme.border[3], 1)
     row.container = container
 
-    local animGroup = container:CreateAnimationGroup()
-    local anim = animGroup:CreateAnimation("Animation")
-    anim:SetDuration(Theme.animDuration)
-
-    local colorFrom = {}
-    local colorTo = {}
-    local borderR, borderG, borderB = Theme.border[1], Theme.border[2], Theme.border[3]
-
-    local function AnimateBorder(toAccent)
-        animGroup:Stop()
-        colorFrom.r = borderR
-        colorFrom.g = borderG
-        colorFrom.b = borderB
-
-        if toAccent then
-            colorTo.r = Theme.accent[1]
-            colorTo.g = Theme.accent[2]
-            colorTo.b = Theme.accent[3]
-        else
-            colorTo.r = Theme.border[1]
-            colorTo.g = Theme.border[2]
-            colorTo.b = Theme.border[3]
-        end
-        animGroup:Play()
-    end
-
-    animGroup:SetScript("OnUpdate", function(ag)
-        local progress = ag:GetProgress() or 0
-        local r = colorFrom.r + (colorTo.r - colorFrom.r) * progress
-        local g = colorFrom.g + (colorTo.g - colorFrom.g) * progress
-        local b = colorFrom.b + (colorTo.b - colorFrom.b) * progress
-        container:SetBackdropBorderColor(r, g, b, 1)
-        borderR, borderG, borderB = r, g, b
-    end)
-
-    animGroup:SetScript("OnFinished", function()
-        container:SetBackdropBorderColor(colorTo.r, colorTo.g, colorTo.b, 1)
-        borderR, borderG, borderB = colorTo.r, colorTo.g, colorTo.b
-    end)
+    local animateBorder = NRSKNUI.Animations:CreateHoverColorAnimator(
+        container,
+        function(r, g, b, a) container:SetBackdropBorderColor(r, g, b, a) end,
+        Theme.border,
+        Theme.accent,
+        Theme.animDuration
+    )
 
     local scrollFrame = CreateFrame("ScrollFrame", nil, container)
     scrollFrame:SetPoint("TOPLEFT", container, "TOPLEFT", 6, -6)
@@ -212,7 +180,7 @@ function GUIFrame:CreateMultiLineEditBox(parent, labelText, config)
 
     editBox:SetScript("OnEnter", function(eb)
         if not eb:HasFocus() then
-            AnimateBorder(true)
+            animateBorder(true)
         end
         if tooltip then
             GameTooltip:SetOwner(container, "ANCHOR_TOP")
@@ -223,7 +191,7 @@ function GUIFrame:CreateMultiLineEditBox(parent, labelText, config)
 
     editBox:SetScript("OnLeave", function(eb)
         if not eb:HasFocus() and not container:IsMouseOver() then
-            AnimateBorder(false)
+            animateBorder(false)
         end
         GameTooltip:Hide()
     end)
@@ -234,7 +202,7 @@ function GUIFrame:CreateMultiLineEditBox(parent, labelText, config)
     end)
     container:SetScript("OnEnter", function()
         if not editBox:HasFocus() then
-            AnimateBorder(true)
+            animateBorder(true)
         end
         if tooltip then
             GameTooltip:SetOwner(container, "ANCHOR_TOP")
@@ -244,7 +212,7 @@ function GUIFrame:CreateMultiLineEditBox(parent, labelText, config)
     end)
     container:SetScript("OnLeave", function()
         if not editBox:HasFocus() and not container:IsMouseOver() then
-            AnimateBorder(false)
+            animateBorder(false)
         end
         GameTooltip:Hide()
     end)
@@ -255,7 +223,7 @@ function GUIFrame:CreateMultiLineEditBox(parent, labelText, config)
     end)
     scrollFrame:SetScript("OnEnter", function()
         if not editBox:HasFocus() then
-            AnimateBorder(true)
+            animateBorder(true)
         end
         if tooltip then
             GameTooltip:SetOwner(container, "ANCHOR_TOP")
@@ -265,14 +233,14 @@ function GUIFrame:CreateMultiLineEditBox(parent, labelText, config)
     end)
     scrollFrame:SetScript("OnLeave", function()
         if not editBox:HasFocus() and not container:IsMouseOver() then
-            AnimateBorder(false)
+            animateBorder(false)
         end
         GameTooltip:Hide()
     end)
 
     scrollbar:HookScript("OnEnter", function()
         if not editBox:HasFocus() then
-            AnimateBorder(true)
+            animateBorder(true)
         end
         if tooltip then
             GameTooltip:SetOwner(container, "ANCHOR_TOP")
@@ -282,7 +250,7 @@ function GUIFrame:CreateMultiLineEditBox(parent, labelText, config)
     end)
     scrollbar:HookScript("OnLeave", function()
         if not editBox:HasFocus() and not container:IsMouseOver() then
-            AnimateBorder(false)
+            animateBorder(false)
         end
         GameTooltip:Hide()
     end)
