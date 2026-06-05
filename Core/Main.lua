@@ -34,9 +34,15 @@ function NorskenUI:OnInitialize()
     NRSKNUI.db = LibStub("AceDB-3.0"):New("NorskenUIDB", defaults, true)
     if LDS then
         LDS:EnhanceDatabase(NRSKNUI.db, "NorskenUI")
+        -- Hook CheckDualSpecState to skip spec-based switching when global profile is active
+        local originalCheckDualSpecState = NRSKNUI.db.CheckDualSpecState
+        NRSKNUI.db.CheckDualSpecState = function(db)
+            if NRSKNUI.db.global and NRSKNUI.db.global.UseGlobalProfile then return end
+            originalCheckDualSpecState(db)
+        end
     end
 
-    -- Ensure global Theme table exists with defaults (AceDB doesn't always merge new global defaults)
+    -- Ensure global Theme table exists with defaults
     if not NRSKNUI.db.global.Theme then
         NRSKNUI.db.global.Theme = defaults.global.Theme
     else
@@ -80,9 +86,7 @@ function NorskenUI:OnInitialize()
     NRSKNUI:UIScale()
 
     -- Slight delay so that current Theme color can be applied to the minimap icon
-    C_Timer.After(1, function()
-        NRSKNUI:SetupMinimapIcon()
-    end)
+    C_Timer.After(1, function() NRSKNUI:SetupMinimapIcon() end)
 end
 
 function NRSKNUI:SetupMinimapIcon()
@@ -130,7 +134,7 @@ end
 
 local function OnPlayerEnteringWorld()
     -- Automatically refresh all AceAddon modules
-    for name, module in NorskenUI:IterateModules() do
+    for _, module in NorskenUI:IterateModules() do
         if module:IsEnabled() and module.ApplySettings then
             module:ApplySettings()
         end
