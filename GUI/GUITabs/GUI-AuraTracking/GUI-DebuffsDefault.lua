@@ -316,6 +316,7 @@ GUIFrame:RegisterContent("CustomSkin_DebuffsDefault", function(scrollChild, yOff
         db = db,
         showAnchorFrameType = true,
         showStrata = true,
+        disableAnchorFrom = true,
         onChangeCallback = function()
             if DEBUFFS and DEBUFFS.ApplyPosition then
                 DEBUFFS:ApplyPosition()

@@ -156,6 +156,44 @@ GUIFrame:RegisterContent("CustomSkin_Externals", function(scrollChild, yOffset)
     manager:Register(maxRowsSlider, "all")
     card2:AddRow(row2b, Theme.rowHeight)
 
+    local sep2a = GUIFrame:CreateSeparator(card2.content)
+    card2:AddRow(sep2a, Theme.rowHeightSeparator)
+
+    local row2growth = GUIFrame:CreateRow(card2.content, Theme.rowHeight)
+    local growHList = {
+        { key = "LEFT",  text = "Left" },
+        { key = "RIGHT", text = "Right" },
+    }
+    local growHDropdown = GUIFrame:CreateDropdown(row2growth, "Grow Horizontal", {
+        options = growHList,
+        value = db.GrowHorizontal or "LEFT",
+        callback = function(key)
+            db.GrowHorizontal = key
+            ApplySettings()
+        end
+    })
+    row2growth:AddWidget(growHDropdown, 0.5)
+    manager:Register(growHDropdown, "all")
+
+    local growVList = {
+        { key = "UP",   text = "Up" },
+        { key = "DOWN", text = "Down" },
+    }
+    local growVDropdown = GUIFrame:CreateDropdown(row2growth, "Then Vertical", {
+        options = growVList,
+        value = db.GrowVertical or "DOWN",
+        callback = function(key)
+            db.GrowVertical = key
+            ApplySettings()
+        end
+    })
+    row2growth:AddWidget(growVDropdown, 0.5)
+    manager:Register(growVDropdown, "all")
+    card2:AddRow(row2growth, Theme.rowHeight)
+
+    local sep2b = GUIFrame:CreateSeparator(card2.content)
+    card2:AddRow(sep2b, Theme.rowHeightSeparator)
+
     local row2c = GUIFrame:CreateRow(card2.content, Theme.rowHeight)
     local iconZoomSlider = GUIFrame:CreateSlider(row2c, "Icon Zoom", {
         min = 0,
@@ -305,6 +343,7 @@ GUIFrame:RegisterContent("CustomSkin_Externals", function(scrollChild, yOffset)
         db = db,
         showAnchorFrameType = true,
         showStrata = true,
+        disableAnchorFrom = true,
         onChangeCallback = function()
             if EXTERNALS and EXTERNALS.ApplyPosition then
                 EXTERNALS:ApplyPosition()

@@ -14,7 +14,6 @@ BUFFS.buttons = {}
 local CreateFrame = CreateFrame
 local pairs, ipairs = pairs, ipairs
 local unpack = unpack
-local format = string.format
 local floor = math.floor
 local wipe = wipe
 local GetWeaponEnchantInfo = GetWeaponEnchantInfo
@@ -41,6 +40,12 @@ local DIRECTION_TO_POINT = {
 local DIRECTION_TO_X_MULT = { DOWN_RIGHT = 1, DOWN_LEFT = -1, UP_RIGHT = 1, UP_LEFT = -1, RIGHT_DOWN = 1, RIGHT_UP = 1, LEFT_DOWN = -1, LEFT_UP = -1, }
 local DIRECTION_TO_Y_MULT = { DOWN_RIGHT = -1, DOWN_LEFT = -1, UP_RIGHT = 1, UP_LEFT = 1, RIGHT_DOWN = -1, RIGHT_UP = 1, LEFT_DOWN = -1, LEFT_UP = 1, }
 local IS_HORIZONTAL_GROWTH = { RIGHT_DOWN = true, RIGHT_UP = true, LEFT_DOWN = true, LEFT_UP = true, }
+
+local INITIAL_CONFIG_FUNCTION = [[
+    local header = self:GetParent()
+    self:SetWidth(header:GetAttribute('config-width'))
+    self:SetHeight(header:GetAttribute('config-height'))
+]]
 
 function BUFFS:UpdateDB()
     self.db = NRSKNUI.db.profile.Skinning.BuffTracking
@@ -191,60 +196,119 @@ local function applyButtonSettings(button, db)
     if button.Icon then NRSKNUI:ApplyZoom(button.Icon, NRSKNUI.GlobalZoom) end
 end
 
-function BUFFS:ApplySettings()
-    if NRSKNUI:ShouldNotLoadModule() then return end
-    for button in pairs(self.buttons) do applyButtonSettings(button, self.db) end
-    if self.previewActive then self:ShowPreview() end
-end
+function BUFFS:UpdateHeader()
+    if not self.buffs or InCombatLockdown() then return end
 
-function BUFFS:CreateBuffFrame()
-    if self.buffs then return end
-    local spacing = self.db.IconSize + self.db.IconSpacing
+    local db = self.db
+    local spacing = db.IconSize + db.IconSpacing
 
-    self.buffs = CreateFrame("Frame", "NorskenUIBuffFrame", UIParent, "SecureAuraHeaderTemplate")
+    self.buffs:SetAttribute("config-width", db.IconSize)
+    self.buffs:SetAttribute("config-height", db.IconSize)
 
-    local anchorFrame = NRSKNUI:ResolveAnchorFrame(self.db.anchorFrameType, self.db.ParentFrame)
-    self.buffs:SetPoint(self.db.Position.AnchorFrom, anchorFrame, self.db.Position.AnchorTo, self.db.Position.XOffset,
-        self.db.Position.YOffset)
-    NRSKNUI:PixelPerfect(self.buffs)
+    self.buffs:SetAttribute("sortMethod", db.SortMethod)
+    self.buffs:SetAttribute("sortDirection", db.SortDirection)
+    self.buffs:SetAttribute("filter", db.Filter)
+    self.buffs:SetAttribute("includeWeapons", db.IncludeWeaponEnchants and 1 or 0)
 
-    self.buffs:SetAttribute("template", "NorskenUIAuraButtonTemplate")
-    self.buffs:SetAttribute("unit", "player")
-    self.buffs:SetAttribute("filter", self.db.Filter)
-    self.buffs:SetAttribute("includeWeapons", self.db.IncludeWeaponEnchants and 1 or 0)
-    self.buffs:SetAttribute("weaponTemplate", "NorskenUIAuraButtonTemplate")
-
-    self.buffs:SetAttribute("sortMethod", self.db.SortMethod)
-    self.buffs:SetAttribute("sortDirection", self.db.SortDirection)
-    self.buffs:SetAttribute("separateOwn", 1)
-
-    local direction = self.db.GrowthDirection
+    local direction = db.GrowthDirection
     local point = DIRECTION_TO_POINT[direction]
     local xMult = DIRECTION_TO_X_MULT[direction]
     local yMult = DIRECTION_TO_Y_MULT[direction]
 
     self.buffs:SetAttribute("point", point)
-    self.buffs:SetAttribute("wrapAfter", self.db.IconsPerRow)
+    self.buffs:SetAttribute("wrapAfter", db.IconsPerRow)
+    self.buffs:SetAttribute("maxWraps", db.MaxRows)
 
     if IS_HORIZONTAL_GROWTH[direction] then
-        self.buffs:SetAttribute("minWidth", self.db.IconsPerRow * spacing)
-        self.buffs:SetAttribute("minHeight", self.db.MaxRows * spacing)
+        self.buffs:SetAttribute("minWidth", db.IconsPerRow * spacing)
+        self.buffs:SetAttribute("minHeight", db.MaxRows * spacing)
         self.buffs:SetAttribute("xOffset", xMult * spacing)
         self.buffs:SetAttribute("yOffset", 0)
         self.buffs:SetAttribute("wrapXOffset", 0)
         self.buffs:SetAttribute("wrapYOffset", yMult * spacing)
     else
-        self.buffs:SetAttribute("minWidth", self.db.MaxRows * spacing)
-        self.buffs:SetAttribute("minHeight", self.db.IconsPerRow * spacing)
+        self.buffs:SetAttribute("minWidth", db.MaxRows * spacing)
+        self.buffs:SetAttribute("minHeight", db.IconsPerRow * spacing)
         self.buffs:SetAttribute("xOffset", 0)
         self.buffs:SetAttribute("yOffset", yMult * spacing)
         self.buffs:SetAttribute("wrapXOffset", xMult * spacing)
         self.buffs:SetAttribute("wrapYOffset", 0)
     end
-    self.buffs:SetAttribute("initialConfigFunction", format([[
-        self:SetWidth(%d)
-        self:SetHeight(%d)
-    ]], self.db.IconSize, self.db.IconSize))
+
+    self.buffs:SetFrameStrata(db.Strata)
+end
+
+function BUFFS:UpdateChildren()
+    if not self.buffs or InCombatLockdown() then return end
+
+    local db = self.db
+    local index = 1
+    local child = self.buffs:GetAttribute("child" .. index)
+
+    while child do
+        child:SetSize(db.IconSize, db.IconSize)
+        applyButtonSettings(child, db)
+        index = index + 1
+        child = self.buffs:GetAttribute("child" .. index)
+    end
+
+    index = 1
+    child = self.buffs:GetAttribute("tempEnchant" .. index)
+    while child do
+        child:SetSize(db.IconSize, db.IconSize)
+        applyButtonSettings(child, db)
+        index = index + 1
+        child = self.buffs:GetAttribute("tempEnchant" .. index)
+    end
+end
+
+function BUFFS:ApplySettings()
+    if NRSKNUI:ShouldNotLoadModule() then return end
+
+    for button in pairs(self.buttons) do applyButtonSettings(button, self.db) end
+
+    self:UpdateHeader()
+    self:UpdateChildren()
+    self:ApplyPosition()
+
+    if self.mover then
+        local spacing = self.db.IconSize + self.db.IconSpacing
+        local direction = self.db.GrowthDirection
+        if IS_HORIZONTAL_GROWTH[direction] then
+            self.mover:SetSize(self.db.IconsPerRow * spacing, self.db.MaxRows * spacing)
+        else
+            self.mover:SetSize(self.db.MaxRows * spacing, self.db.IconsPerRow * spacing)
+        end
+    end
+
+    if self.previewActive then self:ShowPreview() end
+end
+
+function BUFFS:CreateBuffFrame()
+    if self.buffs then return end
+
+    if not self.mover then
+        self.mover = CreateFrame("Frame", "NorskenUIBuffFrameMover", UIParent)
+        self.mover:SetSize(10, 10)
+    end
+
+    local anchorPoint = DIRECTION_TO_POINT[self.db.GrowthDirection]
+    local anchorFrame = NRSKNUI:ResolveAnchorFrame(self.db.anchorFrameType, self.db.ParentFrame)
+    self.mover:ClearAllPoints()
+    self.mover:SetPoint(anchorPoint, anchorFrame, self.db.Position.AnchorTo, self.db.Position.XOffset,
+        self.db.Position.YOffset)
+
+    self.buffs = CreateFrame("Frame", "NorskenUIBuffFrame", UIParent, "SecureAuraHeaderTemplate")
+    self.buffs:SetPoint(anchorPoint, self.mover, anchorPoint, 0, 0)
+    NRSKNUI:PixelPerfect(self.buffs)
+
+    self.buffs:SetAttribute("template", "NorskenUIAuraButtonTemplate")
+    self.buffs:SetAttribute("unit", "player")
+    self.buffs:SetAttribute("weaponTemplate", "NorskenUIAuraButtonTemplate")
+    self.buffs:SetAttribute("separateOwn", 1)
+    self.buffs:SetAttribute("initialConfigFunction", INITIAL_CONFIG_FUNCTION)
+
+    self:UpdateHeader()
 
     RegisterAttributeDriver(self.buffs, "unit", "[vehicleui] vehicle; player")
 
@@ -259,25 +323,30 @@ end
 
 function BUFFS:ApplyPosition()
     if InCombatLockdown() then return end
+
+    local anchorPoint = DIRECTION_TO_POINT[self.db.GrowthDirection]
     local anchorFrame = NRSKNUI:ResolveAnchorFrame(self.db.anchorFrameType, self.db.ParentFrame)
+
+    if self.mover then
+        self.mover:ClearAllPoints()
+        self.mover:SetPoint(anchorPoint, anchorFrame, self.db.Position.AnchorTo,
+            self.db.Position.XOffset, self.db.Position.YOffset)
+    end
 
     if self.buffs then
         self.buffs:ClearAllPoints()
-        self.buffs:SetPoint(self.db.Position.AnchorFrom, anchorFrame, self.db.Position.AnchorTo,
-            self.db.Position.XOffset, self.db.Position.YOffset)
+        self.buffs:SetPoint(anchorPoint, self.mover or anchorFrame, anchorPoint, 0, 0)
         self.buffs:SetFrameStrata(self.db.Strata)
     end
 
-    if self.previewActive and self.previewFrame then
+    if self.previewActive and self.previewFrame and self.mover then
         self.previewFrame:ClearAllPoints()
-        self.previewFrame:SetPoint(self.db.Position.AnchorFrom, anchorFrame, self.db.Position.AnchorTo,
-            self.db.Position.XOffset, self.db.Position.YOffset)
+        self.previewFrame:SetPoint(anchorPoint, self.mover, anchorPoint, 0, 0)
     end
 end
 
 function BUFFS:UpdatePosition(pos)
     if InCombatLockdown() then return end
-    self.db.Position.AnchorFrom = pos.AnchorFrom
     self.db.Position.AnchorTo = pos.AnchorTo
     self.db.Position.XOffset = pos.XOffset
     self.db.Position.YOffset = pos.YOffset
@@ -301,12 +370,17 @@ function BUFFS:OnEnable()
 end
 
 function BUFFS:RegisterEditMode()
-    if not self.buffs then return end
+    if not self.buffs or not self.mover then return end
     if not NRSKNUI.EditMode then return end
+
+    -- Size the mover to match the buff frame for proper overlay display
+    local spacing = self.db.IconSize + self.db.IconSpacing
+    self.mover:SetSize(self.db.IconsPerRow * spacing, self.db.MaxRows * spacing)
+
     NRSKNUI.EditMode:RegisterElement({
         key = "BuffTracking",
-        displayName = "BUFFS",
-        frame = self.buffs,
+        displayName = "Default Buffs",
+        frame = self.mover,
         getPosition = function()
             return self.db.Position
         end,
@@ -399,15 +473,23 @@ function BUFFS:ShowPreview()
     local yMult = DIRECTION_TO_Y_MULT[direction]
     local horizontal = IS_HORIZONTAL_GROWTH[direction]
 
-    local anchorFrame = NRSKNUI:ResolveAnchorFrame(self.db.anchorFrameType, self.db.ParentFrame)
+    if not self.mover then
+        self.mover = CreateFrame("Frame", "NorskenUIBuffFrameMover", UIParent)
+        self.mover:SetSize(10, 10)
+        local anchorFrame = NRSKNUI:ResolveAnchorFrame(self.db.anchorFrameType, self.db.ParentFrame)
+        self.mover:ClearAllPoints()
+        self.mover:SetPoint(point, anchorFrame, self.db.Position.AnchorTo,
+            self.db.Position.XOffset, self.db.Position.YOffset)
+    end
+
+    if horizontal then
+        self.mover:SetSize(self.db.IconsPerRow * spacing, self.db.MaxRows * spacing)
+    else
+        self.mover:SetSize(self.db.MaxRows * spacing, self.db.IconsPerRow * spacing)
+    end
+
     self.previewFrame:ClearAllPoints()
-    self.previewFrame:SetPoint(
-        self.db.Position.AnchorFrom,
-        anchorFrame,
-        self.db.Position.AnchorTo,
-        self.db.Position.XOffset,
-        self.db.Position.YOffset
-    )
+    self.previewFrame:SetPoint(point, self.mover, point, 0, 0)
 
     if horizontal then
         self.previewFrame:SetSize(self.db.IconsPerRow * spacing, self.db.MaxRows * spacing)

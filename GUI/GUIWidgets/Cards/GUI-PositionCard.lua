@@ -143,13 +143,23 @@ local function CreateAnchorButtons(parent, labelText, value, callback)
         self.disabled = not enabled
         if enabled then
             self:SetAlpha(1)
-            for _, btn in pairs(self.buttons) do
+            self.label:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
+            self.background:SetBackdropBorderColor(Theme.textMuted[1], Theme.textMuted[2], Theme.textMuted[3], 1)
+            for direction, btn in pairs(self.buttons) do
                 btn:EnableMouse(true)
+                if self.value == direction then
+                    btn.tex:SetVertexColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
+                else
+                    btn.tex:SetVertexColor(Theme.textMuted[1], Theme.textMuted[2], Theme.textMuted[3], 1)
+                end
             end
         else
-            self:SetAlpha(0.4)
+            self:SetAlpha(1)
+            self.label:SetTextColor(Theme.textMuted[1], Theme.textMuted[2], Theme.textMuted[3], 0.5)
+            self.background:SetBackdropBorderColor(Theme.textMuted[1], Theme.textMuted[2], Theme.textMuted[3], 0.3)
             for _, btn in pairs(self.buttons) do
                 btn:EnableMouse(false)
+                btn.tex:SetVertexColor(Theme.textMuted[1], Theme.textMuted[2], Theme.textMuted[3], 0.3)
             end
         end
     end
@@ -167,6 +177,7 @@ end
 ---    onChangeCallback = function, -- Called when any value changes
 ---    showAnchorFrameType = boolean, -- Show anchor type dropdown (default: true)
 ---    showStrata = boolean,        -- Show strata dropdown (default: false)
+---    disableAnchorFrom = boolean, -- Disable "Anchor From" widget (default: false)
 ---    sliderRange = {min, max},    -- X/Y slider range (default: {-1000, 1000})
 ---    contextOptions = table,      -- Optional: {{key = "party", text = "Party", positionKey = "PartyPosition"}, ...}
 ---    defaultContext = string,     -- Optional: default context key (default: first option)
@@ -192,6 +203,7 @@ function GUIFrame:CreatePositionCard(scrollChild, yOffset, config)
     local defaultContext = config.defaultContext
     local splitToggleKey = config.splitToggleKey
     local onContextChange = config.onContextChange
+    local disableAnchorFrom = config.disableAnchorFrom == true
 
     local keys = {
         anchorFrameType = dbKeys.anchorFrameType or "anchorFrameType",
@@ -394,6 +406,9 @@ function GUIFrame:CreatePositionCard(scrollChild, yOffset, config)
     row3:AddWidget(selfPointWidget, 0.5)
     table_insert(widgets, selfPointWidget)
     table_insert(AnchorButtonwidgets, selfPointWidget)
+    if disableAnchorFrom then
+        selfPointWidget:SetEnabled(false)
+    end
 
     local anchorPointLabel = showAnchorFrameType and
         (currentType == "SELECTFRAME" and "To Frame's" or "To Screen's") or
@@ -463,6 +478,7 @@ function GUIFrame:CreatePositionCard(scrollChild, yOffset, config)
 
     card.positionWidgets = widgets
     card.AnchorButtonWidgets = AnchorButtonwidgets
+    card.selfPointWidget = selfPointWidget
     card._hasInternalWidgetState = true
 
     function card:SetEnabled(enabled)
@@ -481,6 +497,9 @@ function GUIFrame:CreatePositionCard(scrollChild, yOffset, config)
         for _, widget in ipairs(self.positionWidgets) do
             local widgetEnabled = enabled
             if widget == self.contextDropdown and not splitEnabled then
+                widgetEnabled = false
+            end
+            if widget == self.selfPointWidget and disableAnchorFrom then
                 widgetEnabled = false
             end
 

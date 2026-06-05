@@ -2011,6 +2011,8 @@ local Defaults = {
                 IconsPerRow = 4,
                 MaxRows = 1,
                 IconZoom = 0.32,
+                GrowHorizontal = "LEFT",
+                GrowVertical = "DOWN",
                 Swipe = false,
                 Reverse = false,
 

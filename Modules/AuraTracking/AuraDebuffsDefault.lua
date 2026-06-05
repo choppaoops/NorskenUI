@@ -23,6 +23,14 @@ local GetTime = GetTime
 local GameTooltip = GameTooltip
 local C_UnitAuras = C_UnitAuras
 
+local function GetAnchorPoint(db)
+    local h, v = db.GrowHorizontal or "LEFT", db.GrowVertical or "DOWN"
+    if h == "LEFT" and v == "DOWN" then return "TOPRIGHT"
+    elseif h == "LEFT" and v == "UP" then return "BOTTOMRIGHT"
+    elseif h == "RIGHT" and v == "DOWN" then return "TOPLEFT"
+    else return "BOTTOMLEFT" end
+end
+
 function DEBUFFS:UpdateDB()
     self.db = NRSKNUI.db.profile.Skinning.DebuffTrackingDefault
 end
@@ -133,6 +141,7 @@ local function PositionButtons(self)
     local iconsPerRow = db.IconsPerRow
     local growH = db.GrowHorizontal == "LEFT" and -1 or 1
     local growV = db.GrowVertical == "DOWN" and -1 or 1
+    local anchorPoint = GetAnchorPoint(db)
     local visibleCount = 0
 
     for _, button in ipairs(self.buttonPool) do
@@ -141,7 +150,7 @@ local function PositionButtons(self)
             local col = (visibleCount - 1) % iconsPerRow
             local row = math_floor((visibleCount - 1) / iconsPerRow)
             button:ClearAllPoints()
-            button:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", col * spacing * growH, row * spacing * growV)
+            button:SetPoint(anchorPoint, self.frame, anchorPoint, col * spacing * growH, row * spacing * growV)
         end
     end
 end
@@ -221,6 +230,7 @@ function DEBUFFS:ApplySettings()
 
     if self.frame then
         self.frame:SetSize(GetFrameSize(self.db))
+        self:ApplyPosition()
         self:RefreshAllAuras()
     end
 
@@ -232,19 +242,21 @@ function DEBUFFS:CreateFrame()
 
     self.frame = CreateFrame("Frame", "NorskenUIDebuffDefaultFrame", UIParent)
     self.frame:SetSize(GetFrameSize(self.db))
-    NRSKNUI:ApplyFramePosition(self.frame, self.db.Position, self.db)
+    self:ApplyPosition()
     self.frame:Show()
 end
 
 function DEBUFFS:ApplyPosition()
-    if self.frame then NRSKNUI:ApplyFramePosition(self.frame, self.db.Position, self.db) end
-    if self.previewActive and self.previewFrame then
-        NRSKNUI:ApplyFramePosition(self.previewFrame, self.db.Position, self.db)
-    end
+    if not self.frame then return end
+    local anchorPoint = GetAnchorPoint(self.db)
+    local parent = NRSKNUI:ResolveAnchorFrame(self.db.anchorFrameType, self.db.ParentFrame)
+    self.frame:ClearAllPoints()
+    self.frame:SetPoint(anchorPoint, parent, self.db.Position.AnchorTo, self.db.Position.XOffset, self.db.Position.YOffset)
+    self.frame:SetFrameStrata(self.db.Strata or "MEDIUM")
+    NRSKNUI:SnapFrameToPixels(self.frame, self.db.ForcePixelPerfect)
 end
 
 function DEBUFFS:UpdatePosition(pos)
-    self.db.Position.AnchorFrom = pos.AnchorFrom
     self.db.Position.AnchorTo = pos.AnchorTo
     self.db.Position.XOffset = pos.XOffset
     self.db.Position.YOffset = pos.YOffset
@@ -295,31 +307,26 @@ local PREVIEW_ICONS = { 136139, 136188, 132090, 135849, 132095, 136197 }
 
 function DEBUFFS:ShowPreview()
     if NRSKNUI:ShouldNotLoadModule() then return end
+    if not self.frame then self:CreateFrame() end
+
     local db = self.db
     local spacing = db.IconSize + db.IconSpacing
     local previewCount = db.IconsPerRow * db.MaxRows
 
-    if not self.previewFrame then
-        self.previewFrame = CreateFrame("Frame", "NorskenUIDebuffDefaultPreview", UIParent)
-        self.previewButtons = {}
-    end
-
-    NRSKNUI:ApplyFramePosition(self.previewFrame, db.Position, db)
-    self.previewFrame:SetSize(GetFrameSize(db))
-
-    while #self.previewButtons < previewCount do tinsert(self.previewButtons, CreateAuraButton(self.previewFrame)) end
+    while #self.buttonPool < previewCount do tinsert(self.buttonPool, CreateAuraButton(self.frame)) end
 
     local growH = db.GrowHorizontal == "LEFT" and -1 or 1
     local growV = db.GrowVertical == "DOWN" and -1 or 1
+    local anchorPoint = GetAnchorPoint(db)
 
-    for i, button in ipairs(self.previewButtons) do
+    for i, button in ipairs(self.buttonPool) do
         if i <= previewCount then
             ApplyButtonSettings(button, db)
 
             local col = (i - 1) % db.IconsPerRow
             local row = math_floor((i - 1) / db.IconsPerRow)
             button:ClearAllPoints()
-            button:SetPoint("TOPRIGHT", self.previewFrame, "TOPRIGHT", col * spacing * growH, row * spacing * growV)
+            button:SetPoint(anchorPoint, self.frame, anchorPoint, col * spacing * growH, row * spacing * growV)
 
             local iconIndex = ((i - 1) % #PREVIEW_ICONS) + 1
             button.Icon:SetTexture(PREVIEW_ICONS[iconIndex])
@@ -348,15 +355,17 @@ function DEBUFFS:ShowPreview()
         end
     end
 
-    self.previewFrame:Show()
+    self.frame:Show()
     self.previewActive = true
-    if self.frame then self.frame:Hide() end
 end
 
 function DEBUFFS:HidePreview()
-    if self.previewFrame then self.previewFrame:Hide() end
     self.previewActive = false
-    if self.frame and self.db.Enabled then self.frame:Show() end
+    if self.frame and self.db.Enabled then
+        self:RefreshAllAuras()
+    elseif self.frame then
+        for _, button in ipairs(self.buttonPool) do button:Hide() end
+    end
 end
 
 function DEBUFFS:TogglePreview()

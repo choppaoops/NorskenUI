@@ -58,7 +58,7 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
         value = db.IncludeWeaponEnchants,
         callback = function(checked)
             db.IncludeWeaponEnchants = checked
-            NRSKNUI:CreateReloadPrompt("Changing this setting requires a reload.")
+            ApplySettings()
         end
     })
     row2ab:AddWidget(includeEnchantsCheck, 1)
@@ -76,7 +76,7 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
         value = db.IconSize,
         callback = function(value)
             db.IconSize = value
-            NRSKNUI:CreateReloadPrompt("Changing icon size requires a reload.")
+            ApplySettings()
         end
     })
     row2a:AddWidget(iconSizeSlider, 0.5)
@@ -89,7 +89,7 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
         value = db.IconSpacing,
         callback = function(value)
             db.IconSpacing = value
-            NRSKNUI:CreateReloadPrompt("Changing icon spacing requires a reload.")
+            ApplySettings()
         end
     })
     row2a:AddWidget(iconSpacingSlider, 0.5)
@@ -104,7 +104,7 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
         value = db.IconsPerRow,
         callback = function(value)
             db.IconsPerRow = value
-            NRSKNUI:CreateReloadPrompt("Changing icons per row requires a reload.")
+            ApplySettings()
         end
     })
     row2b:AddWidget(iconsPerRowSlider, 0.5)
@@ -117,7 +117,7 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
         value = db.MaxRows,
         callback = function(value)
             db.MaxRows = value
-            NRSKNUI:CreateReloadPrompt("Changing max rows requires a reload.")
+            ApplySettings()
         end
     })
     row2b:AddWidget(maxRowsSlider, 0.5)
@@ -145,7 +145,7 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
         callback = function(key)
             currentH = key
             db.GrowthDirection = currentH .. "_" .. currentV
-            NRSKNUI:CreateReloadPrompt("Changing growth direction requires a reload.")
+            ApplySettings()
         end
     })
     row2c:AddWidget(growHDropdown, 0.5)
@@ -161,7 +161,7 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
         callback = function(key)
             currentV = key
             db.GrowthDirection = currentH .. "_" .. currentV
-            NRSKNUI:CreateReloadPrompt("Changing growth direction requires a reload.")
+            ApplySettings()
         end
     })
     row2c:AddWidget(growVDropdown, 0.5)
@@ -350,6 +350,7 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
         db = db,
         showAnchorFrameType = true,
         showStrata = true,
+        disableAnchorFrom = true,
         onChangeCallback = function()
             if BUFFS and BUFFS.ApplyPosition then
                 BUFFS:ApplyPosition()
