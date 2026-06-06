@@ -34,6 +34,8 @@ local RemoveExtraSpaces = RemoveExtraSpaces
 local RemoveNewlines = RemoveNewlines
 local GMChatFrame_IsGM = GMChatFrame_IsGM
 local C_ClassColor_GetClassColor = C_ClassColor and C_ClassColor.GetClassColor
+local IsChatLineCensored = C_ChatInfo and C_ChatInfo.IsChatLineCensored
+local SafePack = SafePack
 
 local ChatEditSetLastTellTarget = (ChatFrameUtil and ChatFrameUtil.SetLastTellTarget) or ChatEdit_SetLastTellTarget
 local ShouldColorChatByClass = (ChatFrameUtil and ChatFrameUtil.ShouldColorChatByClass) or Chat_ShouldColorChatByClass or function(info) return info and info.colorNameByClass end
@@ -578,13 +580,24 @@ function CMH:ChatFrame_MessageEventHandler(frame, event, arg1, arg2, arg3, arg4,
             end
         else
             -- Default case, regular chat messages including whispers
+            -- Check if this message is censored and prepare formatter for "Show Message" click
+            local isChatLineCensored, eventArgs, msgFormatter = IsChatLineCensored and IsChatLineCensored(arg11)
+            if isChatLineCensored then
+                eventArgs = SafePack(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15, arg16, arg17)
+
+                msgFormatter = function(msg)
+                    return self:MessageFormatter(frame, info, chatType, chatGroup, chatTarget, channelLength, coloredName,
+                        msg, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15, arg16, arg17)
+                end
+            end
+
             local accessID = self:GetAccessID(chatGroup, chatTarget)
             local typeID = self:GetAccessID(infoType, chatTarget, arg12 or arg13)
-            local body = self:MessageFormatter(frame, info, chatType, chatGroup, chatTarget, channelLength, coloredName,
+            local body = isChatLineCensored and arg1 or self:MessageFormatter(frame, info, chatType, chatGroup, chatTarget, channelLength, coloredName,
                 arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15, arg16,
                 arg17)
 
-            if body then frame:AddMessage(body, info.r, info.g, info.b, info.id, accessID, typeID, event) end
+            if body then frame:AddMessage(body, info.r, info.g, info.b, info.id, accessID, typeID, event, eventArgs, msgFormatter) end
         end
 
         -- Whisper-specific handling
