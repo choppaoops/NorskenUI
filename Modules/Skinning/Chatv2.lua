@@ -188,15 +188,20 @@ function CHAT:RegisterWhisperSounds()
     end)
 end
 
+local canChangeMessage = function(arg1, id)
+    if id and arg1 == "" then return id end
+end
+
 function CHAT:MessageIsProtected(message)
-    return NRSKNUI:IsSecretValue(message)
+    if NRSKNUI:IsSecretValue(message) then return true end
+    return message and (message ~= gsub(message, "(:?|?)|K(.-)|k", canChangeMessage))
 end
 
 -- Chat Copy Feature
 local copyLines = {}
 
-local function RemoveIconFromLine(text)
-    if not text then return "" end
+local removeIconFromLine
+do
     local raidIconFunc = function(x)
         x = x ~= "" and _G["RAID_TARGET_" .. x]
         return x and ("{" .. strlower(x) .. "}") or ""
@@ -208,11 +213,18 @@ local function RemoveIconFromLine(text)
         if w ~= "" then return end
         return y
     end
+    local fourString = function(v, w, x, y)
+        return format("%s%s%s", v, w, (v and v == "1" and x) or y)
+    end
 
-    text = gsub(text, [[|TInterface\TargetingFrame\UI%-RaidTargetingIcon_(%d+):0|t]], raidIconFunc)
-    text = gsub(text, "(%s?)(|?)|[TA].-|[ta](%s?)", stripTextureFunc)
-    text = gsub(text, "(|?)|H(.-)|h(.-)|h", hyperLinkFunc)
-    return text
+    removeIconFromLine = function(text)
+        if not text then return "" end
+        text = gsub(text, [[|TInterface\TargetingFrame\UI%-RaidTargetingIcon_(%d+):0|t]], raidIconFunc)
+        text = gsub(text, "(%s?)(|?)|[TA].-|[ta](%s?)", stripTextureFunc)
+        text = gsub(text, "(|?)|H(.-)|h(.-)|h", hyperLinkFunc)
+        text = gsub(text, "(%d+)(.-)|4(.-):(.-);", fourString)
+        return text
+    end
 end
 
 local function ColorizeLine(text, r, g, b)
@@ -220,33 +232,50 @@ local function ColorizeLine(text, r, g, b)
 end
 
 function CHAT:GetChatLines(frame)
+    if not frame or not frame.GetNumMessages then
+        return 0
+    end
+
+    local numMessages = frame:GetNumMessages()
+    if not numMessages or numMessages == 0 then
+        return 0
+    end
+
     local index = 1
-    for i = 1, frame:GetNumMessages() do
+    for i = 1, numMessages do
         local message, r, g, b = frame:GetMessageInfo(i)
         if message and not self:MessageIsProtected(message) then
             r, g, b = r or 1, g or 1, b or 1
-            message = RemoveIconFromLine(message)
+            message = removeIconFromLine(message)
             message = ColorizeLine(message, r, g, b)
             copyLines[index] = message
             index = index + 1
         end
     end
-    local count = index - 1
-    for i = index, #copyLines do copyLines[i] = nil end
-    return count
+    return index - 1
 end
 
 function CHAT:CopyChat(frame)
-    if not self.CopyChatFrame then self:BuildCopyChatFrame() end
+    if not self.CopyChatFrame then
+        self:BuildCopyChatFrame()
+    end
 
-    if not self.CopyChatFrame:IsShown() then
-        local count = self:GetChatLines(frame)
-        local text = tconcat(copyLines, " \n", 1, count)
-        self.CopyChatFrameEditBox:SetText(text)
-        self.CopyChatFrame:Show()
-    else
+    if not self.CopyChatFrame then
+        return
+    end
+
+    if self.CopyChatFrame:IsShown() then
         self.CopyChatFrameEditBox:SetText("")
         self.CopyChatFrame:Hide()
+    else
+        local count = self:GetChatLines(frame)
+        if count > 0 then
+            local text = tconcat(copyLines, " \n", 1, count)
+            self.CopyChatFrameEditBox:SetText(text)
+        else
+            self.CopyChatFrameEditBox:SetText("")
+        end
+        self.CopyChatFrame:Show()
     end
 end
 
@@ -257,10 +286,11 @@ end
 function CHAT:CopyChatEditBox_OnTextChanged(userInput)
     if userInput then return end
     local scrollFrame = CHAT.CopyChatScrollFrame
-    if scrollFrame and scrollFrame.ScrollBar then
-        local _, maxValue = scrollFrame.ScrollBar:GetMinMaxValues()
-        for _ = 1, maxValue do
-            if _G.ScrollFrameTemplate_OnMouseWheel then _G.ScrollFrameTemplate_OnMouseWheel(scrollFrame, -1) end
+    local scrollbar = CHAT.CopyChatFrame and CHAT.CopyChatFrame.scrollbar
+    if scrollFrame and scrollbar then
+        local _, maxValue = scrollbar:GetMinMaxValues()
+        if maxValue and maxValue > 0 then
+            scrollbar:SetValue(maxValue)
         end
     end
 end
@@ -278,6 +308,8 @@ function CHAT:CopyChatScrollFrame_OnVerticalScroll(offset)
 end
 
 function CHAT:BuildCopyChatFrame()
+    if self.CopyChatFrame then return end
+
     local HEADER_HEIGHT = 32
     local SCROLLBAR_WIDTH = 10
     local CONTENT_PADDING = 8
@@ -415,6 +447,8 @@ function CHAT:BuildCopyChatFrame()
     self.CopyChatFrameEditBox = editBox
 
     scrollFrame:SetScrollChild(editBox)
+    editBox:SetWidth(scrollFrame:GetWidth())
+    editBox:SetHeight(COPY_FRAME_HEIGHT)
 
     scrollbar:SetScript("OnValueChanged", function(_, value) scrollFrame:SetVerticalScroll(value) end)
 
@@ -451,6 +485,10 @@ function CHAT:BuildCopyChatFrame()
 
     scrollFrame:SetScript("OnSizeChanged", function() editBox:SetWidth(scrollFrame:GetWidth()) end)
 
+    frame:SetScript("OnShow", function()
+        editBox:SetWidth(scrollFrame:GetWidth())
+    end)
+
     frame:SetScript("OnKeyDown", function(f, key)
         if key == "ESCAPE" then
             f:SetPropagateKeyboardInput(false)
@@ -470,8 +508,8 @@ function CHAT:CreateCopyButton(chat)
     local id = chat:GetID()
     local copyButton = CreateFrame("Frame", format("NRSKNUI_CopyChatButton%d", id), chat)
     copyButton:EnableMouse(true)
-    copyButton:SetSize(16, 16)
-    copyButton:SetPoint("TOPRIGHT", chat, "TOPRIGHT", 0, 0)
+    copyButton:SetSize(20, 22)
+    copyButton:SetPoint("TOPRIGHT", chat, "TOPRIGHT", 0, -4)
     copyButton:SetFrameLevel(chat:GetFrameLevel() + 5)
     chat.copyButton = copyButton
 
@@ -489,7 +527,13 @@ function CHAT:CreateCopyButton(chat)
     text:SetTextColor(color.r, color.g, color.b, 0.5)
 
     copyButton:SetScript("OnMouseUp", function(btn, mouseBtn)
-        if mouseBtn == "LeftButton" then CHAT:CopyChat(btn:GetParent()) end
+        if mouseBtn == "LeftButton" then
+            local chatFrame = btn:GetParent()
+            if chatFrame.isDocked and _G.GeneralDockManager then
+                chatFrame = _G.GeneralDockManager.selected or chatFrame
+            end
+            CHAT:CopyChat(chatFrame)
+        end
     end)
     copyButton:SetScript("OnEnter", function() text:SetTextColor(color.r, color.g, color.b, 1) end)
     copyButton:SetScript("OnLeave", function() text:SetTextColor(color.r, color.g, color.b, 0.5) end)
@@ -499,6 +543,7 @@ function CHAT:OnEnable()
     if NRSKNUI:ShouldNotLoadModule() then return end
     if not self.db.Enabled then return end
     self:UpdateDB()
+    self:BuildCopyChatFrame()
     self:CreateChatPanel()
     self:SetupChat()
     self:RegisterEditMode()
