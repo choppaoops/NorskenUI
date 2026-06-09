@@ -121,7 +121,7 @@ local function ReskinProgressBar(bar, color)
     BSKIN:StripTextures(bar)
     BSKIN:CreateStatusBarBackdrop(bar)
 
-    bar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
+    bar:SetStatusBarTexture(NRSKNUI.Media.Statusbar or "Interface\\Buttons\\WHITE8x8")
     bar:SetStatusBarColor(color[1], color[2], color[3])
 
     BOT.coloredProgressBars[bar] = true
@@ -406,6 +406,12 @@ function BOT:StyleFonts()
 
     ApplyFont(_G.ObjectiveTrackerLineFont, fontDB.QuestTextSize)
     ApplyFont(_G.ObjectiveTrackerHeaderFont, fontDB.QuestTitleSize)
+
+    for bar in pairs(self.coloredProgressBars) do
+        if bar.Label then
+            ApplyFont(bar.Label, fontDB.QuestTextSize)
+        end
+    end
 end
 
 function BOT:UpdateColors()
