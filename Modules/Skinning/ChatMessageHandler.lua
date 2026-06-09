@@ -263,6 +263,9 @@ function CMH:MessageFormatter(frame, info, chatType, chatGroup, chatTarget, chan
     local isProtected = NRSKNUI:IsSecretValue(arg1)
     local bossMonster = strsub(chatType, 1, 9) == 'RAID_BOSS' or strsub(chatType, 1, 7) == 'MONSTER'
 
+    -- Protected boss messages can't be safely formatted, skip custom formatting
+    if isProtected and bossMonster then return end
+
     if bossMonster and not isProtected then
         arg1 = gsub(arg1, '(%d%s?%%)([^%%%a])', '%1%%%2')
         arg1 = gsub(arg1, '(%d%s?%%)$', '%1%%')
@@ -313,7 +316,7 @@ function CMH:MessageFormatter(frame, info, chatType, chatGroup, chatTarget, chan
     elseif chatType == 'TEXT_EMOTE' then
         body = message
     elseif bossMonster then
-        body = format(chatFormat .. message, pflag .. sender)
+        body = format(chatFormat .. message, pflag .. sender, sender)
     else
         body = format(chatFormat .. '%s', pflag .. sender, message)
     end
