@@ -96,7 +96,6 @@ function RK:CheckTimer()
 end
 
 function RK:StartTimer()
-    print("Reroll Keystone: Starting timer")
     if self.timerActive then return end
     if not CanRerollKey() then return end
 
@@ -114,13 +113,15 @@ function RK:StartTimer()
         self:CheckTimer()
     end)
 
-    self:RegisterEvent("BAG_UPDATE", function()
+    self:RegisterEvent("ITEM_CHANGED", function()
         if not self.timerActive then return end
-        local currentMapID = C_MythicPlus.GetOwnedKeystoneMapID()
-        if not self.hasRerolled and currentMapID ~= self.initialKeyMapID then
-            self.hasRerolled = true
-            self:UpdateDisplay()
-        end
+        C_Timer.After(1, function()
+            local currentMapID = C_MythicPlus.GetOwnedKeystoneMapID()
+            if not self.hasRerolled and currentMapID ~= self.initialKeyMapID then
+                self.hasRerolled = true
+                self:UpdateDisplay()
+            end
+        end)
     end)
 end
 
@@ -135,7 +136,7 @@ function RK:StopTimer()
         self.timerHandle = nil
     end
 
-    self:UnregisterEvent("BAG_UPDATE")
+    self:UnregisterEvent("ITEM_CHANGED")
     if self.frame then self.frame:StopGlow() end
 
     if self.frame and not self.isPreview then self.frame:Hide() end
