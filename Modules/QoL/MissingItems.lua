@@ -110,14 +110,12 @@ local function GetVariantCounts(itemID, itemSettings)
         local qualityAtlas = GetQualityAtlasFromLink(link, itemID)
         totalCount = count
 
-        if count > 0 then
-            table_insert(breakdown, {
-                itemID = itemID,
-                rank = 1,
-                qualityAtlas = qualityAtlas,
-                count = count,
-            })
-        end
+        table_insert(breakdown, {
+            itemID = itemID,
+            rank = 1,
+            qualityAtlas = qualityAtlas,
+            count = count,
+        })
         -- 1x ItemID tracked and all items with the same name
     elseif trackMode == TRACK_MODES.AUTO then
         local primaryName = C_Item.GetItemNameByID(itemID)
@@ -139,14 +137,22 @@ local function GetVariantCounts(itemID, itemSettings)
 
                 totalCount = totalCount + count
 
-                if count > 0 then
-                    table_insert(breakdown, {
-                        itemID = id,
-                        rank = rank,
-                        qualityAtlas = qualityAtlas,
-                        count = count,
-                    })
-                end
+                table_insert(breakdown, {
+                    itemID = id,
+                    rank = rank,
+                    qualityAtlas = qualityAtlas,
+                    count = count,
+                })
+            end
+
+            if #breakdown == 0 then
+                local qualityAtlas = GetQualityAtlasFromLink(nil, itemID)
+                table_insert(breakdown, {
+                    itemID = itemID,
+                    rank = 1,
+                    qualityAtlas = qualityAtlas,
+                    count = 0,
+                })
             end
         end
         -- Multiple ItemID's tracked
@@ -165,14 +171,12 @@ local function GetVariantCounts(itemID, itemSettings)
 
             totalCount = totalCount + count
 
-            if count > 0 then
-                table_insert(breakdown, {
-                    itemID = id,
-                    rank = rank,
-                    qualityAtlas = qualityAtlas,
-                    count = count,
-                })
-            end
+            table_insert(breakdown, {
+                itemID = id,
+                rank = rank,
+                qualityAtlas = qualityAtlas,
+                count = count,
+            })
         end
     end
 
@@ -384,9 +388,7 @@ local function UpdateDisplay()
                         count = GetItemCount(itemID)
                         local link = itemLinkCache[itemID]
                         local qualityAtlas = GetQualityAtlasFromLink(link, itemID)
-                        if qualityAtlas then
-                            breakdown = { { itemID = itemID, rank = 1, qualityAtlas = qualityAtlas, count = count } }
-                        end
+                        breakdown = { { itemID = itemID, rank = 1, qualityAtlas = qualityAtlas, count = count } }
                     end
 
                     if count <= threshold then

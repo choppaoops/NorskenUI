@@ -372,3 +372,24 @@ function NRSKNUI:CreateReloadPrompt(reason)
         cancelText = "Later",
     })
 end
+
+---@param modulePath string ProfileManager module path (e.g., "Skinning.BuffTracking")
+---@param moduleName string Display name for the module
+---@param promptText? string Custom prompt text
+function NRSKNUI:CreateResetModulePrompt(modulePath, moduleName, promptText)
+    return self:CreatePrompt({
+        title = "Reset Module",
+        text = promptText or ("Reset " .. moduleName .. " settings to defaults?"),
+        width = 320,
+        onAccept = function()
+            local success, err = NRSKNUI.ProfileManager:ResetModuleSettings(modulePath, moduleName)
+            if success then
+                NRSKNUI:CreateReloadPrompt("Settings reset. Reload to apply all changes.")
+            else
+                NRSKNUI:Print("Reset failed: " .. (err or "unknown error"))
+            end
+        end,
+        acceptText = "Reset",
+        cancelText = "Cancel",
+    })
+end

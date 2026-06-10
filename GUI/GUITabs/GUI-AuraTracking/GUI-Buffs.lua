@@ -44,31 +44,15 @@ GUIFrame:RegisterContent("CustomSkin_Buffs", function(scrollChild, yOffset)
         msgPopup = true,
         msgText = "Custom Buff Frame",
     })
-    row1:AddWidget(enableCheck, 0.5)
+    row1:AddWidget(enableCheck, (2 / 3))
 
     local resetBtn = GUIFrame:CreateButton(row1, "Reset to Default", {
-        height = 22,
+        height = 30,
         callback = function()
-            NRSKNUI:CreatePrompt({
-                title = "Reset Module",
-                text = "Reset Default Buff Frame settings to defaults?",
-                width = 320,
-                onAccept = function()
-                    local success, err = NRSKNUI.ProfileManager:ResetModuleSettings("Skinning.BuffTracking",
-                    "BuffTracking")
-                    if success then
-                        NRSKNUI:CreateReloadPrompt("Settings reset. Reload to apply all changes.")
-                    else
-                        NRSKNUI:Print("Reset failed: " .. (err or "unknown error"))
-                    end
-                end,
-                acceptText = "Reset",
-                cancelText = "Cancel",
-            })
+            NRSKNUI:CreateResetModulePrompt("Skinning.BuffTracking", "Default Buff Frame")
         end,
     })
-    row1:AddWidget(resetBtn, 0.5, nil, 0, -8)
-
+    row1:AddWidget(resetBtn, (1 / 3), nil, 0, -6)
     card1:AddRow(row1, Theme.rowHeightLast, 0)
 
     yOffset = card1:GetNextOffset()
