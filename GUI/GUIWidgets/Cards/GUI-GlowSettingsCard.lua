@@ -102,7 +102,7 @@ function GUIFrame:CreateGlowSettingsCard(scrollChild, yOffset, config)
     if showGlowMode then
         local storedGlowMode = db[keys.glowMode]
         local validGlowMode = (storedGlowMode == "always" or storedGlowMode == "expiration") and storedGlowMode or
-        "always"
+            "always"
 
         local glowModeDropdown = GUIFrame:CreateDropdown(row1, "When to Glow", {
             options = GLOW_MODES,
@@ -120,7 +120,10 @@ function GUIFrame:CreateGlowSettingsCard(scrollChild, yOffset, config)
             value = db[keys.type],
             callback = function(val)
                 setValue(keys.type, val)
-                card.updateTypeVisibility()
+                C_Timer.After(0.2, function()
+                    card.updateTypeVisibility()
+                    GUIFrame:RefreshContent()
+                end)
             end
         })
         row1:AddWidget(typeDropdown, 0.5)
@@ -139,7 +142,10 @@ function GUIFrame:CreateGlowSettingsCard(scrollChild, yOffset, config)
             value = db[keys.type],
             callback = function(val)
                 setValue(keys.type, val)
-                card.updateTypeVisibility()
+                C_Timer.After(0.2, function()
+                    card.updateTypeVisibility()
+                    GUIFrame:RefreshContent()
+                end)
             end
         })
         row2:AddWidget(typeDropdown, 0.5)
