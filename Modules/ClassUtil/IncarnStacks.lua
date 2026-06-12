@@ -83,16 +83,12 @@ function INCARN:CreateFrame()
     textOverlay:SetFrameLevel(iconFrame:GetFrameLevel() + 10)
     iconFrame.textOverlay = textOverlay
 
-    -- Stack count text
-    local stackText = textOverlay:CreateFontString(nil, "OVERLAY")
+    local stackText = NRSKNUI:CreateText(textOverlay, "OVERLAY")
     stackText:SetPoint("BOTTOMRIGHT", iconFrame, "BOTTOMRIGHT", 1, 1)
-    stackText:SetFont(NRSKNUI.FONT, self.db.StackFontSize or 18, "OUTLINE")
     stackText:SetTextColor(1, 1, 1, 1)
     iconFrame.stackText = stackText
 
-    -- Timer text
-    local timerText = textOverlay:CreateFontString(nil, "OVERLAY")
-    timerText:SetFont(NRSKNUI.FONT, 16, "OUTLINE")
+    local timerText = NRSKNUI:CreateText(textOverlay, "OVERLAY")
     timerText:SetPoint("CENTER", iconFrame, "CENTER", 0, 0)
     timerText:SetText("")
     iconFrame.timerText = timerText
@@ -118,7 +114,7 @@ function INCARN:ApplySettings()
 
     -- Update stack text
     if self.stackText then
-        NRSKNUI:ApplyFontToText(self.stackText, NRSKNUI:GetEffectiveFont(self.db), self.db.StackFontSize, self.db.StackFontOutline,
+        NRSKNUI:SetTextFont(self.stackText, NRSKNUI:GetEffectiveFont(self.db), self.db.StackFontSize, self.db.StackFontOutline,
             {})
         local stackColor = self.db.StackTextColor
         self.stackText:SetTextColor(stackColor[1], stackColor[2], stackColor[3], stackColor[4] or 1)
@@ -127,7 +123,7 @@ function INCARN:ApplySettings()
 
     -- Update timer text
     if self.timerText then
-        NRSKNUI:ApplyFontToText(self.timerText, NRSKNUI:GetEffectiveFont(self.db), self.db.TimerFontSize, self.db.TimerFontOutline,
+        NRSKNUI:SetTextFont(self.timerText, NRSKNUI:GetEffectiveFont(self.db), self.db.TimerFontSize, self.db.TimerFontOutline,
             {})
         local timerColor = self.db.TimerTextColor
         self.timerText:SetTextColor(timerColor[1], timerColor[2], timerColor[3], timerColor[4] or 1)

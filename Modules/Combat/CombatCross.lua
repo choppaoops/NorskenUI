@@ -152,13 +152,13 @@ function CC:CreateFrame()
     self.frame:SetFrameLevel(100)
     self.frame:Hide()
 
-    self.text = self.frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    self.text = NRSKNUI:CreateText(self.frame, "OVERLAY")
     self.text:SetPoint("CENTER")
     self.text:SetFont(NRSKNUI.FONT, self.db.Thickness * FONT_SIZE_MULTIPLIER, "")
     self.text:SetText("+")
 
     if self.db.Outline then
-        self.frame.softOutline = NRSKNUI:CreateSoftOutline(self.text, SOFT_OUTLINE_CONFIG)
+        self.text.softOutline = NRSKNUI:CreateSoftOutline(self.text, SOFT_OUTLINE_CONFIG)
     end
 end
 

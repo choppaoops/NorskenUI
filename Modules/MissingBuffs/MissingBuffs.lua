@@ -1195,7 +1195,7 @@ end
 local function CreateIcon()
     local raidDb = MBUFFS.db.RaidBuffDisplay
     local iconFrame = NRSKNUI:CreateIconFrame(containerFrame, raidDb.IconSize)
-    NRSKNUI:ApplyFontToText(iconFrame.text, NRSKNUI:GetEffectiveFont(raidDb), raidDb.FontSize, raidDb.FontOutline, raidDb.FontShadow)
+    NRSKNUI:SetTextFont(iconFrame.text, NRSKNUI:GetEffectiveFont(raidDb), raidDb.FontSize, raidDb.FontOutline, raidDb.FontShadow)
     iconFrame.text:SetTextColor(1, 1, 1, 1)
     iconFrame.text:SetPoint("CENTER", iconFrame, "CENTER", 0, 0)
     iconFrame:Hide()
@@ -1446,7 +1446,7 @@ local function UpdateIconAppearance(iconFrame, buff, text, showGlow, glowSetting
     iconFrame.icon:SetTexture(texture)
 
     local raidDb = MBUFFS.db.RaidBuffDisplay
-    NRSKNUI:ApplyFontToText(iconFrame.text, NRSKNUI:GetEffectiveFont(raidDb), raidDb.FontSize, raidDb.FontOutline, raidDb.FontShadow)
+    NRSKNUI:SetTextFont(iconFrame.text, NRSKNUI:GetEffectiveFont(raidDb), raidDb.FontSize, raidDb.FontOutline, raidDb.FontShadow)
     iconFrame.text:SetText(text or buff.text or "")
 
     iconFrame:SetSize(MBUFFS.db.RaidBuffDisplay.IconSize, MBUFFS.db.RaidBuffDisplay.IconSize)

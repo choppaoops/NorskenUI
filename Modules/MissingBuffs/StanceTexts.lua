@@ -53,7 +53,7 @@ local function CreateStanceTextFrame()
     })
 
     NRSKNUI:ApplyFramePosition(stanceTextFrame, db.Position, db)
-    NRSKNUI:ApplyFontToText(stanceTextFrame.text, NRSKNUI:GetEffectiveFont(db), db.FontSize, db.FontOutline, db.FontShadow)
+    NRSKNUI:SetTextFont(stanceTextFrame.text, NRSKNUI:GetEffectiveFont(db), db.FontSize, db.FontOutline, db.FontShadow)
 
     local textPoint = NRSKNUI:GetTextJustifyFromAnchor(db.Position.AnchorFrom)
     local textJustify = NRSKNUI:GetTextJustifyFromAnchor(db.Position.AnchorFrom)
@@ -124,7 +124,7 @@ function STANCETEXTS:UpdateStanceTextDisplay()
         stanceTextFrame.text:SetText(text)
         stanceTextFrame.text:SetTextColor(color[1], color[2], color[3], color[4] or 1)
 
-        NRSKNUI:ApplyFontToText(stanceTextFrame.text, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline, self.db.FontShadow)
+        NRSKNUI:SetTextFont(stanceTextFrame.text, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline, self.db.FontShadow)
         NRSKNUI:ApplyFramePosition(stanceTextFrame, self.db.Position, self.db)
 
         local textPoint = NRSKNUI:GetTextJustifyFromAnchor(self.db.Position.AnchorFrom)
@@ -233,7 +233,7 @@ function STANCETEXTS:ApplySettings()
     end
 
     if stanceTextFrame then
-        NRSKNUI:ApplyFontToText(stanceTextFrame.text, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline, self.db.FontShadow)
+        NRSKNUI:SetTextFont(stanceTextFrame.text, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline, self.db.FontShadow)
         NRSKNUI:ApplyFramePosition(stanceTextFrame, self.db.Position, self.db)
 
         local textPoint = NRSKNUI:GetTextJustifyFromAnchor(self.db.Position.AnchorFrom)
@@ -269,7 +269,7 @@ function STANCETEXTS:ShowPreview()
         return
     end
 
-    NRSKNUI:ApplyFontToText(stanceTextFrame.text, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline, self.db.FontShadow)
+    NRSKNUI:SetTextFont(stanceTextFrame.text, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline, self.db.FontShadow)
 
     local previewText = "Battle Stance"
     local previewColor = { 1, 1, 1, 1 }

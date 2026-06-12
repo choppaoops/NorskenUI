@@ -98,7 +98,7 @@ local function CreateAuraButton(parent)
     button.Icon:SetAllPoints()
     NRSKNUI:ApplyZoom(button.Icon, NRSKNUI.GlobalZoom)
 
-    button.Count = button:CreateFontString(nil, "OVERLAY")
+    button.Count = NRSKNUI:CreateText(button, "OVERLAY")
     button.Count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1)
     button.Count:SetJustifyH("RIGHT")
     NRSKNUI:ApplyFont(button.Count, NRSKNUI:GetEffectiveFont(db), db.FontSize, db.FontOutline)

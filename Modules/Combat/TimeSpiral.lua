@@ -81,8 +81,7 @@ function TSP:CreateFrame()
     cooldown:SetHideCountdownNumbers(true)
     cooldown:SetDrawBling(false)
 
-    local timerText = cooldown:CreateFontString(nil, "OVERLAY")
-    timerText:SetFont(NRSKNUI.FONT, 16, "OUTLINE")
+    local timerText = NRSKNUI:CreateText(cooldown, "OVERLAY")
     timerText:SetPoint("CENTER", frame, "CENTER", 0, 0)
     timerText:SetText("")
 
@@ -114,7 +113,7 @@ function TSP:ApplySettings()
 
     self.frame.text:SetText(self.db.TextLabel)
     local fontSize = math_floor(self.db.FontSize + 0.5)
-    NRSKNUI:ApplyFontToText(self.frame.text, NRSKNUI:GetEffectiveFont(self.db), fontSize, self.db.FontOutline,
+    NRSKNUI:SetTextFont(self.frame.text, NRSKNUI:GetEffectiveFont(self.db), fontSize, self.db.FontOutline,
         self.db.FontShadow or {})
 
     local textColor = self.db.TextColor
@@ -125,7 +124,7 @@ function TSP:ApplySettings()
     end
 
     local timerFontSize = math_floor(self.db.TimerFontSize + 0.5)
-    NRSKNUI:ApplyFontToText(self.timerText, NRSKNUI:GetEffectiveFont(self.db), timerFontSize, self.db.FontOutline,
+    NRSKNUI:SetTextFont(self.timerText, NRSKNUI:GetEffectiveFont(self.db), timerFontSize, self.db.FontOutline,
         self.db.FontShadow or {})
 
     local timerColor = self.db.TimerTextColor

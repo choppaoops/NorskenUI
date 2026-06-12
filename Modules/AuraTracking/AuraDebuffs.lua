@@ -220,7 +220,7 @@ local function CreateAuraButton(parent)
     button.Cooldown:SetHideCountdownNumbers(false)
     ApplyCooldownTextStyle(button.Cooldown, db)
 
-    button.Count = button.Cooldown:CreateFontString(nil, "OVERLAY")
+    button.Count = NRSKNUI:CreateText(button.Cooldown, "OVERLAY")
     local stackPos = db.StackPosition or
         { AnchorFrom = "BOTTOMRIGHT", AnchorTo = "BOTTOMRIGHT", XOffset = -1, YOffset = 1 }
     button.Count:SetPoint(stackPos.AnchorFrom, button, stackPos.AnchorTo, stackPos.XOffset, stackPos.YOffset)

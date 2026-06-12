@@ -54,8 +54,7 @@ function HUNTMARK:CreateWarningFrame()
     local frame = CreateFrame("Frame", "NRSKNUI_HuntersMarkWarning", UIParent)
     frame:SetSize(200, 40)
 
-    local text = frame:CreateFontString(nil, "OVERLAY")
-    text:SetFont(NRSKNUI.FONT, self.db.FontSize, "")
+    local text = NRSKNUI:CreateText(frame, "OVERLAY")
     text:SetPoint("CENTER")
     text:SetText("MISSING MARK")
     frame.text = text
@@ -234,7 +233,7 @@ function HUNTMARK:ApplySettings()
     local text = self.frame.text
     if text then
         local color = self.db.Color
-        NRSKNUI:ApplyFontToText(text, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline, self.db.FontShadow)
+        NRSKNUI:SetTextFont(text, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline, self.db.FontShadow)
         text:SetTextColor(color[1], color[2], color[3], color[4])
     end
 

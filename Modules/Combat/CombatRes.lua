@@ -76,8 +76,6 @@ function CR:CreateFrame()
     if self.frame then return end
 
     local db = self.db
-    local fontPath = NRSKNUI:GetFontPath(db.FontFace)
-    local fontSize = db.FontSize
 
     local frame = CreateFrame("Frame", "NRSKNUI_BattleResFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
     frame:SetSize(100, 26)
@@ -95,21 +93,17 @@ function CR:CreateFrame()
     frame.content = CreateFrame("Frame", nil, frame)
     frame.content:SetSize(1, 24)
 
-    frame.timerText = frame.content:CreateFontString(nil, "OVERLAY")
-    frame.timerText:SetFont(fontPath, fontSize, "")
+    frame.timerText = NRSKNUI:CreateText(frame.content, "OVERLAY")
     frame.timerText:SetTextColor(1, 1, 1, 1)
 
-    frame.separator = frame.content:CreateFontString(nil, "OVERLAY")
-    frame.separator:SetFont(fontPath, fontSize, "")
+    frame.separator = NRSKNUI:CreateText(frame.content, "OVERLAY")
     frame.separator:SetText(db.Separator)
     frame.separator:SetTextColor(1, 1, 1, 1)
 
-    frame.charge = frame.content:CreateFontString(nil, "OVERLAY")
-    frame.charge:SetFont(fontPath, fontSize, "")
+    frame.charge = NRSKNUI:CreateText(frame.content, "OVERLAY")
     frame.charge:SetTextColor(1, 1, 1, 1)
 
-    frame.CRText = frame.content:CreateFontString(nil, "OVERLAY")
-    frame.CRText:SetFont(fontPath, fontSize, "")
+    frame.CRText = NRSKNUI:CreateText(frame.content, "OVERLAY")
     frame.CRText:SetText("CR:")
     frame.CRText:SetTextColor(1, 1, 1, 1)
 
@@ -125,16 +119,16 @@ function CR:ApplyTextSettings()
 
     self.frame.separator:SetText(db.Separator)
     self.frame.separator:SetTextColor(sc[1], sc[2], sc[3], sc[4])
-    NRSKNUI:ApplyFontToText(self.frame.separator, NRSKNUI:GetEffectiveFont(self.db), db.FontSize, db.FontOutline, db.FontShadow)
+    NRSKNUI:SetTextFont(self.frame.separator, NRSKNUI:GetEffectiveFont(self.db), db.FontSize, db.FontOutline, db.FontShadow)
 
-    NRSKNUI:ApplyFontToText(self.frame.charge, NRSKNUI:GetEffectiveFont(self.db), db.FontSize, db.FontOutline, db.FontShadow)
+    NRSKNUI:SetTextFont(self.frame.charge, NRSKNUI:GetEffectiveFont(self.db), db.FontSize, db.FontOutline, db.FontShadow)
 
     self.frame.CRText:SetText(db.SeparatorCharges)
     self.frame.CRText:SetTextColor(sc[1], sc[2], sc[3], sc[4])
-    NRSKNUI:ApplyFontToText(self.frame.CRText, NRSKNUI:GetEffectiveFont(self.db), db.FontSize, db.FontOutline, db.FontShadow)
+    NRSKNUI:SetTextFont(self.frame.CRText, NRSKNUI:GetEffectiveFont(self.db), db.FontSize, db.FontOutline, db.FontShadow)
 
     self.frame.timerText:SetTextColor(tc[1], tc[2], tc[3], tc[4])
-    NRSKNUI:ApplyFontToText(self.frame.timerText, NRSKNUI:GetEffectiveFont(self.db), db.FontSize, db.FontOutline, db.FontShadow)
+    NRSKNUI:SetTextFont(self.frame.timerText, NRSKNUI:GetEffectiveFont(self.db), db.FontSize, db.FontOutline, db.FontShadow)
 
     self:UpdateAnchors()
     self:ApplyBackdropSettings()

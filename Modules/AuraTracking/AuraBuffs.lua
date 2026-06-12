@@ -165,7 +165,7 @@ local function auraButtonInit(button)
 
     applyTimerStyle(button, BUFFS.db)
 
-    button.Count = button.Cooldown:CreateFontString(nil, "OVERLAY")
+    button.Count = NRSKNUI:CreateText(button.Cooldown, "OVERLAY")
     button.Count:SetPoint(BUFFS.db.StackPosition.AnchorFrom, button, BUFFS.db.StackPosition.AnchorTo,
         BUFFS.db.StackPosition.XOffset, BUFFS.db.StackPosition.YOffset)
     button.Count:SetJustifyH(NRSKNUI:GetTextJustifyFromAnchor(BUFFS.db.StackPosition.AnchorFrom))
@@ -449,7 +449,7 @@ local function CreatePreviewButton(parent, index, db)
 
     applyTimerStyle(button, db)
 
-    button.Count = button.Cooldown:CreateFontString(nil, "OVERLAY")
+    button.Count = NRSKNUI:CreateText(button.Cooldown, "OVERLAY")
     button.Count:SetPoint(db.StackPosition.AnchorFrom, button, db.StackPosition.AnchorTo,
         db.StackPosition.XOffset, db.StackPosition.YOffset)
     button.Count:SetJustifyH(NRSKNUI:GetTextJustifyFromAnchor(db.StackPosition.AnchorFrom))

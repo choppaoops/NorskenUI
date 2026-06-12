@@ -90,15 +90,15 @@ function HM:CreateHealerFrame(index)
     frame.icon:SetPoint("TOPLEFT", 1, -1)
     frame.icon:SetPoint("BOTTOMRIGHT", -1, 1)
 
-    frame.name = frame:CreateFontString(nil, "OVERLAY")
+    frame.name = NRSKNUI:CreateText(frame, "OVERLAY")
     frame.name:SetPoint("BOTTOMLEFT", frame.iconFrame, "RIGHT", 4, self.db.NameYOffset)
     frame.name:SetJustifyH("LEFT")
-    NRSKNUI:ApplyFontToText(frame.name, NRSKNUI:GetEffectiveFont(self.db), self.db.NameFontSize, self.db.FontOutline, self.db.FontShadow)
+    NRSKNUI:SetTextFont(frame.name, NRSKNUI:GetEffectiveFont(self.db), self.db.NameFontSize, self.db.FontOutline, self.db.FontShadow)
 
-    frame.mana = frame:CreateFontString(nil, "OVERLAY")
+    frame.mana = NRSKNUI:CreateText(frame, "OVERLAY")
     frame.mana:SetPoint("TOPLEFT", frame.iconFrame, "RIGHT", 4, self.db.ManaYOffset)
     frame.mana:SetJustifyH("LEFT")
-    NRSKNUI:ApplyFontToText(frame.mana, NRSKNUI:GetEffectiveFont(self.db), self.db.ManaFontSize, self.db.FontOutline, self.db.FontShadow)
+    NRSKNUI:SetTextFont(frame.mana, NRSKNUI:GetEffectiveFont(self.db), self.db.ManaFontSize, self.db.FontOutline, self.db.FontShadow)
 
     frame:Hide()
     return frame
@@ -440,11 +440,11 @@ function HM:ShowPreview()
         frame.iconFrame:SetSize(self.db.IconSize, self.db.IconSize)
         frame.name:ClearAllPoints()
         frame.name:SetPoint("BOTTOMLEFT", frame.iconFrame, "RIGHT", 4, self.db.NameYOffset)
-        NRSKNUI:ApplyFontToText(frame.name, NRSKNUI:GetEffectiveFont(self.db), self.db.NameFontSize, self.db.FontOutline,
+        NRSKNUI:SetTextFont(frame.name, NRSKNUI:GetEffectiveFont(self.db), self.db.NameFontSize, self.db.FontOutline,
             self.db.FontShadow)
         frame.mana:ClearAllPoints()
         frame.mana:SetPoint("TOPLEFT", frame.iconFrame, "RIGHT", 4, self.db.ManaYOffset)
-        NRSKNUI:ApplyFontToText(frame.mana, NRSKNUI:GetEffectiveFont(self.db), self.db.ManaFontSize, self.db.FontOutline,
+        NRSKNUI:SetTextFont(frame.mana, NRSKNUI:GetEffectiveFont(self.db), self.db.ManaFontSize, self.db.FontOutline,
             self.db.FontShadow)
 
         frame.icon:SetTexture(icon or FALLBACK_ICON)
@@ -494,11 +494,11 @@ function HM:ApplySettings()
         frame.iconFrame:SetSize(self.db.IconSize, self.db.IconSize)
         frame.name:ClearAllPoints()
         frame.name:SetPoint("BOTTOMLEFT", frame.iconFrame, "RIGHT", 4, self.db.NameYOffset)
-        NRSKNUI:ApplyFontToText(frame.name, NRSKNUI:GetEffectiveFont(self.db), self.db.NameFontSize, self.db.FontOutline,
+        NRSKNUI:SetTextFont(frame.name, NRSKNUI:GetEffectiveFont(self.db), self.db.NameFontSize, self.db.FontOutline,
             self.db.FontShadow)
         frame.mana:ClearAllPoints()
         frame.mana:SetPoint("TOPLEFT", frame.iconFrame, "RIGHT", 4, self.db.ManaYOffset)
-        NRSKNUI:ApplyFontToText(frame.mana, NRSKNUI:GetEffectiveFont(self.db), self.db.ManaFontSize, self.db.FontOutline,
+        NRSKNUI:SetTextFont(frame.mana, NRSKNUI:GetEffectiveFont(self.db), self.db.ManaFontSize, self.db.FontOutline,
             self.db.FontShadow)
     end
 

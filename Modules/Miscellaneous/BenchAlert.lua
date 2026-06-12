@@ -114,7 +114,7 @@ function BA:ApplySettings()
     if not self.alertFrame then return end
     NRSKNUI:ApplyFramePosition(self.alertFrame, self.db.Position, self.db)
     self.alertFrame.text:SetTextColor(unpack(self.db.Color))
-    NRSKNUI:ApplyFontToText(self.alertFrame.text, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline,
+    NRSKNUI:SetTextFont(self.alertFrame.text, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline,
         self.db.FontShadow)
 
     if self.db.Strata then self.alertFrame:SetFrameStrata(self.db.Strata) end

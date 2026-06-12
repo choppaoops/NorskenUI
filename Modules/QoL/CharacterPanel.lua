@@ -20,6 +20,8 @@ local hooksecurefunc = hooksecurefunc
 local pairs = pairs
 local ipairs = ipairs
 local GetRealmName = GetRealmName
+local tonumber = tonumber
+local unpack = unpack
 local format = string.format
 local floor, abs, min, max = math.floor, math.abs, math.min, math.max
 local tinsert = table.insert
@@ -58,19 +60,56 @@ local SLOT_FRAMES = {
     [17] = "CharacterSecondaryHandSlot",
 }
 
-local ITEM_TRACKS = {
-    { keyword = "Myth",       letter = "M", color = { 1.00, 0.50, 0.00 } },
-    { keyword = "Hero",       letter = "H", color = { 0.78, 0.30, 0.78 } },
-    { keyword = "Champion",   letter = "C", color = { 0.00, 0.70, 1.00 } },
-    { keyword = "Veteran",    letter = "V", color = { 0.00, 0.80, 0.00 } },
-    { keyword = "Adventurer", letter = "A", color = { 0.70, 0.70, 0.70 } },
+-- Season Configuration: S1 Midnight
+local SEASON = {
+    -- PvP arena ilvls
+    conquestIlvl = 289,
+    honorIlvl = 276,
+    -- Crafted ilvls
+    craftedVoidforged = 295,
+    craftedMyth = 285,
+    craftedHero = 272,
 }
 
-local CRAFTED_TRACKS = {
-    { minIlvl = 295, letter = "C", color = { 1.00, 0.50, 0.00 }, weaponOnly = true }, -- Mythic Crafted (Weapons only)
-    { minIlvl = 285, letter = "C", color = { 1.00, 0.50, 0.00 } },                    -- Mythic Crafted (Non-Weapons)
-    { minIlvl = 282, letter = "C", color = { 0.78, 0.30, 0.78 } },                    -- Heroic Crafted
-    { minIlvl = 269, letter = "C", color = { 0.00, 0.70, 1.00 } },                    -- Normal Crafted
+local TIER_COLORS = {
+    myth       = { letter = "M", color = { 1.00, 0.50, 0.00 } },
+    conquest   = { letter = "C", color = { 1.00, 0.50, 0.00 } },
+    hero       = { letter = "H", color = { 0.78, 0.30, 0.78 } },
+    honor      = { letter = "H", color = { 0.78, 0.30, 0.78 } },
+    champion   = { letter = "C", color = { 0.00, 0.70, 1.00 } },
+    veteran    = { letter = "V", color = { 0.00, 0.80, 0.00 } },
+    adventurer = { letter = "A", color = { 0.70, 0.70, 0.70 } },
+}
+
+local ITEM_TRACK_LOOKUP = {
+    Myth       = "myth",
+    Hero       = "hero",
+    Champion   = "champion",
+    Veteran    = "veteran",
+    Adventurer = "adventurer",
+}
+
+local VOIDFORGED_LOOKUP = {
+    M = "myth",
+    H = "hero",
+}
+
+local SPOREFUSED_LOOKUP = {
+    Myth     = "myth",
+    Hero     = "hero",
+    Champion = "champion",
+    Veteran  = "veteran",
+}
+
+local CRAFTED_TIERS = {
+    { ilvl = SEASON.craftedVoidforged, tier = "myth" },
+    { ilvl = SEASON.craftedMyth,       tier = "myth" },
+    { ilvl = SEASON.craftedHero,       tier = "hero" },
+}
+
+local PVP_TIERS = {
+    { ilvl = SEASON.conquestIlvl, tier = "conquest" },
+    { ilvl = SEASON.honorIlvl,    tier = "honor" },
 }
 
 local qualityAtlasPattern = "|A:(Professions%-ChatIcon%-Quality%-[^:]+):%d+:%d+"
@@ -138,28 +177,20 @@ function CHAR:ApplyFont(fontString, size)
     local outline = db.FontOutline or "OUTLINE"
     local shadow = db.FontShadow or {}
 
-    NRSKNUI:ApplyFontToText(fontString, fontFace, size, outline, {})
-
-    if shadow.Enabled and outline ~= "SOFTOUTLINE" then
-        local color = shadow.Color or { 0, 0, 0, 1 }
-        fontString:SetShadowColor(color[1], color[2], color[3], color[4])
-        fontString:SetShadowOffset(shadow.OffsetX or 1, shadow.OffsetY or -1)
-    else
-        fontString:SetShadowColor(0, 0, 0, 0)
-    end
+    NRSKNUI:SetTextFont(fontString, fontFace, size, outline, shadow)
 end
 
 function CHAR:StyleCharacterTexts()
-    local levelText = CharacterLevelText
-    if levelText then
-        self:ApplyFont(levelText, self.db.LevelTextSize or 12)
-        levelText:SetWidth(0)
-        levelText:SetWordWrap(true)
+    -- Level + Class spec text, has (H)/(A) as faction indicator aswell
+    if CharacterLevelText then
+        self:ApplyFont(CharacterLevelText, self.db.LevelTextSize or 12)
+        CharacterLevelText:SetWidth(0)
+        CharacterLevelText:SetWordWrap(true)
     end
 
-    local nameText = CharacterFrameTitleText
-    if nameText then
-        self:ApplyFont(nameText, self.db.NameTextSize or 12)
+    -- Character name + title text
+    if CharacterFrameTitleText then
+        self:ApplyFont(CharacterFrameTitleText, self.db.NameTextSize or 12)
     end
 
     self:StyleStatsPaneTexts()
@@ -168,30 +199,27 @@ end
 function CHAR:StyleStatsPaneTexts()
     local statsPane = CharacterStatsPane
     if not statsPane then return end
-
     local categorySize = self.db.CategoryFontSize or 12
 
+    -- "Item level" Title text
     if statsPane.ItemLevelCategory and statsPane.ItemLevelCategory.Title then
         self:ApplyFont(statsPane.ItemLevelCategory.Title, categorySize)
+        statsPane.ItemLevelCategory.Title:SetTextColor(unpack(NRSKNUI:GetPlayerClassColor()))
     end
 
+    -- Item level value text
     if statsPane.ItemLevelFrame and statsPane.ItemLevelFrame.Value then
         self:ApplyFont(statsPane.ItemLevelFrame.Value, self.db.IlvlValueSize or 16)
     end
 
+    -- "Attributes & Enhancements" Title texts
     local categories = { statsPane.AttributesCategory, statsPane.EnhancementsCategory }
     for _, category in ipairs(categories) do
         if category and category.Title then
             self:ApplyFont(category.Title, categorySize)
+            category.Title:SetTextColor(unpack(NRSKNUI:GetPlayerClassColor()))
         end
     end
-
-    self:RefreshStatFonts()
-end
-
-function CHAR:RefreshStatFonts()
-    -- Fonts are applied via hooksecurefunc on PaperDollFrame_SetLabelAndText
-    -- Calling PaperDollFrame_UpdateStats() directly causes taint with secret values
 end
 
 -- Item Track Indicators --
@@ -201,14 +229,56 @@ function CHAR:GetItemTrack(slotID)
     if not data or not data.lines then return nil end
 
     local isCrafted = false
+    local pvpIlvl = nil
+    local normalTier = nil
+    local voidforgedTier = nil
     for _, line in ipairs(data.lines) do
         local text = line.leftText
         if text then
-            if text:find("Upgrade Level:") or text:find("Ascendant Voidforged:") then
-                for _, track in ipairs(ITEM_TRACKS) do if text:find(track.keyword) then return track end end
+            -- Normal upgrade track items
+            local trackKeyword = text:match("Upgrade Level: (%a+)")
+            if trackKeyword then
+                normalTier = ITEM_TRACK_LOOKUP[trackKeyword]
             end
-            if text:find("Crafted") then isCrafted = true end
+
+            -- Voidforged items
+            local voidforgedMatch = text:match("Ascendant Voidforged: (%a)")
+            if voidforgedMatch then
+                voidforgedTier = VOIDFORGED_LOOKUP[voidforgedMatch]
+            end
+
+            -- Sporefused items
+            local sporefusedMatch = text:match("Sporefused: (%a+)")
+            if sporefusedMatch then
+                voidforgedTier = SPOREFUSED_LOOKUP[sporefusedMatch]
+            end
+
+            -- Crafted items
+            if text:find("Radiance Crafted") then isCrafted = true end
+
+            -- PvP items
+            local pvpMatch = text:match("Increases item level to a minimum of (%d+)")
+            if pvpMatch then
+                pvpIlvl = tonumber(pvpMatch)
+            end
         end
+    end
+
+    -- Priority: Voidforged > PvP > Normal > Crafted
+    if voidforgedTier then
+        return TIER_COLORS[voidforgedTier]
+    end
+
+    if pvpIlvl then
+        for _, tier in ipairs(PVP_TIERS) do
+            if pvpIlvl >= tier.ilvl then
+                return TIER_COLORS[tier.tier]
+            end
+        end
+    end
+
+    if normalTier then
+        return TIER_COLORS[normalTier]
     end
 
     if isCrafted then
@@ -216,10 +286,9 @@ function CHAR:GetItemTrack(slotID)
         if itemLink then
             local ilvl = GetDetailedItemLevelInfo(itemLink)
             if ilvl then
-                local isWeapon = slotID == 16 or slotID == 17
-                for _, track in ipairs(CRAFTED_TRACKS) do
-                    if ilvl >= track.minIlvl and (not track.weaponOnly or isWeapon) then
-                        return track
+                for _, tier in ipairs(CRAFTED_TIERS) do
+                    if ilvl >= tier.ilvl then
+                        return TIER_COLORS[tier.tier]
                     end
                 end
             end
@@ -255,8 +324,8 @@ function CHAR:CreateTrackOverlay(slotFrame, slotID)
         overlay:SetPoint("BOTTOMLEFT", slotFrame, "BOTTOMLEFT", 0, 0)
     end
 
-    overlay.text = overlay:CreateFontString(nil, "OVERLAY")
-    NRSKNUI:ApplyFontToText(overlay.text, "Expressway", 12, "OUTLINE", {})
+    overlay.text = NRSKNUI:CreateText(overlay, "OVERLAY")
+    NRSKNUI:SetTextFont(overlay.text, "Expressway", 12, "OUTLINE", {})
     overlay.text:SetShadowColor(0, 0, 0, 0)
 
     if isRight then
@@ -335,6 +404,7 @@ function CHAR:SetupStatTextHook()
         if not self.db.Enabled then return end
         if CharacterStatsPane and statFrame == CharacterStatsPane.ItemLevelFrame then return end
         local statsSize = self.db.StatsFontSize or 12
+
         if statFrame.Label then
             self:ApplyFont(statFrame.Label, statsSize)
         end
@@ -437,7 +507,9 @@ end
 
 function CHAR:OnEnable()
     if not self.db.Enabled then return end
-    self:ApplySettings()
+    C_Timer.After(0.5, function()
+        self:ApplySettings()
+    end)
 end
 
 function CHAR:OnDisable()
@@ -456,6 +528,7 @@ local socketCache = {}
 local function GetScanTooltip()
     if not scanTooltip then
         scanTooltip = CreateFrame("GameTooltip", "NRSKNUIScanTooltip", nil, "GameTooltipTemplate")
+        ---@diagnostic disable-next-line: param-type-mismatch
         scanTooltip:SetOwner(WorldFrame, "ANCHOR_NONE")
     end
     return scanTooltip
@@ -653,16 +726,16 @@ function CHAR:CreateSocketButton(index)
 
     btn.qualityFrame, btn.quality = CreateQualityOverlay(btn)
 
-    btn:SetScript("OnEnter", function(self)
+    btn:SetScript("OnEnter", function(button)
         CHAR:HideEnchantPopup()
-        CHAR.currentSocketBtn = self
-        CHAR:ShowGemPopup(self)
-        if self.socketInfo then
-            CHAR:ShowSlotHighlight(self.socketInfo.slotID)
+        CHAR.currentSocketBtn = button
+        CHAR:ShowGemPopup(button)
+        if button.socketInfo then
+            CHAR:ShowSlotHighlight(button.socketInfo.slotID)
         end
-        if self.socket and self.socket.filled and self.socket.gemLink then
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT", 40, 0)
-            GameTooltip:SetHyperlink(self.socket.gemLink)
+        if button.socket and button.socket.filled and button.socket.gemLink then
+            GameTooltip:SetOwner(button, "ANCHOR_RIGHT", 40, 0)
+            GameTooltip:SetHyperlink(button.socket.gemLink)
             GameTooltip:Show()
         end
     end)
@@ -677,13 +750,13 @@ function CHAR:CreateSocketButton(index)
         end)
     end)
 
-    btn:SetScript("OnClick", function(self)
+    btn:SetScript("OnClick", function(button)
         if InCombatLockdown() then
             NRSKNUI:Print("Cannot socket during combat")
             return
         end
-        if self.socketInfo then
-            SocketInventoryItem(self.socketInfo.slotID)
+        if button.socketInfo then
+            SocketInventoryItem(button.socketInfo.slotID)
         end
     end)
 
@@ -703,9 +776,9 @@ function CHAR:CreateGemPopup()
     popup:SetClipsChildren(true)
     popup:Hide()
 
-    popup.title = popup:CreateFontString(nil, "OVERLAY")
+    popup.title = NRSKNUI:CreateText(popup, "OVERLAY")
     popup.title:SetPoint("TOPLEFT", 6, -6)
-    NRSKNUI:ApplyFontToText(popup.title, "Expressway", 14, "OUTLINE", {})
+    NRSKNUI:SetTextFont(popup.title, "Expressway", 14, "OUTLINE", {})
     popup.title:SetText("Gems")
     popup.title:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3])
 
@@ -715,9 +788,9 @@ function CHAR:CreateGemPopup()
     popup.separator:SetPoint("TOPRIGHT", popup, "TOPRIGHT", 0, -TITLE_HEIGHT)
     popup.separator:SetColorTexture(Theme.border[1], Theme.border[2], Theme.border[3], 1)
 
-    popup.noGems = popup:CreateFontString(nil, "OVERLAY")
+    popup.noGems = NRSKNUI:CreateText(popup, "OVERLAY")
     popup.noGems:SetPoint("CENTER", 0, -8)
-    NRSKNUI:ApplyFontToText(popup.noGems, "Expressway", 14, "OUTLINE", {})
+    NRSKNUI:SetTextFont(popup.noGems, "Expressway", 14, "OUTLINE", {})
     popup.noGems:SetText("No compatible gems")
     popup.noGems:SetTextColor(Theme.textMuted[1], Theme.textMuted[2], Theme.textMuted[3])
     popup.noGems:Hide()
@@ -766,18 +839,18 @@ function CHAR:CreateGemButton(index)
 
     btn.qualityFrame, btn.quality = CreateQualityOverlay(btn, btn.iconFrame)
 
-    btn.stats = btn:CreateFontString(nil, "OVERLAY")
+    btn.stats = NRSKNUI:CreateText(btn, "OVERLAY")
     btn.stats:SetPoint("LEFT", btn.iconFrame, "RIGHT", 6, 0)
     btn.stats:SetWidth(220)
     btn.stats:SetJustifyH("LEFT")
     btn.stats:SetWordWrap(true)
-    NRSKNUI:ApplyFontToText(btn.stats, "Expressway", 12, "OUTLINE", {})
+    NRSKNUI:SetTextFont(btn.stats, "Expressway", 12, "OUTLINE", {})
     btn.stats:SetTextColor(Theme.textPrimary[1], Theme.textPrimary[2], Theme.textPrimary[3])
     btn.stats:SetShadowColor(0, 0, 0, 0)
 
-    btn.count = btn:CreateFontString(nil, "OVERLAY")
+    btn.count = NRSKNUI:CreateText(btn, "OVERLAY")
     btn.count:SetPoint("RIGHT", btn, "RIGHT", -4, 0)
-    NRSKNUI:ApplyFontToText(btn.count, "Expressway", 12, "OUTLINE", {})
+    NRSKNUI:SetTextFont(btn.count, "Expressway", 12, "OUTLINE", {})
     btn.count:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3])
     btn.count:SetShadowColor(0, 0, 0, 0)
 
@@ -788,30 +861,30 @@ function CHAR:CreateGemButton(index)
     btn._hoverBg = hoverBg
     btn._hoverTarget = 0
 
-    btn:SetScript("OnUpdate", function(self, elapsed)
-        local current = self._hoverBg:GetAlpha()
-        if abs(current - self._hoverTarget) > 0.01 then
+    btn:SetScript("OnUpdate", function(button, elapsed)
+        local current = button._hoverBg:GetAlpha()
+        if abs(current - button._hoverTarget) > 0.01 then
             local speed = elapsed / HOVER_DURATION
-            if self._hoverTarget > current then
-                self._hoverBg:SetAlpha(min(current + speed, self._hoverTarget))
+            if button._hoverTarget > current then
+                button._hoverBg:SetAlpha(min(current + speed, button._hoverTarget))
             else
-                self._hoverBg:SetAlpha(max(current - speed, self._hoverTarget))
+                button._hoverBg:SetAlpha(max(current - speed, button._hoverTarget))
             end
         end
     end)
 
-    btn:SetScript("OnEnter", function(self)
-        self._hoverTarget = 1
-        if self.targetSlotID then CHAR:ShowSlotHighlight(self.targetSlotID) end
-        if self.gemData and self.gemData.link then
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT", 40, 0)
-            GameTooltip:SetHyperlink(self.gemData.link)
+    btn:SetScript("OnEnter", function(button)
+        button._hoverTarget = 1
+        if button.targetSlotID then CHAR:ShowSlotHighlight(button.targetSlotID) end
+        if button.gemData and button.gemData.link then
+            GameTooltip:SetOwner(button, "ANCHOR_RIGHT", 40, 0)
+            GameTooltip:SetHyperlink(button.gemData.link)
             GameTooltip:Show()
         end
     end)
 
-    btn:SetScript("OnLeave", function(self)
-        self._hoverTarget = 0
+    btn:SetScript("OnLeave", function(button)
+        button._hoverTarget = 0
         GameTooltip:Hide()
         C_Timer.After(0.05, function()
             if IsMouseOverSocketUI() then return end
@@ -820,15 +893,15 @@ function CHAR:CreateGemButton(index)
         end)
     end)
 
-    btn:SetScript("OnClick", function(self)
+    btn:SetScript("OnClick", function(button)
         if InCombatLockdown() then
             NRSKNUI:Print("Cannot socket during combat")
             return
         end
-        if self.gemData and self.targetSlotID and self.targetSocketIndex then
-            SocketInventoryItem(self.targetSlotID)
-            C_Container.PickupContainerItem(self.gemData.bagID, self.gemData.slotID)
-            C_ItemSocketInfo.ClickSocketButton(self.targetSocketIndex)
+        if button.gemData and button.targetSlotID and button.targetSocketIndex then
+            SocketInventoryItem(button.targetSlotID)
+            C_Container.PickupContainerItem(button.gemData.bagID, button.gemData.slotID)
+            C_ItemSocketInfo.ClickSocketButton(button.targetSocketIndex)
             ClearCursor()
             AcceptSockets()
             CloseSocketInfo()
@@ -1152,6 +1225,14 @@ local function IsRingEnchant(targetSlots)
     return false
 end
 
+local function IsArmorKit(targetSlots)
+    if not targetSlots then return false end
+    for _, slotID in ipairs(targetSlots) do
+        if slotID == 7 then return true end
+    end
+    return false
+end
+
 function CHAR:ScanBagsForEnchants()
     wipe(enchantCache)
     for bag = 0, NUM_BAG_SLOTS do
@@ -1162,7 +1243,7 @@ function CHAR:ScanBagsForEnchants()
                 local _, _, _, _, _, classID = C_Item.GetItemInfoInstant(info.itemID)
                 if classID == LE_ITEM_CLASS_ITEM_ENHANCEMENT then
                     local targetSlots = GetEnchantTargetSlots(info.hyperlink)
-                    if targetSlots then
+                    if targetSlots and not IsArmorKit(targetSlots) then
                         local existing = enchantCache[info.itemID]
                         if existing then
                             existing.count = existing.count + info.stackCount
@@ -1237,9 +1318,9 @@ function CHAR:CreateEnchantPopup()
     popup:SetClipsChildren(true)
     popup:Hide()
 
-    popup.title = popup:CreateFontString(nil, "OVERLAY")
+    popup.title = NRSKNUI:CreateText(popup, "OVERLAY")
     popup.title:SetPoint("TOPLEFT", 6, -6)
-    NRSKNUI:ApplyFontToText(popup.title, "Expressway", 14, "OUTLINE", {})
+    NRSKNUI:SetTextFont(popup.title, "Expressway", 14, "OUTLINE", {})
     popup.title:SetText("Enchants")
     popup.title:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3])
 
@@ -1249,9 +1330,9 @@ function CHAR:CreateEnchantPopup()
     popup.separator:SetPoint("TOPRIGHT", popup, "TOPRIGHT", 0, -TITLE_HEIGHT)
     popup.separator:SetColorTexture(Theme.border[1], Theme.border[2], Theme.border[3], 1)
 
-    popup.noEnchants = popup:CreateFontString(nil, "OVERLAY")
+    popup.noEnchants = NRSKNUI:CreateText(popup, "OVERLAY")
     popup.noEnchants:SetPoint("CENTER", 0, -8)
-    NRSKNUI:ApplyFontToText(popup.noEnchants, "Expressway", 14, "OUTLINE", {})
+    NRSKNUI:SetTextFont(popup.noEnchants, "Expressway", 14, "OUTLINE", {})
     popup.noEnchants:SetText("No enchants in bags")
     popup.noEnchants:SetTextColor(Theme.textMuted[1], Theme.textMuted[2], Theme.textMuted[3])
     popup.noEnchants:Hide()
@@ -1294,18 +1375,18 @@ function CHAR:CreateEnchantButton_Popup(index)
 
     btn.qualityFrame, btn.quality = CreateQualityOverlay(btn, btn.iconFrame)
 
-    btn.stats = btn:CreateFontString(nil, "OVERLAY")
+    btn.stats = NRSKNUI:CreateText(btn, "OVERLAY")
     btn.stats:SetPoint("LEFT", btn.iconFrame, "RIGHT", 6, 0)
     btn.stats:SetWidth(220)
     btn.stats:SetJustifyH("LEFT")
     btn.stats:SetWordWrap(true)
-    NRSKNUI:ApplyFontToText(btn.stats, "Expressway", 12, "OUTLINE", {})
+    NRSKNUI:SetTextFont(btn.stats, "Expressway", 12, "OUTLINE", {})
     btn.stats:SetTextColor(Theme.textPrimary[1], Theme.textPrimary[2], Theme.textPrimary[3])
     btn.stats:SetShadowColor(0, 0, 0, 0)
 
-    btn.count = btn:CreateFontString(nil, "OVERLAY")
+    btn.count = NRSKNUI:CreateText(btn, "OVERLAY")
     btn.count:SetPoint("RIGHT", btn, "RIGHT", -4, 0)
-    NRSKNUI:ApplyFontToText(btn.count, "Expressway", 12, "OUTLINE", {})
+    NRSKNUI:SetTextFont(btn.count, "Expressway", 12, "OUTLINE", {})
     btn.count:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3])
     btn.count:SetShadowColor(0, 0, 0, 0)
 
@@ -1316,34 +1397,34 @@ function CHAR:CreateEnchantButton_Popup(index)
     btn._hoverBg = hoverBg
     btn._hoverTarget = 0
 
-    btn:SetScript("OnUpdate", function(self, elapsed)
-        local current = self._hoverBg:GetAlpha()
-        if abs(current - self._hoverTarget) > 0.01 then
+    btn:SetScript("OnUpdate", function(button, elapsed)
+        local current = button._hoverBg:GetAlpha()
+        if abs(current - button._hoverTarget) > 0.01 then
             local speed = elapsed / HOVER_DURATION
-            if self._hoverTarget > current then
-                self._hoverBg:SetAlpha(min(current + speed, self._hoverTarget))
+            if button._hoverTarget > current then
+                button._hoverBg:SetAlpha(min(current + speed, button._hoverTarget))
             else
-                self._hoverBg:SetAlpha(max(current - speed, self._hoverTarget))
+                button._hoverBg:SetAlpha(max(current - speed, button._hoverTarget))
             end
         end
     end)
 
-    btn:SetScript("OnEnter", function(self)
-        self._hoverTarget = 1
-        if self.enchantData and IsRingEnchant(self.enchantData.targetSlots) then
-            CHAR:ShowMultiSlotHighlight(self.enchantData.targetSlots)
-        elseif self.targetSlotID then
-            CHAR:ShowSlotHighlight(self.targetSlotID)
+    btn:SetScript("OnEnter", function(button)
+        button._hoverTarget = 1
+        if button.enchantData and IsRingEnchant(button.enchantData.targetSlots) then
+            CHAR:ShowMultiSlotHighlight(button.enchantData.targetSlots)
+        elseif button.targetSlotID then
+            CHAR:ShowSlotHighlight(button.targetSlotID)
         end
-        if self.enchantData and self.enchantData.link then
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT", 40, 0)
-            GameTooltip:SetHyperlink(self.enchantData.link)
+        if button.enchantData and button.enchantData.link then
+            GameTooltip:SetOwner(button, "ANCHOR_RIGHT", 40, 0)
+            GameTooltip:SetHyperlink(button.enchantData.link)
             GameTooltip:Show()
         end
     end)
 
-    btn:SetScript("OnLeave", function(self)
-        self._hoverTarget = 0
+    btn:SetScript("OnLeave", function(button)
+        button._hoverTarget = 0
         GameTooltip:Hide()
         C_Timer.After(0.05, function()
             if IsMouseOverSocketUI() then return end
@@ -1352,13 +1433,13 @@ function CHAR:CreateEnchantButton_Popup(index)
         end)
     end)
 
-    btn:SetScript("OnClick", function(self)
+    btn:SetScript("OnClick", function(button)
         if InCombatLockdown() then
             NRSKNUI:Print("Cannot enchant during combat")
             return
         end
-        if self.enchantData then
-            UseContainerItem(self.enchantData.bagID, self.enchantData.slotID)
+        if button.enchantData then
+            UseContainerItem(button.enchantData.bagID, button.enchantData.slotID)
             CHAR:HideEnchantPopup()
             CHAR:HideSlotHighlight()
         end

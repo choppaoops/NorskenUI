@@ -60,7 +60,7 @@ function BLT:CreateFrame()
 
     frame.icon:SetTexture(136012)
 
-    NRSKNUI:ApplyFontToText(frame.text, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline, {})
+    NRSKNUI:SetTextFont(frame.text, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline, {})
     frame.text:SetTextColor(1, 1, 1, 1)
 
     frame:Hide()
@@ -72,7 +72,7 @@ function BLT:ApplySettings()
 
     self.frame:SetIconSize(self.db.Size)
     NRSKNUI:ApplyFramePosition(self.frame, self.db.Position, self.db)
-    NRSKNUI:ApplyFontToText(self.frame.text, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline, {})
+    NRSKNUI:SetTextFont(self.frame.text, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline, {})
 end
 
 local function ApplySatedIcon(spellId)

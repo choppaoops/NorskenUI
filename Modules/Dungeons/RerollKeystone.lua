@@ -54,12 +54,12 @@ function RK:CreateFrame()
     frame.icon:SetTexture(525134)
 
     frame.text:SetPoint("BOTTOM", frame, "TOP", 0, 8)
-    NRSKNUI:ApplyFontToText(frame.text, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline, {})
+    NRSKNUI:SetTextFont(frame.text, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline, {})
     frame.text:SetTextColor(unpack(self.db.FontColor))
 
-    local keyText = frame:CreateFontString(nil, "OVERLAY")
+    local keyText = NRSKNUI:CreateText(frame, "OVERLAY")
     keyText:SetPoint("TOP", frame, "BOTTOM", 0, -8)
-    NRSKNUI:ApplyFontToText(keyText, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSizeKey, self.db.FontOutline, {})
+    NRSKNUI:SetTextFont(keyText, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSizeKey, self.db.FontOutline, {})
     keyText:SetTextColor(unpack(self.db.FontColorKey))
     frame.keyText = keyText
 
@@ -73,9 +73,9 @@ function RK:ApplySettings()
 
     self.frame:SetIconSize(self.db.Size)
     NRSKNUI:ApplyFramePosition(self.frame, self.db.Position, self.db)
-    NRSKNUI:ApplyFontToText(self.frame.text, font, self.db.FontSize, self.db.FontOutline, {})
+    NRSKNUI:SetTextFont(self.frame.text, font, self.db.FontSize, self.db.FontOutline, {})
     self.frame.text:SetTextColor(unpack(self.db.FontColor))
-    NRSKNUI:ApplyFontToText(self.frame.keyText, font, self.db.FontSizeKey, self.db.FontOutline, {})
+    NRSKNUI:SetTextFont(self.frame.keyText, font, self.db.FontSizeKey, self.db.FontOutline, {})
     self.frame.keyText:SetTextColor(unpack(self.db.FontColorKey))
 
     self.frame:RefreshGlow(self.db)

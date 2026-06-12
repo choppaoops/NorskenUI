@@ -79,8 +79,7 @@ function DUR:CreateFrame()
     local frame = CreateFrame("Frame", "NRSKNUI_DurabilityDataText", UIParent)
     frame:SetSize(160, 14)
 
-    local text = frame:CreateFontString(nil, "OVERLAY")
-    text:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
+    local text = NRSKNUI:CreateText(frame, "OVERLAY")
     text:SetPoint("LEFT")
     text:SetJustifyH("LEFT")
     text:SetWordWrap(false)
@@ -96,8 +95,7 @@ function DUR:CreateWarningFrame()
     local frame = CreateFrame("Frame", "NRSKNUI_DurabilityWarning", UIParent)
     frame:SetSize(180, 28)
 
-    local text = frame:CreateFontString(nil, "OVERLAY")
-    text:SetFont("Fonts\\FRIZQT__.TTF", 14, "")
+    local text = NRSKNUI:CreateText(frame, "OVERLAY")
     text:SetPoint("CENTER")
     text:SetText("LOW DURABILITY")
 
@@ -124,7 +122,7 @@ function DUR:ApplySettings()
 
     if self.text then
         NRSKNUI:ApplyFramePosition(self.frame, self.db.Text.Position, self.db.Text)
-        NRSKNUI:ApplyFontToText(self.text, NRSKNUI:GetEffectiveFont(self.db), self.db.Text.FontSize, self.db.FontOutline,
+        NRSKNUI:SetTextFont(self.text, NRSKNUI:GetEffectiveFont(self.db), self.db.Text.FontSize, self.db.FontOutline,
             self.db.FontShadow)
 
         if self.db.Text.Enabled or self.isPreview then
@@ -145,7 +143,7 @@ function DUR:ApplySettings()
     end
 
     if self.warningText then
-        NRSKNUI:ApplyFontToText(self.warningText, NRSKNUI:GetEffectiveFont(self.db), self.db.WarningText.FontSize, self.db.FontOutline,
+        NRSKNUI:SetTextFont(self.warningText, NRSKNUI:GetEffectiveFont(self.db), self.db.WarningText.FontSize, self.db.FontOutline,
             self.db.FontShadow)
         NRSKNUI:ApplyFramePosition(self.warningFrame, self.db.WarningText.Position, { anchorFrameType = "UIPARENT" })
 

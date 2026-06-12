@@ -216,11 +216,10 @@ local function CreateTextLine()
     local textFrame = CreateFrame("Frame", nil, containerFrame)
     textFrame:Size(300, db.FontSize + 4)
 
-    local text = textFrame:CreateFontString(nil, "OVERLAY")
+    local text = NRSKNUI:CreateText(textFrame, "OVERLAY")
     text:Point("CENTER", textFrame, "CENTER", 0, 0)
     text:DisablePixelSnap()
-    local fontPath = NRSKNUI:GetFontPath(NRSKNUI:GetEffectiveFont(db))
-    text:SetFont(fontPath, db.FontSize, db.FontOutline or "OUTLINE")
+    NRSKNUI:SetTextFont(text, NRSKNUI:GetEffectiveFont(db), db.FontSize, db.FontOutline)
     text:SetJustifyH("CENTER")
 
     textFrame.text = text
@@ -785,7 +784,7 @@ function MITEMS:ApplySettings()
 
     for _, textFrame in ipairs(textPool) do
         local db = self.db.Display
-        NRSKNUI:ApplyFontToText(textFrame.text, NRSKNUI:GetEffectiveFont(db), db.FontSize, db.FontOutline)
+        NRSKNUI:SetTextFont(textFrame.text, NRSKNUI:GetEffectiveFont(db), db.FontSize, db.FontOutline)
         textFrame:Height(db.FontSize + 4)
     end
 

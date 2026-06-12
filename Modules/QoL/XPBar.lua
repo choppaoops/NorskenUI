@@ -112,13 +112,11 @@ function XPBar:CreateBar()
 
     NRSKNUI:AddBorders(bar, self.db.BackdropBorderColor)
 
-    bar.text = bar:CreateFontString(nil, "OVERLAY")
+    bar.text = NRSKNUI:CreateText(bar, "OVERLAY")
     bar.text:SetPoint("CENTER")
-    bar.text:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
 
-    bar.level = bar:CreateFontString(nil, "OVERLAY")
+    bar.level = NRSKNUI:CreateText(bar, "OVERLAY")
     bar.level:SetPoint("RIGHT", bar, "RIGHT", -4, 0)
-    bar.level:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
 
     self.bar = bar
 
@@ -207,10 +205,10 @@ function XPBar:ApplySettings()
 
     if self.bar.SetBorderColor then self.bar:SetBorderColor(unpack(self.db.BackdropBorderColor)) end
 
-    NRSKNUI:ApplyFontToText(self.bar.text, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline,
+    NRSKNUI:SetTextFont(self.bar.text, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline,
         self.db.FontShadow)
     self.bar.text:SetTextColor(unpack(self.db.TextColor))
-    NRSKNUI:ApplyFontToText(self.bar.level, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline,
+    NRSKNUI:SetTextFont(self.bar.level, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline,
         self.db.FontShadow)
     self.bar.level:SetTextColor(unpack(self.db.TextColor))
 

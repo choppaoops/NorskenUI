@@ -79,7 +79,7 @@ function POT:ApplySettings()
     local db = self.db
 
     frame.text:SetTextColor(unpack(db.Color))
-    NRSKNUI:ApplyFontToText(frame.text, NRSKNUI:GetEffectiveFont(self.db), db.FontSize, db.FontOutline, db.FontShadow)
+    NRSKNUI:SetTextFont(frame.text, NRSKNUI:GetEffectiveFont(self.db), db.FontSize, db.FontOutline, db.FontShadow)
     frame.text:SetText(db.Text)
 
     local w = frame.text:GetStringWidth()

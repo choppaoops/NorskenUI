@@ -172,9 +172,9 @@ function NRSKNUI:CreateMessagePopup(timer, text, fontSize, parentFrame, xOffset,
     msgContainer:SetSize(MESSAGE_POPUP_SIZE, MESSAGE_POPUP_SIZE)
     msgContainer:SetPoint("CENTER", parent, "CENTER", xOffset or 0, yOffset or 250)
 
-    local msgText = msgContainer:CreateFontString(nil, "OVERLAY")
+    local msgText = NRSKNUI:CreateText(msgContainer, "OVERLAY")
     msgText:SetPoint("CENTER")
-    NRSKNUI:ApplyFontToText(msgText, "Expressway", fontSize, "OUTLINE", {})
+    NRSKNUI:SetTextFont(msgText, "Expressway", fontSize, "OUTLINE", {})
     msgText:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
     msgText:SetShadowColor(0, 0, 0, 0)
     msgText:SetText(text)

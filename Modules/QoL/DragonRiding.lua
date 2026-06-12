@@ -157,7 +157,7 @@ local function UpdateSpeed(self)
 
     local fontFile = speed:GetFont()
     if not fontFile then
-        NRSKNUI:ApplyFontToText(speed, st.FontFace, NRSKNUI:GetEffectiveFont(st), st.FontOutline, st.FontShadow)
+        NRSKNUI:SetTextFont(speed, NRSKNUI:GetEffectiveFont(st), st.FontSize, st.FontOutline, st.FontShadow)
         if not speed:GetFont() then return end
     end
 
@@ -230,10 +230,10 @@ function DR:CreateFrames()
     self.speedOverlay = CreateFrame('Frame', nil, self.container)
     self.speedOverlay:SetAllPoints(self.container)
     self.speedOverlay:SetFrameLevel(self.container:GetFrameLevel() + 10)
-    self.speedText = self.speedOverlay:CreateFontString(nil, 'OVERLAY')
+    self.speedText = NRSKNUI:CreateText(self.speedOverlay, 'OVERLAY')
     self.speedText:SetWordWrap(false)
     self.speedText:SetPoint('BOTTOM', self.vigorFrame, 'TOP', st.XOffset or 0, (st.YOffset or 0) + 2)
-    NRSKNUI:ApplyFontToText(self.speedText, NRSKNUI:GetEffectiveFont(st), st.FontSize, st.FontOutline, st.FontShadow)
+    NRSKNUI:SetTextFont(self.speedText, NRSKNUI:GetEffectiveFont(st), st.FontSize, st.FontOutline, st.FontShadow)
     self.speedText:SetText("")
 end
 
@@ -297,7 +297,7 @@ function DR:Refresh()
     UpdateVigorColor(self)
 
     local st = db.SpeedText or {}
-    NRSKNUI:ApplyFontToText(self.speedText, NRSKNUI:GetEffectiveFont(st), st.FontSize, st.FontOutline, st.FontShadow)
+    NRSKNUI:SetTextFont(self.speedText, NRSKNUI:GetEffectiveFont(st), st.FontSize, st.FontOutline, st.FontShadow)
     self.speedText:ClearAllPoints()
     self.speedText:SetPoint('BOTTOM', self.vigorFrame, 'TOP', st.XOffset or 0, (st.YOffset or 0) + 2)
 
@@ -390,7 +390,7 @@ function DR:OnShowHandler()
 
     local st = self.db.SpeedText or {}
     if self.speedText and not self.speedText:GetFont() then
-        NRSKNUI:ApplyFontToText(self.speedText, NRSKNUI:GetEffectiveFont(st), st.FontSize, st.FontOutline, st.FontShadow)
+        NRSKNUI:SetTextFont(self.speedText, NRSKNUI:GetEffectiveFont(st), st.FontSize, st.FontOutline, st.FontShadow)
     end
 
     self.vigorFrame:RegisterEvent('SPELL_UPDATE_CHARGES')

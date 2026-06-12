@@ -130,17 +130,15 @@ function FCB:CreateFrame()
     kickTick:AddMaskTexture(tickMask)
     kickTick:SetAlpha(0)
 
-    local text = castBar:CreateFontString(nil, "OVERLAY")
+    local text = NRSKNUI:CreateText(castBar, "OVERLAY")
     text:SetPoint("LEFT", castBar, "LEFT", 4, 0)
     text:SetJustifyH("LEFT")
-    text:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
 
-    local time = castBar:CreateFontString(nil, "OVERLAY")
+    local time = NRSKNUI:CreateText(castBar, "OVERLAY")
     time:SetPoint("RIGHT", castBar, "RIGHT", -4, 0)
     time:SetJustifyH("RIGHT")
-    time:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
 
-    local targetText = frame:CreateFontString(nil, "OVERLAY", nil)
+    local targetText = NRSKNUI:CreateText(frame, "OVERLAY")
     targetText:SetParent(castBar)
     targetText:Hide()
 
@@ -184,8 +182,8 @@ function FCB:ApplySettings()
     local tickColor = db.KickIndicator.TickColor
     self.kickTick:SetColorTexture(tickColor[1], tickColor[2], tickColor[3], tickColor[4])
 
-    NRSKNUI:ApplyFontToText(self.text, NRSKNUI:GetEffectiveFont(self.db), db.FontSize, db.FontOutline, db.FontShadow)
-    NRSKNUI:ApplyFontToText(self.time, NRSKNUI:GetEffectiveFont(self.db), db.FontSize, db.FontOutline, db.FontShadow)
+    NRSKNUI:SetTextFont(self.text, NRSKNUI:GetEffectiveFont(self.db), db.FontSize, db.FontOutline, db.FontShadow)
+    NRSKNUI:SetTextFont(self.time, NRSKNUI:GetEffectiveFont(self.db), db.FontSize, db.FontOutline, db.FontShadow)
     self.text:SetTextColor(db.TextColor[1], db.TextColor[2], db.TextColor[3], db.TextColor[4])
     self.time:SetTextColor(db.TextColor[1], db.TextColor[2], db.TextColor[3], db.TextColor[4])
 
@@ -195,7 +193,7 @@ function FCB:ApplySettings()
         self.targetText:ClearAllPoints()
         self.targetText:SetPoint(anchorPoint, self.frame, anchorPoint, targetSettings.XOffset, targetSettings.YOffset)
         self.targetText:SetJustifyH(anchorPoint)
-        NRSKNUI:ApplyFontToText(self.targetText, NRSKNUI:GetEffectiveFont(self.db), targetSettings.FontSize, db.FontOutline, db.FontShadow)
+        NRSKNUI:SetTextFont(self.targetText, NRSKNUI:GetEffectiveFont(self.db), targetSettings.FontSize, db.FontOutline, db.FontShadow)
     end
 
     if self.targetMarker then

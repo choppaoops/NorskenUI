@@ -69,9 +69,8 @@ function RANGE:CreateFrame()
     frame:SetMouseClickEnabled(false)
     frame:Hide()
 
-    local text = frame:CreateFontString(nil, "OVERLAY")
+    local text = NRSKNUI:CreateText(frame, "OVERLAY")
     text:SetPoint("CENTER", frame, "CENTER", 0, 0)
-    text:SetFont(NRSKNUI.FONT, 14, "")
     text:SetText("")
     text:SetJustifyH("CENTER")
 
@@ -83,7 +82,7 @@ end
 function RANGE:ApplySettings()
     self:BuildGradientPalette()
     if not self.frame or not self.text then return end
-    NRSKNUI:ApplyFontToText(self.text, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline, self.db.FontShadow)
+    NRSKNUI:SetTextFont(self.text, NRSKNUI:GetEffectiveFont(self.db), self.db.FontSize, self.db.FontOutline, self.db.FontShadow)
     self:ApplyPosition()
 end
 

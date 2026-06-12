@@ -103,7 +103,7 @@ local function CreateStanceFrame()
     stanceFrame.cooldown = cooldown
 
     NRSKNUI:ApplyFramePosition(stanceFrame, db.Position, db)
-    NRSKNUI:ApplyFontToText(stanceFrame.text, NRSKNUI:GetEffectiveFont(db), db.FontSize, db.FontOutline, db.FontShadow)
+    NRSKNUI:SetTextFont(stanceFrame.text, NRSKNUI:GetEffectiveFont(db), db.FontSize, db.FontOutline, db.FontShadow)
     stanceFrame.text:SetTextColor(1, 1, 1, 1)
     stanceFrame:Hide()
 end
@@ -116,7 +116,7 @@ local function ShowStanceIcon(spellId, reverseIcon, currentSpellId)
         local texture = GetSpellTexture(displaySpellId)
         stanceFrame.icon:SetTexture(texture)
 
-        NRSKNUI:ApplyFontToText(stanceFrame.text, NRSKNUI:GetEffectiveFont(db), db.FontSize, db.FontOutline, db.FontShadow)
+        NRSKNUI:SetTextFont(stanceFrame.text, NRSKNUI:GetEffectiveFont(db), db.FontSize, db.FontOutline, db.FontShadow)
         local showText = db.ShowMissingText ~= false and not reverseIcon
         stanceFrame.text:SetText(showText and MISSING_TEXT or "")
 
@@ -419,7 +419,7 @@ function STANCEICONS:ApplySettings()
     if stanceFrame then
         stanceFrame:SetSize(db.IconSize, db.IconSize)
         NRSKNUI:ApplyFramePosition(stanceFrame, db.Position, db)
-        NRSKNUI:ApplyFontToText(stanceFrame.text, NRSKNUI:GetEffectiveFont(db), db.FontSize, db.FontOutline, db.FontShadow)
+        NRSKNUI:SetTextFont(stanceFrame.text, NRSKNUI:GetEffectiveFont(db), db.FontSize, db.FontOutline, db.FontShadow)
     end
 end
 
@@ -444,7 +444,7 @@ function STANCEICONS:ShowPreview()
         stanceFrame.icon:SetTexture(texture)
         stanceFrame.text:SetText(db.ShowMissingText ~= false and "MISSING" or "")
         stanceFrame:SetSize(db.IconSize, db.IconSize)
-        NRSKNUI:ApplyFontToText(stanceFrame.text, NRSKNUI:GetEffectiveFont(db), db.FontSize, db.FontOutline, db.FontShadow)
+        NRSKNUI:SetTextFont(stanceFrame.text, NRSKNUI:GetEffectiveFont(db), db.FontSize, db.FontOutline, db.FontShadow)
         NRSKNUI:ApplyFramePosition(stanceFrame, db.Position, db)
         stanceFrame:Show()
     end

@@ -183,8 +183,7 @@ function CM:GetMessageFrame(msgType)
     frame:SetSize(200, 20)
     frame:Hide()
 
-    local text = frame:CreateFontString(nil, "OVERLAY")
-    text:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
+    local text = NRSKNUI:CreateText(frame, "OVERLAY")
     text:SetPoint("CENTER")
     text:SetJustifyH("CENTER")
     text:SetJustifyV("MIDDLE")
@@ -204,7 +203,7 @@ end
 function CM:UpdateFrameFont(frame, msgType)
     local key = GetDbKey(msgType)
     local fontSize = (key and self.db[key] and self.db[key].FontSize) or self.db.FontSize
-    NRSKNUI:ApplyFontToText(frame.text, NRSKNUI:GetEffectiveFont(self.db), fontSize, self.db.FontOutline, self.db.FontShadow)
+    NRSKNUI:SetTextFont(frame.text, NRSKNUI:GetEffectiveFont(self.db), fontSize, self.db.FontOutline, self.db.FontShadow)
 end
 
 function CM:SetMessageContent(frame, msgText, color, msgType)
