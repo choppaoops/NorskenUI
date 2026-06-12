@@ -66,6 +66,7 @@ GUIFrame.SidebarConfig = {
                 { id = "BurningRush",      text = NRSKNUI:ColorTextByClass("Warlock: Burning Rush", "WARLOCK") },
                 { id = "IncarnStacks",     text = NRSKNUI:ColorTextByClass("Guardian Druid: Incarn Stacks", "DRUID") },
                 { id = "HuntersMark",      text = NRSKNUI:ColorTextByClass("Hunter: Mark Missing", "HUNTER") },
+                { id = "ReckonTracker",    text = NRSKNUI:ColorTextByClass("Dev DH: Reckon Tracker", "DEMONHUNTER") },
                 { id = "PetTexts",         text = "Pet Status Texts" },
                 { id = "gateway",          text = "Gateway Alert" },
                 { id = "TotemTracker",     text = "Totem Tracker" },
@@ -120,9 +121,9 @@ GUIFrame.SidebarConfig = {
             text = "Dungeon & Party Util",
             defaultExpanded = false,
             items = {
-                { id = "InstanceReset", text = "Instance Reset" },
-                { id = "HealerMana",    text = "Healer Mana" },
-                { id = "DungeonCasts",  text = "Dungeon Casts" },
+                { id = "InstanceReset",  text = "Instance Reset" },
+                { id = "HealerMana",     text = "Healer Mana" },
+                { id = "DungeonCasts",   text = "Dungeon Casts" },
                 { id = "RerollKeystone", text = "Reroll Keystone" },
             }
         },

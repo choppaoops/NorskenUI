@@ -451,6 +451,38 @@ local Defaults = {
             },
         },
 
+        -- Reap Free Cast
+        ReckonTracker = {
+            Enabled = false,
+            IconSize = 40,
+
+            -- Glow
+            GlowEnabled = true,
+            GlowType = "pixel",
+            GlowColor = { 0, 1, 0, 1 },
+            GlowXOffset = 0,
+            GlowYOffset = 0,
+            GlowLines = 5,
+            GlowFrequency = 0.25,
+            GlowLength = 10,
+            GlowThickness = 2,
+            GlowBorder = true,
+            GlowScale = 1,
+            GlowDuration = 1,
+            GlowStartAnim = false,
+
+            -- Position
+            Strata = "HIGH",
+            anchorFrameType = "UIPARENT",
+            ParentFrame = "UIParent",
+            Position = {
+                AnchorFrom = "CENTER",
+                AnchorTo = "CENTER",
+                XOffset = 0,
+                YOffset = -50,
+            },
+        },
+
         -- Incarnation Stack Tracker
         IncarnStacks = {
             Enabled = false,
@@ -730,9 +762,9 @@ local Defaults = {
             MiscVars = {
                 Enabled = true,
 
-                -- Cvar list
-                nameplateUseClassColorForFriendlyPlayerUnitNames = true,
-                nameplateShowOnlyNameForFriendlyPlayerUnits = true,
+                -- Spell Queue Window per position (these are the only persisted values)
+                SpellQueueWindowMelee = nil,
+                SpellQueueWindowRanged = nil,
             },
 
             Gateway = {

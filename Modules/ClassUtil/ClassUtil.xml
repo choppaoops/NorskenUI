@@ -9,4 +9,5 @@
     <Script file="TotemTracker.lua"/>
     <Script file="SpellAlert.lua" />
     <Script file="BloodlustTracker.lua" />
+    <Script file="ReckonTracker.lua" />
 </Ui>
