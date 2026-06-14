@@ -120,6 +120,7 @@
     <Script file="GUITabs\GUI-Miscellaneous\GUI-BloodlustTracker.lua" />
     <Script file="GUITabs\GUI-Miscellaneous\GUI-WayFinder.lua" />
     <Script file="GUITabs\GUI-Miscellaneous\GUI-ReckonTracker.lua" />
+    <Script file="GUITabs\GUI-Miscellaneous\GUI-TestTab.lua" />
 
     <Script file="GUIMain\GUI-MainFrame.lua" />
 </Ui>

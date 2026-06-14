@@ -157,6 +157,7 @@ GUIFrame.SidebarConfig = {
             items = {
                 { id = "BenchAlert", text = "Bench Alert" },
                 { id = "WayFinder",  text = "Waypoint Finder" },
+                --{ id = "TestTab",    text = "Test Tab" },
             }
         },
     },
