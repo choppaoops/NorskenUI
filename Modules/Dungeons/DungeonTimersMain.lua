@@ -64,6 +64,10 @@ function DT:UpdateDB()
     end
 end
 
+function DT:InvalidateInstanceCache()
+    instanceIdToDungeonKey = nil
+end
+
 function DT:UpdateCurrentDungeon()
     local inInstance, instanceType = IsInInstance()
     if not inInstance or (instanceType ~= "party" and instanceType ~= "raid") then
@@ -83,6 +87,12 @@ function DT:UpdateCurrentDungeon()
     if not instanceIdToDungeonKey and self.db and self.db.Dungeons then
         instanceIdToDungeonKey = {}
         for dungeonKey, dungeonData in pairs(self.db.Dungeons) do
+            if not dungeonData.instanceId then
+                local info = NRSKNUI.DUNGEON_INFO and NRSKNUI.DUNGEON_INFO[dungeonKey]
+                if info and info.instanceId then
+                    dungeonData.instanceId = info.instanceId
+                end
+            end
             if dungeonData.instanceId then
                 instanceIdToDungeonKey[dungeonData.instanceId] = dungeonKey
             end
@@ -197,7 +207,10 @@ function DT:CreateTrigger(dungeonKey)
     if not self.db or not self.db.Dungeons then return nil end
 
     if not self.db.Dungeons[dungeonKey] then
-        self.db.Dungeons[dungeonKey] = { Enabled = true, Triggers = {} }
+        local info = NRSKNUI.DUNGEON_INFO and NRSKNUI.DUNGEON_INFO[dungeonKey]
+        local instanceId = info and info.instanceId or nil
+        self.db.Dungeons[dungeonKey] = { Enabled = true, instanceId = instanceId, Triggers = {} }
+        self:InvalidateInstanceCache()
     end
 
     local dungeonDb = self.db.Dungeons[dungeonKey]

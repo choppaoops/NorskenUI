@@ -205,6 +205,7 @@ function DT:ImportDungeonTimers(importString, targetDungeonKey)
     local dungeonDb = EnsureDungeonExists(self.db, dungeonKey)
     if not dungeonDb then return false, "Unknown dungeon" end
     local imported, skipped = ImportTriggersIntoDungeon(dungeonDb, data.triggers, self.db.TriggerDefaults)
+    self:InvalidateInstanceCache()
     return true, FormatResult(imported, skipped)
 end
 
@@ -226,6 +227,7 @@ function DT:ImportAllDungeonTimers(importString)
             end
         end
     end
+    self:InvalidateInstanceCache()
     return true, FormatResult(totalImport, totalSkip, dungeonCount)
 end
 
@@ -239,6 +241,7 @@ function DT:ImportNUIPreset(dungeonKey)
     local dungeonDb = EnsureDungeonExists(self.db, dungeonKey)
     if not dungeonDb then return false, "Unknown dungeon" end
     local imported, skipped = ImportTriggersIntoDungeon(dungeonDb, presets.Triggers, self.db.TriggerDefaults)
+    self:InvalidateInstanceCache()
     return true, FormatResult(imported, skipped)
 end
 
@@ -257,6 +260,7 @@ function DT:ImportAllNUIPresets()
             end
         end
     end
+    self:InvalidateInstanceCache()
     if totalImport == 0 and totalSkip == 0 then return false, "No presets available" end
     return true, FormatResult(totalImport, totalSkip, dungeonCount)
 end
