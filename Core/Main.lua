@@ -56,9 +56,6 @@ function NorskenUI:OnInitialize()
         NRSKNUI.db:SetProfile(profileName)
     end
 
-    -- Validate fonts on initial load
-    NRSKNUI:ValidateProfileFonts()
-
     -- Profile change callbacks
     NRSKNUI.db.RegisterCallback(NRSKNUI, "OnProfileChanged", function()
         NRSKNUI:ValidateProfileFonts()
