@@ -1312,11 +1312,7 @@ function ACB:InitializeBars()
         end
     end
 
-    for i = 2, 8 do
-        Settings.SetValue("PROXY_SHOW_ACTIONBAR_" .. i, false)
-    end
     C_CVar.SetCVar("countdownForCooldowns", 1)
-    SettingsPanel:CommitSettings(true)
 
     C_Timer.After(1, function() ACB:UpdateButtonTexts() end)
     C_Timer.After(2, function() ACB:UpdateButtonTexts() end)
@@ -1777,11 +1773,6 @@ function ACB:ApplySettings()
             return
         end
         self:HideBlizzardBars()
-
-        -- Re-apply Blizzard actionbar settings
-        for i = 2, 8 do
-            Settings.SetValue("PROXY_SHOW_ACTIONBAR_" .. i, false)
-        end
 
         -- Rebuild config with new profile settings
         self:BuildConfigTable()
