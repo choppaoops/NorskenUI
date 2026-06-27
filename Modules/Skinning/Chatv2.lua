@@ -509,7 +509,7 @@ function CHAT:CreateCopyButton(chat)
     local copyButton = CreateFrame("Frame", format("NRSKNUI_CopyChatButton%d", id), chat)
     copyButton:EnableMouse(true)
     copyButton:SetSize(20, 22)
-    copyButton:SetPoint("TOPRIGHT", chat, "TOPRIGHT", 0, -4)
+    copyButton:SetPoint("TOPRIGHT", chat, "TOPRIGHT", 4, 6)
     copyButton:SetFrameLevel(chat:GetFrameLevel() + 5)
     chat.copyButton = copyButton
 
