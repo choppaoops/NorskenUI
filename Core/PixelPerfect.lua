@@ -7,13 +7,9 @@ local CreateFrame = CreateFrame
 local select = select
 local next = next
 local pcall = pcall
-local getmetatable = getmetatable
-local hooksecurefunc = hooksecurefunc
-local EnumerateFrames = EnumerateFrames
 local string_format = string.format
 local math_floor = math.floor
 local UIParent = UIParent
-local InCombatLockdown = InCombatLockdown
 
 function NRSKNUI:UIMult()
     local uiScale = self.uiScale or (UIParent and UIParent:GetEffectiveScale()) or 1
@@ -149,8 +145,6 @@ NRSKNUI:UIMult()
 
 -- GUI Widget Pixel Perfection System
 do
-    local widgetAPIInitialized = false
-
     local function ScaleValue(x)
         local m = NRSKNUI.mult
         if m == 1 or x == 0 then
@@ -161,21 +155,8 @@ do
         end
     end
 
-    local function WatchPixelSnap(frame, snap)
-        if frame and not frame:IsForbidden() and frame.NUIPixelSnapDisabled and snap then frame.NUIPixelSnapDisabled = nil end
-    end
-
     local function DisablePixelSnap(frame)
         if frame and not frame:IsForbidden() and not frame.NUIPixelSnapDisabled then
-            -- Skip if frame belongs to a secure/protected parent (action buttons, etc.)
-            -- This prevents taint from spreading during protected operations like form switches
-            local parent = frame.GetParent and frame:GetParent()
-            if parent and parent.GetName then
-                local name = parent:GetName() or ""
-                if name:match("^ActionButton") or name:match("^MultiBar") or name:match("^StanceButton") or name:match("^PetActionButton") then
-                    return
-                end
-            end
             if frame.SetSnapToPixelGrid then
                 frame:SetSnapToPixelGrid(false)
                 frame:SetTexelSnappingBias(0)
@@ -230,7 +211,7 @@ do
         obj:SetPoint("BOTTOMRIGHT", anchor2 or anchor, "BOTTOMRIGHT", x, -y)
     end
 
-    local WidgetAPI = {
+    local PixelMixin = {
         Size = Size,
         Width = Width,
         Height = Height,
@@ -240,51 +221,14 @@ do
         DisablePixelSnap = DisablePixelSnap,
     }
 
-    local function AddWidgetAPI(object)
-        local mt = getmetatable(object)
-        if not mt or not mt.__index then return end
-        local mk = mt.__index
-        for method, func in next, WidgetAPI do if not object[method] then mk[method] = func end end
-        if not mk.NUIDisabledPixelSnap then
-            if mk.SetSnapToPixelGrid then hooksecurefunc(mk, "SetSnapToPixelGrid", WatchPixelSnap) end
-            if mk.SetStatusBarTexture then hooksecurefunc(mk, "SetStatusBarTexture", DisablePixelSnap) end
-            if mk.SetColorTexture then hooksecurefunc(mk, "SetColorTexture", DisablePixelSnap) end
-            if mk.SetVertexColor then hooksecurefunc(mk, "SetVertexColor", DisablePixelSnap) end
-            if mk.CreateTexture then hooksecurefunc(mk, "CreateTexture", DisablePixelSnap) end
-            if mk.SetTexCoord then hooksecurefunc(mk, "SetTexCoord", DisablePixelSnap) end
-            if mk.SetTexture then hooksecurefunc(mk, "SetTexture", DisablePixelSnap) end
-            mk.NUIDisabledPixelSnap = true
+    ---@param obj table Frame, Texture, FontString, or any widget
+    function NRSKNUI:ApplyPixelMixin(obj)
+        if not obj or obj.NUIPixelMixinApplied then return obj end
+        for method, func in next, PixelMixin do
+            obj[method] = func
         end
-    end
-
-    local function InitializeWidgetAPI()
-        if widgetAPIInitialized then return end
-        widgetAPIInitialized = true
-
-        local handled = { Frame = true }
-        local baseFrame = CreateFrame("Frame")
-        AddWidgetAPI(baseFrame)
-        AddWidgetAPI(baseFrame:CreateTexture())
-        AddWidgetAPI(baseFrame:CreateFontString())
-        AddWidgetAPI(baseFrame:CreateMaskTexture())
-
-        local frame = EnumerateFrames()
-        while frame do
-            local objType = frame:GetObjectType()
-            if not frame:IsForbidden() and not handled[objType] then
-                AddWidgetAPI(frame)
-                handled[objType] = true
-            end
-            frame = EnumerateFrames(frame)
-        end
-        AddWidgetAPI(CreateFrame("ScrollFrame"))
-    end
-
-    -- Defer metatable hooking if in combat to prevent taint
-    if InCombatLockdown() then
-        NRSKNUI:DeferUntilUnrestricted(0, InitializeWidgetAPI)
-    else
-        InitializeWidgetAPI()
+        obj.NUIPixelMixinApplied = true
+        return obj
     end
 
     NRSKNUI.ScaleValue = ScaleValue
