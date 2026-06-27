@@ -86,6 +86,7 @@ do
         self:UnregisterAllEvents()
         NRSKNUI:ResolveMedia()
         PreloadAllFonts()
+        NRSKNUI:ValidateProfileFonts()
     end)
 end
 
