@@ -697,6 +697,59 @@ local function GetGrowth(point)
     return vertical, horizontal, anchorUp, anchorLeft
 end
 
+-- Calculate auto flyout direction based on bar position
+local function CalculateAutoFlyoutDirection(container, anchorPoint)
+    if not container then return "UP" end
+
+    local width, height = container:GetSize()
+
+    -- If bar is taller than wide (vertical layout), flyout goes left or right
+    if width < height then
+        if anchorPoint and anchorPoint:find("RIGHT") then
+            return "LEFT"
+        end
+        return "RIGHT"
+    end
+
+    -- If bar is wider than tall (horizontal layout), flyout goes up or down
+    if anchorPoint and anchorPoint:find("TOP") then
+        return "DOWN"
+    end
+    return "UP"
+end
+
+-- Get the effective flyout direction for a bar (resolves AUTO)
+local function GetEffectiveFlyoutDirection(barKey, container)
+    local barDB = ACB.db and ACB.db.Bars and ACB.db.Bars[barKey]
+    if not barDB then return "UP" end
+
+    local direction = barDB.FlyoutDirection or "AUTO"
+    if direction == "AUTO" then
+        local anchorPoint = barDB.Position and barDB.Position.AnchorPoint or "BOTTOM"
+        return CalculateAutoFlyoutDirection(container, anchorPoint)
+    end
+    return direction
+end
+
+-- Set flyout direction on a button
+local function SetButtonFlyoutDirection(button, direction)
+    if not button or InCombatLockdown() then return end
+    button:SetAttribute("flyoutDirection", direction)
+
+    -- Override GetPopupDirection if FlyoutButtonMixin is present
+    if not button._nrsknFlyoutHooked then
+        button._nrsknFlyoutHooked = true
+        button.GetPopupDirection = function(self)
+            return self:GetAttribute("flyoutDirection") or "UP"
+        end
+    end
+
+    -- Update flyout arrow if visible
+    if button.UpdateFlyout then
+        button:UpdateFlyout()
+    end
+end
+
 -- Calculate edge-relative anchor point and offsets from frame position
 -- This ensures bars stay in the same relative screen position across resolutions
 local function CalculateEdgePosition(frame)
@@ -839,11 +892,19 @@ local function SkinBar(cfg)
     local lastBackdrop = nil
     local lastRowBackdrop = nil
 
+    -- Calculate flyout direction for this bar
+    local flyoutDirection = GetEffectiveFlyoutDirection(cfg.name, container)
+
     for i = 1, numButtons do
         local button = _G[cfg.buttonPrefix .. i]
         if button then
             ACB:StyleButtonTextures(button)
             ACB:StyleButtonText(button, cfg.name)
+
+            -- Set flyout direction on button
+            if cfg.name:match("^Bar%d$") then
+                SetButtonFlyoutDirection(button, flyoutDirection)
+            end
 
             local backdrop = ACB:CreateButtonBackdrop(button, cfg.name, i, buttonSize)
             if backdrop then
@@ -1642,6 +1703,36 @@ function ACB:UpdateAllLayouts()
     end
 end
 
+-- Update flyout direction for a specific bar
+function ACB:UpdateBarFlyoutDirection(barKey)
+    if InCombatLockdown() then return end
+
+    local barDB, container = GetBarData(barKey)
+    if not barDB or not container then return end
+
+    -- Only update for main action bars (Bar1-Bar8)
+    if not barKey:match("^Bar%d$") then return end
+
+    local frameInfo = BAR_FRAME_MAP[barKey]
+    if not frameInfo then return end
+
+    local flyoutDirection = GetEffectiveFlyoutDirection(barKey, container)
+
+    for i = 1, 12 do
+        local button = _G[frameInfo.prefix .. i]
+        if button then
+            SetButtonFlyoutDirection(button, flyoutDirection)
+        end
+    end
+end
+
+-- Update flyout direction for all bars
+function ACB:UpdateAllFlyoutDirections()
+    for barKey, _ in pairs(BAR_FRAME_MAP) do
+        self:UpdateBarFlyoutDirection(barKey)
+    end
+end
+
 -- Toggle bar visibility and edit mode registration
 function ACB:UpdateBarEnabled(barKey)
     local barDB, container = GetBarData(barKey)
@@ -1669,7 +1760,7 @@ function ACB:UpdateBarEnabled(barKey)
 end
 
 -- Main update function, called from GUI
--- updateType can be: "all", "fonts", "positions", "mouseover", "layout", "bar"
+-- updateType can be: "all", "fonts", "positions", "mouseover", "layout", "flyout", "bar"
 -- barKey is optional, used when updating a specific bar
 -- This way i can do targeted updates in the GUI instead of always doing a full update
 function ACB:UpdateSettings(updateType, barKey)
@@ -1682,6 +1773,7 @@ function ACB:UpdateSettings(updateType, barKey)
         self:UpdateAllMouseover()
         self:UpdateAllLayouts()
         self:UpdateProfessionTextures()
+        self:UpdateAllFlyoutDirections()
     elseif updateType == "fonts" then
         self:UpdateButtonTexts()
     elseif updateType == "positions" then
@@ -1701,6 +1793,12 @@ function ACB:UpdateSettings(updateType, barKey)
             self:UpdateBarLayout(barKey)
         else
             self:UpdateAllLayouts()
+        end
+    elseif updateType == "flyout" then
+        if barKey then
+            self:UpdateBarFlyoutDirection(barKey)
+        else
+            self:UpdateAllFlyoutDirections()
         end
     elseif updateType == "enabled" and barKey then
         self:UpdateBarEnabled(barKey)

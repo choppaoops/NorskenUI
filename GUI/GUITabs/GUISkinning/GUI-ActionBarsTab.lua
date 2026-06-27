@@ -705,6 +705,30 @@ GUIFrame:RegisterPanel("ActionBars", function(container)
         manager:Register(growthDropdown, "main", "bar")
         card1:AddRow(row1c, Theme.rowHeight)
 
+        -- Flyout direction
+        if curEdit:match("^Bar%d$") then
+            local row1d = GUIFrame:CreateRow(card1.content, Theme.rowHeight)
+            local flyoutList = {
+                ["AUTO"] = "Auto",
+                ["UP"] = "Up",
+                ["DOWN"] = "Down",
+                ["LEFT"] = "Left",
+                ["RIGHT"] = "Right"
+            }
+            local flyoutDropdown = GUIFrame:CreateDropdown(row1d, "Flyout Direction", {
+                options = flyoutList,
+                value = barDB.FlyoutDirection or "AUTO",
+                callback = function(key)
+                    local bdb = GetCurrentBarDB()
+                    if bdb then bdb.FlyoutDirection = key end
+                    local ACB = NorskenUI:GetModule("ActionBars", true)
+                    if ACB then ACB:UpdateSettings("flyout", curEdit) end
+                end
+            })
+            row1d:AddWidget(flyoutDropdown, 1)
+            manager:Register(flyoutDropdown, "main", "bar")
+        end
+
         yOffset = card1:GetNextOffset()
 
         -- Card 2: Position (using edge-relative AnchorPoint)
