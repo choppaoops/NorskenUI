@@ -707,7 +707,7 @@ GUIFrame:RegisterPanel("ActionBars", function(container)
 
         -- Flyout direction
         if curEdit:match("^Bar%d$") then
-            local row1d = GUIFrame:CreateRow(card1.content, Theme.rowHeight)
+            local row1d = GUIFrame:CreateRow(card1.content, Theme.rowHeightLast)
             local flyoutList = {
                 ["AUTO"] = "Auto",
                 ["UP"] = "Up",
@@ -727,6 +727,7 @@ GUIFrame:RegisterPanel("ActionBars", function(container)
             })
             row1d:AddWidget(flyoutDropdown, 1)
             manager:Register(flyoutDropdown, "main", "bar")
+            card1:AddRow(row1d, Theme.rowHeightLast, 0)
         end
 
         yOffset = card1:GetNextOffset()
