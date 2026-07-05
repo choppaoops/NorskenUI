@@ -354,7 +354,7 @@ function BOT:SkinScenarioTracker()
             end
 
             if block.StatusBar then
-                block.StatusBar:SetStatusBarTexture(NRSKNUI.Media.statusbar or "Interface\\Buttons\\WHITE8x8")
+                block.StatusBar:SetStatusBarTexture(NRSKNUI.Media.Statusbar or "Interface\\Buttons\\WHITE8x8")
                 block.StatusBar:SetStatusBarColor(Theme.accent[1], Theme.accent[2], Theme.accent[3])
                 block.StatusBar:SetHeight(10)
             end
