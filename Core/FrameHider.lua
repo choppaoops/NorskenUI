@@ -13,6 +13,8 @@ local _G = _G
 local hidden = CreateFrame('Frame')
 hidden:Hide()
 
+---Hide objects safely and reparent them to a hidden frame
+---@param object any
 function NRSKNUI:Hide(object, ...)
     if type(object) == 'string' then
         object = _G[object]
