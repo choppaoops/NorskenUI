@@ -36,7 +36,7 @@ local time = time
 local GetRealmName = GetRealmName
 local wipe = wipe
 local UNKNOWN = UNKNOWN
-local BetterDate = BetterDate
+local BetterDate = (TimeUtil and TimeUtil.BetterDate) or BetterDate
 local AFK = AFK
 local DND = DND
 local GetServerTime = GetServerTime
@@ -1179,6 +1179,8 @@ function CHAT:UpdateEditboxFont(chatFrame)
     local id = chatFrame:GetID()
     local _, fontSize = GetChatWindowInfo(id)
     if fontSize then
+        -- Blizzard: fontSize is 0 while the window is still at the default size (14)
+        if fontSize == 0 then fontSize = 14 end
         local fontName, _, fontFlags = editbox:GetFont()
         if fontName then editbox:SetFont(fontName, fontSize, fontFlags) end
     end

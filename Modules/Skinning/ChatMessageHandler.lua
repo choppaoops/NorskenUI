@@ -330,7 +330,7 @@ end
 
 -- Main message event handler
 function CMH:ChatFrame_MessageEventHandler(frame, event, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10,
-                                           arg11, arg12, arg13, arg14, arg15, arg16, arg17)
+                                           arg11, arg12, arg13, arg14, arg15, arg16, arg17, arg18)
     if not event then return true end
 
     local isProtected = NRSKNUI:IsSecretValue(arg2)
@@ -338,7 +338,7 @@ function CMH:ChatFrame_MessageEventHandler(frame, event, arg1, arg2, arg3, arg4,
     -- Text to speech
     if _G.TextToSpeechFrame_MessageEventHandler then
         _G.TextToSpeechFrame_MessageEventHandler(frame, event, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9,
-            arg10, arg11, arg12, arg13, arg14, arg15, arg16, arg17)
+            arg10, arg11, arg12, arg13, arg14, arg15, arg16, arg17, arg18)
     end
 
     if strsub(event, 1, 8) == 'CHAT_MSG' then
@@ -586,7 +586,7 @@ function CMH:ChatFrame_MessageEventHandler(frame, event, arg1, arg2, arg3, arg4,
             -- Check if this message is censored and prepare formatter for "Show Message" click
             local isChatLineCensored, eventArgs, msgFormatter = IsChatLineCensored and IsChatLineCensored(arg11)
             if isChatLineCensored then
-                eventArgs = SafePack(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15, arg16, arg17)
+                eventArgs = SafePack(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15, arg16, arg17, arg18)
 
                 msgFormatter = function(msg)
                     return self:MessageFormatter(frame, info, chatType, chatGroup, chatTarget, channelLength, coloredName,
