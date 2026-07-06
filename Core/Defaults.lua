@@ -1899,6 +1899,18 @@ local Defaults = {
             -- Tooltip Skinning
             Tooltips = {
                 Enabled = true,
+                ShowStatusBar = true,
+                HideInCombat = true,
+                StyleLevelLine = true,
+                -- General font settings
+                UseGlobalFont = true,
+                FontFace = "Expressway",
+                FontOutline = "OUTLINE",
+                -- Font size settings
+                HeaderTextSize = 14,
+                TextSize = 12,
+                TextSmallSize = 12,
+                -- Pos settings
                 Position = {
                     AnchorFrom = "BOTTOMRIGHT",
                     AnchorTo = "BOTTOMRIGHT",

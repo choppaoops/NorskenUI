@@ -6,7 +6,7 @@ local Theme = NRSKNUI.Theme
 GUIFrame:RegisterContent("tooltips", function(scrollChild, yOffset)
     if NRSKNUI:ShouldNotLoadModule() then return GUIFrame:ShowDBError(scrollChild, yOffset) end
     local db = NRSKNUI.db and NRSKNUI.db.profile.Skinning.Tooltips
-    if not db then GUIFrame:ShowDBError(scrollChild, yOffset) end
+    if not db then return GUIFrame:ShowDBError(scrollChild, yOffset) end
     local manager = GUIFrame:CreateWidgetStateManager()
 
     ---@type Tooltips?
