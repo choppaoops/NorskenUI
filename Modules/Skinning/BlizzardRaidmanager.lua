@@ -57,17 +57,17 @@ function BRMG:SetupRaidManager()
         end)
 
         CompactRaidFrameManager:HookScript("OnLeave", function()
-            if not MouseIsOver(CompactRaidFrameManager) then FadeOut() end
+            if not CompactRaidFrameManager:IsMouseOver() then FadeOut() end
         end)
 
         hooksecurefunc("CompactRaidFrameManager_Toggle", function()
             if not BRMG:IsEnabled() then return end
             BRMG:ApplyPosition()
-            if MouseIsOver(CompactRaidFrameManager) then
+            if CompactRaidFrameManager:IsMouseOver() then
                 FadeIn()
             else
                 C_Timer.After(0.1, function()
-                    if not MouseIsOver(CompactRaidFrameManager) then FadeOut() end
+                    if not CompactRaidFrameManager:IsMouseOver() then FadeOut() end
                 end)
             end
         end)
@@ -75,7 +75,7 @@ function BRMG:SetupRaidManager()
         BRMG._raidManagerHooked = true
     end
 
-    if not MouseIsOver(CompactRaidFrameManager) then
+    if not CompactRaidFrameManager:IsMouseOver() then
         CompactRaidFrameManager:SetAlpha(self.db.Alpha)
         CompactRaidFrameManager._isMouseOver = false
     end
