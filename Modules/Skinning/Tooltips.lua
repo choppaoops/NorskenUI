@@ -62,6 +62,9 @@ local factionLineColors = {
     [FACTION_HORDE] = { 1, 0.16, 0.16 },
 }
 
+local guildNameFormat = '<|cffffa700%s|r>'
+local guildRankFormat = '<|cffffa700%s|r> [|cffffa700%s|r]'
+
 ---@class Tooltips: AceModule, AceEvent-3.0
 local TT = NRSKNUI:NewModule('Tooltips', 'AceEvent-3.0')
 
@@ -205,6 +208,8 @@ local function tooltipHealthChanged(self)
     self:SetStatusBarColor(GetUnitColor(tooltip):GetRGB())
 end
 
+--TODO:When mouseovering a unit, then moving mouseover away, the statusbar color is instantly changed to white, fallback.
+
 ---@param tooltip Tooltip
 local function StyleStatusBar(tooltip)
     if TT.db.ShowStatusBar then
@@ -335,9 +340,10 @@ local function GetLevelLine(tooltip, startLine)
     end
 end
 
----@param tooltip Tooltip
+-- Resolves the unit token from tooltip data, nil for secrets and non-players.
 ---@param data TooltipData
-local function StyleLevelLine(tooltip, data)
+---@return string? unit
+local function GetPlayerUnit(data)
     local unitGUID = data and data.guid
     if not unitGUID or issecretvalue(unitGUID) then return end
 
@@ -346,6 +352,15 @@ local function StyleLevelLine(tooltip, data)
 
     local isPlayer = UnitIsPlayer(unit)
     if issecretvalue(isPlayer) or not isPlayer then return end
+
+    return unit
+end
+
+---@param tooltip Tooltip
+---@param data TooltipData
+local function StyleLevelLine(tooltip, data)
+    local unit = GetPlayerUnit(data)
+    if not unit then return end
 
     local level = UnitLevel(unit)
     if issecretvalue(level) or not level or level <= 0 then return end
@@ -377,6 +392,28 @@ local function StyleFactionLine(tooltip)
     end
 end
 
+---@param data TooltipData
+local function StyleGuildLine(data)
+    local unit = GetPlayerUnit(data)
+    if not unit then return end
+
+    local guildName, guildRank = GetGuildInfo(unit)
+    if issecretvalue(guildName) or not guildName then return end
+
+    local line = _G['GameTooltipTextLeft2']
+    local text = line and line:GetText()
+    if issecretvalue(text) or not text then return end
+
+    -- Only overwrite if line 2 really is the guild line.
+    if not text:find(guildName, 1, true) then return end
+
+    if TT.db.ShowGuildRank and not issecretvalue(guildRank) and guildRank then
+        line:SetText(guildRankFormat:format(guildName, guildRank))
+    else
+        line:SetText(guildNameFormat:format(guildName))
+    end
+end
+
 local tooltipsProcessed = false
 local function TooltipProcessor()
     if tooltipsProcessed then return end
@@ -402,6 +439,11 @@ local function TooltipProcessor()
         if TT.db.StyleLevelLine then
             StyleLevelLine(tooltip, data)
             StyleFactionLine(tooltip)
+        end
+
+        -- Style the guild name line for players
+        if TT.db.StyleGuildText then
+            StyleGuildLine(data)
         end
     end)
 

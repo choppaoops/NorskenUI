@@ -1902,12 +1902,14 @@ local Defaults = {
                 ShowStatusBar = true,
                 HideInCombat = true,
                 StyleLevelLine = true,
+                StyleGuildText = true,
+                ShowGuildRank = true,
                 -- General font settings
                 UseGlobalFont = true,
                 FontFace = "Expressway",
                 FontOutline = "OUTLINE",
                 -- Font size settings
-                HeaderTextSize = 14,
+                HeaderTextSize = 15,
                 TextSize = 12,
                 TextSmallSize = 12,
                 -- Pos settings
