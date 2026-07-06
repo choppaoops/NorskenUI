@@ -168,7 +168,7 @@ local function SetupSlashCommands()
     -- /fs instead of /fstack shortcut :)
     SLASH_NRSKNUI_FS1 = "/fs"
     SlashCmdList["NRSKNUI_FS"] = function()
-        local loadAddOn = LoadAddOnWithErrorHandling or UIParentLoadAddOn
+        local loadAddOn = LoadAddOnWithErrorHandling or UIParentLoadAddOn -- UIParentLoadAddOn is renamed to: LoadAddOnWithErrorHandling in 12.1.X+
         loadAddOn("Blizzard_DebugTools")
         FrameStackTooltip_Toggle()
     end
