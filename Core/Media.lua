@@ -17,7 +17,9 @@ local C_UIFileAsset = C_UIFileAsset
 
 NRSKNUI.PATH = ([[Interface\AddOns\%s\Media\]]):format(addonName)
 
-local FALLBACK_FONT = "Fonts\\FRIZQT__.TTF"
+-- STANDARD_TEXT_FONT is locale-correct (ARKai_T on zhCN, 2002 on koKR, etc) a hardcoded
+-- FRIZQT__ fallback renders CJK text as boxes on those clients.
+local FALLBACK_FONT = STANDARD_TEXT_FONT or (GameFontNormal and GameFontNormal:GetFont()) or "Fonts\\FRIZQT__.TTF"
 local FALLBACK_SIZE = 12
 local DEFAULT_FONT_NAME = "Expressway"
 local ADDON_FONT_PATH = NRSKNUI.PATH .. [[Fonts\Expressway.TTF]]
@@ -33,8 +35,11 @@ NRSKNUI.Media = {
 NRSKNUI.LSM = LibStub("LibSharedMedia-3.0")
 
 if NRSKNUI.LSM then
-    NRSKNUI.LSM:Register("font", "Expressway", ADDON_FONT_PATH)
-    NRSKNUI.LSM:Register("font", "Quazii", QUAZII_FONT_PATH)
+    -- Locale masks: LSM rejects font registrations on koKR/zhCN/zhTW/ruRU clients unless the
+    -- mask includes their locale bit and Fetch then falls back to the locale default game font.
+    local westAndRU = NRSKNUI.LSM.LOCALE_BIT_western + NRSKNUI.LSM.LOCALE_BIT_ruRU
+    NRSKNUI.LSM:Register("font", "Expressway", ADDON_FONT_PATH, westAndRU)
+    NRSKNUI.LSM:Register("font", "Quazii", QUAZII_FONT_PATH, NRSKNUI.LSM.LOCALE_BIT_western)
     NRSKNUI.LSM:Register("statusbar", "NorskenUI", ADDON_STATUSBAR_PATH)
     NRSKNUI.LSM:Register("sound", "|cffe51039NorskenWhisper|r", [[Interface\AddOns\NorskenUI\Media\Sounds\Whisper.ogg]])
     NRSKNUI.LSM:Register("border", "WHITE8X8", [[Interface\Buttons\WHITE8X8]])
@@ -137,7 +142,6 @@ end
 ---@param fontName string
 ---@return string
 function NRSKNUI:GetFontPath(fontName)
-    if fontName == "Expressway" then return ADDON_FONT_PATH end
     return self:GetMediaPath("font", fontName, FALLBACK_FONT)
 end
 
