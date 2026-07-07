@@ -13,6 +13,24 @@ local type = type
 
 local STEPPER_TEXTURE = "Interface\\AddOns\\NorskenUI\\Media\\GUITextures\\collapse.tga"
 
+---@class NUISlider : Frame
+---@field label FontString
+---@field slider Slider
+---@field SetValue fun(self: NUISlider, val: number)
+---@field GetValue fun(self: NUISlider): number
+---@field SetMinMaxValues fun(self: NUISlider, minVal: number, maxVal: number)
+---@field SetEnabled fun(self: NUISlider, enabled: boolean)
+
+---@class NUISliderConfig
+---@field min? number
+---@field max? number
+---@field step? number
+---@field value? number
+---@field labelWidth? number
+---@field callback? fun(value: number)
+---@field tooltip? any
+---@field cvartooltip? boolean
+
 ---Slider with value input and stepper buttons
 ---```lua
 ---config = {
@@ -465,5 +483,6 @@ function GUIFrame:CreateSlider(parent, labelText, config)
     end
 
     self:RegisterSearchableWidget(row, labelText)
+    ---@cast row NUISlider
     return row
 end

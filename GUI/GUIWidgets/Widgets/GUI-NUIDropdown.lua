@@ -276,6 +276,26 @@ local function ReleaseItemButton(btn)
     table_insert(itemButtonPool, btn)
 end
 
+---@class NUIDropdown : Frame
+---@field label FontString
+---@field dropdown Button
+---@field SetValue fun(self: NUIDropdown, value: any, silent?: boolean)
+---@field SetSelected fun(self: NUIDropdown, value: any, silent?: boolean)
+---@field GetValue fun(self: NUIDropdown): any
+---@field GetSelected fun(self: NUIDropdown): any
+---@field SetEnabled fun(self: NUIDropdown, enabled: boolean)
+---@field UpdateOptions fun(self: NUIDropdown, newOptions: table)
+---@field SetOptions fun(self: NUIDropdown, newOptions: table)
+---@field UpdateColors fun(self: NUIDropdown)
+
+---@class NUIDropdownConfig
+---@field options table
+---@field value? any
+---@field callback? fun(value: any)
+---@field searchable? boolean
+---@field isFontPreview? boolean
+---@field theme? number[]
+
 ---Dropdown with optional search and font preview
 ---```lua
 ---config = {
@@ -900,5 +920,6 @@ function GUIFrame:CreateDropdown(parent, labelText, config)
     Mixin(row, NUIDropdownMixin)
 
     self:RegisterSearchableWidget(row, labelText)
+    ---@cast row NUIDropdown
     return row
 end

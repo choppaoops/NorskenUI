@@ -225,6 +225,8 @@ function NUICardMixin:GetNextOffset()
     return self._yOffset + self:GetContentHeight() + Theme.paddingSmall
 end
 
+---@class NUICard : NUICardMixin
+
 ---Container with optional header. Call GetNextOffset() after adding rows
 ---@param parent Frame
 ---@param title string
@@ -298,6 +300,7 @@ function GUIFrame:CreateCard(parent, title, yOffset, width)
 
     card:UpdateHeight()
 
+    ---@cast card NUICard
     return card
 end
 
@@ -334,6 +337,8 @@ function NUIRowMixin:AddWidget(widget, widthPct, spacing, xOffset, yOffset)
     self.nextX = self.nextX + 10
 end
 
+---@class NUIRow : NUIRowMixin
+
 ---Horizontal layout container, total width values should sum to 1.0
 ---@param parent Frame
 ---@param height? number
@@ -363,5 +368,6 @@ function GUIFrame:CreateRow(parent, height)
         end
     end)
 
+    ---@cast row NUIRow
     return row
 end

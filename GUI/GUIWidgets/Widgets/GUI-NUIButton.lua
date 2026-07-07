@@ -8,6 +8,8 @@ local CreateFrame = CreateFrame
 local type = type
 local Mixin = Mixin
 
+---@alias OnClickCallback fun()
+
 ---@class NUIButtonMixin : Button, BackdropTemplate
 ---@field icon? Texture
 ---@field text FontString
@@ -55,6 +57,17 @@ function NUIButtonMixin:UpdateColors()
     self:SetBackdropBorderColor(Theme.border[1], Theme.border[2], Theme.border[3], 1)
     self.text:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
 end
+
+---@class NUIButton : NUIButtonMixin
+
+---@class NUIButtonConfig
+---@field tooltip? string
+---@field callback? OnClickCallback
+---@field image? string|number
+---@field imageSize? number
+---@field width? number
+---@field height? number
+---@field bgColor? number[]
 
 ---Themed button with optional icon and tooltip
 ---```lua
@@ -167,5 +180,6 @@ function GUIFrame:CreateButton(parent, buttonText, config)
 
     Mixin(button, NUIButtonMixin)
 
+    ---@cast button NUIButton
     return button
 end

@@ -21,6 +21,25 @@ local ON_POSITION = TOGGLE_WIDTH - KNOB_SIZE - KNOB_PADDING
 local CHECK_TEXTURE = "Interface\\AddOns\\NorskenUI\\Media\\GUITextures\\ok-iconBlack.tga"
 local CROSS_TEXTURE = "Interface\\AddOns\\NorskenUI\\Media\\GUITextures\\cross-small.png"
 
+---@class NUICheckboxToggle : Frame, BackdropTemplate
+---@field SetValue fun(self: NUICheckboxToggle, value: boolean, instant?: boolean)
+---@field GetValue fun(self: NUICheckboxToggle): boolean
+
+---@class NUICheckbox : Frame
+---@field label FontString
+---@field toggle NUICheckboxToggle
+---@field SetEnabled fun(self: NUICheckbox, enabled: boolean)
+
+---@class NUICheckboxConfig
+---@field value? boolean
+---@field callback? fun(checked: boolean, revert?: fun(shouldRevert: boolean))
+---@field msgPopup? boolean
+---@field msgText? string
+---@field msgOn? string
+---@field msgOff? string
+---@field tooltip? any
+---@field cvartooltip? boolean
+
 ---Toggle checkbox with optional message popup
 ---```lua
 ---config = {
@@ -352,5 +371,6 @@ function GUIFrame:CreateCheckbox(parent, labelText, config)
     end
 
     self:RegisterSearchableWidget(row, labelText)
+    ---@cast row NUICheckbox
     return row
 end

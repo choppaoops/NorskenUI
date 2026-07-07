@@ -11,6 +11,16 @@ local ColorPickerFrame = ColorPickerFrame
 -- Custom made backdrop for the swatch by Norsken
 local NUI_BG = "Interface\\AddOns\\NorskenUI\\Media\\GUITextures\\NUIcolorPickerBG.png"
 
+---@alias OnColorChanged fun(r: number, g: number, b: number, a: number)
+
+---@class NUIColorSwatch : Button, BackdropTemplate
+---@field r number
+---@field g number
+---@field b number
+---@field a number
+---@field isNUIColorPicker boolean
+---@field colorPickerRow NUIColorPicker
+
 ---@class NUIColorPickerMixin : Frame
 ---@field swatch NUIColorSwatch
 ---@field hexText FontString
@@ -45,6 +55,13 @@ function NUIColorPickerMixin:SetEnabled(enabled)
     end
 end
 
+---@class NUIColorPicker : NUIColorPickerMixin
+---@field label FontString
+
+---@class NUIColorPickerConfig
+---@field color? number[]
+---@field callback? OnColorChanged
+
 ---Color picker with swatch and hex display
 ---```lua
 ---config = {
@@ -61,7 +78,7 @@ function GUIFrame:CreateColorPicker(parent, labelText, config)
     local color = config.color or { 1, 1, 1, 1 }
     local callback = config.callback
 
-    local row = CreateFrame("Frame", nil, parent)
+    local row = CreateFrame("Frame", nil, parent) --[[@as NUIColorPicker]]
     row:SetHeight(34)
 
     local label = row:CreateFontString(nil, "OVERLAY")
@@ -80,7 +97,7 @@ function GUIFrame:CreateColorPicker(parent, labelText, config)
     swatchBg:SetTexelSnappingBias(0)
     swatchBg:SetSnapToPixelGrid(false)
 
-    local swatch = CreateFrame("Button", nil, row, "BackdropTemplate")
+    local swatch = CreateFrame("Button", nil, row, "BackdropTemplate") --[[@as NUIColorSwatch]]
     swatch:SetSize(48, 24)
     swatch:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -14)
     swatch:SetBackdrop({
@@ -139,5 +156,6 @@ function GUIFrame:CreateColorPicker(parent, labelText, config)
     end)
 
     self:RegisterSearchableWidget(row, labelText)
+    ---@cast row NUIColorPicker
     return row
 end

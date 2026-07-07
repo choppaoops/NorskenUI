@@ -7,6 +7,30 @@
 ---@field globalOverrideCheck NUICheckbox?
 ---@field UpdateShadowState fun()
 ---@field UpdateGlobalOverrideState fun()
+---@field _hasInternalWidgetState boolean
+
+---@class NUIFontSettingsCardFontSize
+---@field label? string
+---@field dbKey string
+
+---@class NUIFontSettingsCardDbKeys
+---@field fontFace? string
+---@field fontSize? string
+---@field fontOutline? string
+---@field shadow? string
+
+---@class NUIFontSettingsCardConfig
+---@field title? string
+---@field db table
+---@field dbKeys? NUIFontSettingsCardDbKeys
+---@field onChangeCallback? fun()
+---@field fontSizeRange? number[]
+---@field fontSizes? NUIFontSettingsCardFontSize[]
+---@field hideFontSize? boolean
+---@field searchable? boolean
+---@field includeSoftOutline? boolean
+---@field shadowOffsetRange? number[]
+---@field globalOverride? table
 
 ---@class NRSKNUI
 local NRSKNUI = select(2, ...)
@@ -135,7 +159,7 @@ function GUIFrame:CreateFontSettingsCard(scrollChild, yOffset, config)
         end
     end
 
-    local card = GUIFrame:CreateCard(scrollChild, title, yOffset)
+    local card = GUIFrame:CreateCard(scrollChild, title, yOffset) --[[@as NUIFontSettingsCard]]
 
     ---@type NUICheckbox?
     local globalOverrideCheck
@@ -335,8 +359,7 @@ function GUIFrame:CreateFontSettingsCard(scrollChild, yOffset, config)
         UpdateGlobalOverrideState()
     end
 
-    ---@cast card NUIFontSettingsCard
-
+    ---@param enabled boolean
     ---@diagnostic disable-next-line: duplicate-set-field
     function card:SetEnabled(enabled)
         if enabled then

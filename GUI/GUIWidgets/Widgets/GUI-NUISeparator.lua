@@ -8,6 +8,13 @@ local CreateFrame = CreateFrame
 local CreateColor = CreateColor
 local type = type
 
+---@class NUISeparator : Frame, BackdropTemplate
+---@field SetEnabled fun(self: NUISeparator, enabled: boolean)
+
+---@class NUISeparatorConfig
+---@field useLabel? boolean
+---@field height? number
+
 ---@param parent Frame
 ---@param labelText? string Separator label text
 ---@param config? NUISeparatorConfig
@@ -50,5 +57,6 @@ function GUIFrame:CreateSeparator(parent, labelText, config)
         end
     end
 
+    ---@cast separator NUISeparator
     return separator
 end
