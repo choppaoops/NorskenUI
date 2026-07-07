@@ -1935,7 +1935,7 @@ local Defaults = {
                 -- Font size settings
                 HeaderTextSize = 16,
                 TextSize = 14,
-                TextSmallSize = 14,
+                TextSmallSize = 12,
                 -- Pos settings
                 Position = {
                     AnchorFrom = "BOTTOMRIGHT",
