@@ -18,7 +18,7 @@ local Defaults = {
             customColors   = {},       -- Custom color overrides (used in custom mode)
 
             -- Font settings (shared across all modes)
-            fontFace       = "Interface\\AddOns\\NorskenUI\\Media\\Fonts\\Expressway.TTF",
+            fontFace       = NRSKNUI.FONT, -- Locale-aware default font path (see Core/Media.lua)
             fontSizeNormal = 12,
             fontSizeSmall  = 12,
             fontSizeLarge  = 16,

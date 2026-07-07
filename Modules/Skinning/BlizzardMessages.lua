@@ -9,6 +9,10 @@ local C_Timer = C_Timer
 local UIParent = UIParent
 local _G = _G
 
+-- Locale-correct Blizzard font for restoring frames to their stock look;
+-- hardcoded FRIZQT__ renders CJK text as boxes on zhTW/zhCN/koKR clients.
+local BLIZZARD_FONT = STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF"
+
 function BM:UpdateDB()
     self.db = NRSKNUI.db.profile.Skinning.BlizzardMessages
 end
@@ -127,7 +131,7 @@ function BM:ResetUIErrorsFrame()
     frame:Show()
     frame:SetAlpha(1)
     if _G.ErrorFont and _G.ErrorFont.SetFont then
-        _G.ErrorFont:SetFont("Fonts\\FRIZQT__.TTF", 16, "OUTLINE")
+        _G.ErrorFont:SetFont(BLIZZARD_FONT, 16, "OUTLINE")
     end
     frame:ClearAllPoints()
     frame:SetPoint("TOP", UIParent, "TOP", 0, -100)
@@ -138,7 +142,7 @@ function BM:ResetActionStatusText()
     if not frame or not frame.Text then return end
     frame.Text:Show()
     frame.Text:SetAlpha(1)
-    frame.Text:SetFont("Fonts\\FRIZQT__.TTF", 16, "OUTLINE")
+    frame.Text:SetFont(BLIZZARD_FONT, 16, "OUTLINE")
     frame.Text:ClearAllPoints()
     frame.Text:SetPoint("TOP", UIParent, "TOP", 0, -150)
 end

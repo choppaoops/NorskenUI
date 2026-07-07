@@ -14,6 +14,7 @@ local InCombatLockdown = InCombatLockdown
 local CreateFrame = CreateFrame
 local PlaySoundFile = PlaySoundFile
 local C_UIFileAsset = C_UIFileAsset
+local GetLocale = GetLocale
 
 NRSKNUI.PATH = ([[Interface\AddOns\%s\Media\]]):format(addonName)
 
@@ -26,9 +27,17 @@ local ADDON_FONT_PATH = NRSKNUI.PATH .. [[Fonts\Expressway.TTF]]
 local QUAZII_FONT_PATH = NRSKNUI.PATH .. [[Fonts\Quazii.TTF]]
 local ADDON_STATUSBAR_PATH = NRSKNUI.PATH .. [[Statusbars\NorskenUI.blp]]
 
-NRSKNUI.FONT = ADDON_FONT_PATH
+-- The bundled fonts only contain Latin glyphs. The LSM locale masks below stop
+-- them registering on CJK clients, but several paths never touch LSM: the
+-- theme fontFace default (a raw path in SavedVariables), and anything that
+-- reads NRSKNUI.FONT at file-load time (ThemeDefaults) or before PLAYER_LOGIN
+-- runs ResolveMedia. Default those straight to the locale game font instead.
+local IS_CJK_CLIENT = ({ zhTW = true, zhCN = true, koKR = true })[GetLocale()] or false
+local DEFAULT_FONT_PATH = IS_CJK_CLIENT and FALLBACK_FONT or ADDON_FONT_PATH
+
+NRSKNUI.FONT = DEFAULT_FONT_PATH
 NRSKNUI.Media = {
-    Font = ADDON_FONT_PATH,
+    Font = DEFAULT_FONT_PATH,
     Statusbar = ADDON_STATUSBAR_PATH,
 }
 
@@ -48,10 +57,12 @@ end
 function NRSKNUI:ResolveMedia()
     local LSM = self.LSM
     if LSM then
-        self.Media.Font = LSM:Fetch("font", "Expressway") or ADDON_FONT_PATH
+        -- On CJK clients Expressway isn't registered (locale mask), so Fetch
+        -- falls through to LSM's locale default game font.
+        self.Media.Font = LSM:Fetch("font", "Expressway") or DEFAULT_FONT_PATH
         self.Media.Statusbar = LSM:Fetch("statusbar", "NorskenUI") or ADDON_STATUSBAR_PATH
     else
-        self.Media.Font = ADDON_FONT_PATH
+        self.Media.Font = DEFAULT_FONT_PATH
         self.Media.Statusbar = ADDON_STATUSBAR_PATH
     end
     self.FONT = self.Media.Font
@@ -122,7 +133,19 @@ local function ValidateFontsRecursive(tbl, defaults)
 end
 
 function NRSKNUI:ValidateProfileFonts()
-    if not self.db or not self.db.profile then return end
+    if not self.db then return end
+    if IS_CJK_CLIENT then
+        -- The theme fontFace is a raw path in SavedVariables that never goes
+        -- through LSM. Migrate stored Latin-only paths (old defaults) to the
+        -- locale game font so the GUI doesn't render CJK text as boxes.
+        local theme = self.db.global and self.db.global.Theme
+        if theme and (theme.fontFace == ADDON_FONT_PATH
+                or theme.fontFace == QUAZII_FONT_PATH
+                or theme.fontFace == "Fonts\\FRIZQT__.TTF") then
+            theme.fontFace = FALLBACK_FONT
+        end
+    end
+    if not self.db.profile then return end
     local defaults = self.db.defaults and self.db.defaults.profile
     ValidateFontsRecursive(self.db.profile, defaults)
 end
