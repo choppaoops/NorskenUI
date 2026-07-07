@@ -730,19 +730,6 @@ end
 local function SetButtonFlyoutDirection(button, direction)
     if not button or InCombatLockdown() then return end
     button:SetAttribute("flyoutDirection", direction)
-
-    -- Override GetPopupDirection if FlyoutButtonMixin is present
-    if not button._nrsknFlyoutHooked then
-        button._nrsknFlyoutHooked = true
-        button.GetPopupDirection = function(self)
-            return self:GetAttribute("flyoutDirection") or "UP"
-        end
-    end
-
-    -- Update flyout arrow if visible
-    if button.UpdateFlyout then
-        button:UpdateFlyout()
-    end
 end
 
 -- Calculate edge-relative anchor point and offsets from frame position
