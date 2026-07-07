@@ -51,6 +51,7 @@ local WELL_FED_NAME = Data.WELL_FED_NAME
 local HEARTY_WELL_FED_NAME = Data.HEARTY_WELL_FED_NAME
 local SPEC_PRIMARY_STAT = Data.SPEC_PRIMARY_STAT
 local RAID_BUFF_STAT_REQUIREMENT = Data.RAID_BUFF_STAT_REQUIREMENT
+local AURA_WHITELIST = Data.AURA_WHITELIST
 
 local UNIT_STRINGS = { raid = {}, party = {} }
 for i = 1, 40 do
@@ -83,7 +84,6 @@ local expirationTicker = nil
 local EXPIRATION_CHECK_INTERVAL = 3
 
 local groupMembersCache = {}
-local spellNameCache = {}
 local countStringCache = {}
 
 local safeMissingCache = {}
@@ -96,6 +96,7 @@ local categoryExpiringCache = {}
 local categoryExpTimeCache = {}
 local groupSatisfiedCache = {}
 local groupMissingBuffCache = {}
+local groupUntrackableCache = {}
 
 local checkContext = {
     trackingMode = "smart",
@@ -111,16 +112,6 @@ local checkContext = {
 
 local CheckForMissingBuffs
 local StopGlow
-
-local function GetCachedSpellName(spellId)
-    if not spellId then return nil end
-    local name = spellNameCache[spellId]
-    if name == nil then
-        name = C_Spell.GetSpellName(spellId) or false
-        spellNameCache[spellId] = name
-    end
-    return name or nil
-end
 
 local cachedIsInPvP = false
 local cachedIsInInstance = false
@@ -321,32 +312,51 @@ local function PlayerHasBuff(spellId, extraSpellIds)
     return false, nil
 end
 
+---Whether a buff can be reliably detected via the aura API in restricted
+---contexts (combat, boss encounters, M+ keystones, PvP instances). Blizzard
+---returns nil for non-whitelisted spell IDs there, indistinguishable from
+---"buff missing", so an untrackable buff must be skipped rather than shown as a
+---false reminder. Mirrors BuffReminders' IsAuraTrackable.
+---@param buff table
+---@return boolean
+local function IsAuraTrackable(buff)
+    -- Weapon imbues are read from GetWeaponEnchantInfo, not the aura API, so
+    -- they stay reliable while restricted.
+    if buff.enchantId then return true end
+
+    -- The spell ID(s) actually queried as auras. selfBuffSpellId overrides
+    -- spellId for targeted self-buffs (e.g. Symbiotic Relationship).
+    local primary = buff.selfBuffSpellId or buff.spellId
+    if primary and not AURA_WHITELIST[primary] then
+        return false
+    end
+    if buff.extraBuffSpellIds then
+        for _, id in ipairs(buff.extraBuffSpellIds) do
+            if not AURA_WHITELIST[id] then
+                return false
+            end
+        end
+    end
+    return true
+end
+
 local function UnitHasBuff(unit, spellId, extraSpellIds)
     if not unit or not IsValidTarget(unit) or not UnitIsConnected(unit) then return true end
 
-    local spellName = GetCachedSpellName(spellId)
-    if not spellName then
-        spellName = C_Spell.GetSpellName(spellId)
-        if spellName then
-            spellNameCache[spellId] = spellName
-        end
-    end
-
-    if spellName then
-        local auraData = C_UnitAuras.GetAuraDataBySpellName(unit, spellName, "HELPFUL")
-        if auraData then
-            return true
-        end
+    -- Match by spell ID, not by name. Buffs like Blessing of the Bronze apply a
+    -- different aura spell ID per class while sharing one display name, and
+    -- those localized names can diverge between variants on non-English
+    -- clients, which breaks name matching. GetUnitAuraBySpellID is
+    -- locale-independent and also respects Blizzard's restricted-context aura
+    -- whitelist (it returns whitelisted auras even during combat/M+/encounters).
+    if C_UnitAuras.GetUnitAuraBySpellID(unit, spellId) then
+        return true
     end
 
     if extraSpellIds then
         for _, extraId in ipairs(extraSpellIds) do
-            local extraName = GetCachedSpellName(extraId)
-            if extraName then
-                local auraData = C_UnitAuras.GetAuraDataBySpellName(unit, extraName, "HELPFUL")
-                if auraData then
-                    return true
-                end
+            if C_UnitAuras.GetUnitAuraBySpellID(unit, extraId) then
+                return true
             end
         end
     end
@@ -950,8 +960,10 @@ local function CheckTargetedBuffs()
 
     for _, buff in ipairs(TARGETED_BUFFS) do
         if buff.class == playerClass and buff.key then
-            if buff.secret and isRestricted then
-                -- Skip secret buffs when restricted (can't check aura data reliably)
+            if isRestricted and not IsAuraTrackable(buff) then
+                -- Not on Blizzard's restricted-context aura whitelist, so the
+                -- aura API can't be read reliably here - skip to avoid a false
+                -- reminder rather than trust a possibly-nil result.
             elseif not inGroup and not buff.includeSelf then
                 -- Skip buffs that require group targets when solo
             else
@@ -1031,6 +1043,7 @@ local function CheckSelfBuffs()
     wipe(selfMissingCache)
     wipe(groupSatisfiedCache)
     wipe(groupMissingBuffCache)
+    wipe(groupUntrackableCache)
     if not MBUFFS.db then return selfMissingCache end
 
     local restrictionState = NRSKNUI:GetRestrictionState()
@@ -1042,8 +1055,20 @@ local function CheckSelfBuffs()
     local hasElementalOrbit = playerClass == "SHAMAN" and C_SpellBook.IsSpellKnown(ELEMENTAL_ORBIT_TALENT)
 
     for _, buff in ipairs(SELF_BUFFS) do
-        if buff.secret and isRestricted then
-            -- Skip secret buffs when restricted
+        if isRestricted and not IsAuraTrackable(buff) then
+            -- Untrackable while restricted (its aura isn't on Blizzard's
+            -- whitelist), so it's skipped. Record its group so a trackable
+            -- sibling in the same group (e.g. Earth Shield) doesn't report the
+            -- whole group as missing while a skipped shield (e.g. Lightning
+            -- Shield) is actually active.
+            if buff.class == playerClass and buff.groupId then
+                if hasElementalOrbit and buff.groupId == "ShamanShield" and
+                    (buff.key == "LightningShield" or buff.key == "WaterShield") then
+                    groupUntrackableCache["ShamanShieldEO_Other"] = true
+                else
+                    groupUntrackableCache[buff.groupId] = true
+                end
+            end
         elseif buff.class == playerClass and buff.key then
             local buffSettings = selfBuffsDb[buff.key] or {}
             local specMatch = not buff.specId or currentSpecId == buff.specId
@@ -1109,7 +1134,7 @@ local function CheckSelfBuffs()
     end
 
     for groupId, data in pairs(groupMissingBuffCache) do
-        if not groupSatisfiedCache[groupId] then
+        if not groupSatisfiedCache[groupId] and not groupUntrackableCache[groupId] then
             local showGlow = ShouldShowGlow(data.settings, true, nil)
             selfMissingCache[#selfMissingCache + 1] = {
                 buff = data.buff,
@@ -1141,8 +1166,8 @@ local function CheckPresenceBuffs()
     local maxIndex = checkContext.maxIndex
 
     for _, buff in ipairs(PRESENCE_BUFFS) do
-        if buff.secret and isRestricted then
-            -- Skip secret buffs when restricted
+        if isRestricted and not IsAuraTrackable(buff) then
+            -- Untrackable while restricted (aura not on Blizzard's whitelist)
         else
             local isOwnClassBuff = buff.providerClass == playerClass
             local shouldTrack = isOwnClassBuff or (showOtherClass and groupClassesCache[buff.providerClass])
