@@ -43,6 +43,13 @@ MVAR.DEFS = {
         default = 1.9,
     },
     {
+        key = "alwaysCompareItems",
+        label = "Always compare items",
+        description = "Only compare items while holding shift if disabled, comparing items in combat causes framedrops.",
+        type = "boolean",
+        default = true,
+    },
+    {
         key = "addonPvPMatchRestrictionsForced",
         label = "Force PvP Match Addon Restrictions",
         description = "Force addon restrictions during PvP matches.",
